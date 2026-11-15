@@ -54,7 +54,7 @@ def verify_runtime():
 
     import torch
 
-    import_module("vllm._C")
+    import_module("vllm._C_stable_libtorch")
     import_module("vllm_omni")
 
     if torch.version.cuda != "12.9" or torch.cuda.get_device_capability() != (8, 7):
@@ -62,8 +62,13 @@ def verify_runtime():
     tensor = torch.ones((4, 4), device="cuda", dtype=torch.bfloat16)
     if (tensor @ tensor)[0, 0].item() != 4:
         raise RuntimeError("Jetson CUDA 12.9 BF16 compute probe failed")
-    del tensor
-    print(f"Tegra CUDA API {version.value}, PyTorch CUDA {torch.version.cuda}, SM 8.7 BF16 preflight passed", flush=True)
+    waveform = tensor.float().reshape(1, 1, 16)
+    convolution = torch.nn.functional.conv1d(waveform, waveform[:, :, :3])
+    query = tensor.reshape(1, 1, 4, 4)
+    attention = torch.nn.functional.scaled_dot_product_attention(query, query, query)
+    if convolution[0, 0, 0].item() != 3 or attention[0, 0, 0, 0].item() != 1:
+        raise RuntimeError("Jetson CUDA 12.9 convolution or attention preflight failed")
+    print(f"Tegra CUDA API {version.value}, PyTorch CUDA {torch.version.cuda}, SM 8.7 preflight passed", flush=True)
 
 
 if __name__ == "__main__":

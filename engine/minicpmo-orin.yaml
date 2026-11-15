@@ -45,3 +45,5 @@ platforms:
       - stage_id: 1
         # Upstream CUDA sets an explicit 4 GiB allocation for 16 sequences.
         kv_cache_memory_bytes: 536870912
+        # The upstream ARM64 FlashAttention 2 binary lacks Tegra SM 8.7.
+        attention_backend: TRITON_ATTN

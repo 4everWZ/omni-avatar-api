@@ -12,7 +12,8 @@ tar -xzf /tmp/vllm-omni.tar.gz -C /tmp/vllm-omni-source --strip-components=1
 python3 /opt/tuber-omni/cu129_runtime.py pins > /tmp/cuda-abi-before.txt
 VLLM_OMNI_TARGET_DEVICE=cuda VLLM_OMNI_VERSION_OVERRIDE=0.32.0 \
     uv pip install --python "$python_path" --no-cache-dir --constraint /tmp/cuda-abi-before.txt /tmp/vllm-omni-source
-uv pip install --python "$python_path" --no-deps --require-hashes --no-cache-dir -r /opt/tuber-omni/vocoder.lock
+env -u UV_CONSTRAINT -u UV_OVERRIDE uv --no-config pip install \
+    --python "$python_path" --no-deps --require-hashes --no-cache-dir -r /opt/tuber-omni/vocoder.lock
 python3 /opt/tuber-omni/cu129_runtime.py verify /tmp/cuda-abi-before.txt
 python3 -c 'import cosyvoice2, hyperpyyaml, onnxruntime, s3tokenizer, torchaudio; from importlib.metadata import version; assert version("vllm-omni") == "0.32.0"'
 rm -rf /tmp/vllm-omni-source /tmp/vllm-omni.tar.gz /tmp/cuda-abi-before.txt
