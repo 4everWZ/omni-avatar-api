@@ -32,4 +32,30 @@ docker compose -f infra-compose.yml -f infra-cu129.compose.yml --profile assets 
 docker compose -f infra-compose.yml -f infra-cu129.compose.yml up -d
 ```
 
-BF16 探针通过后，从网关核验文字与静态图像，打开真实 Realtime 会话核验 `session.created` 能力、PCM 输入和实际返回音频，随后验收重连、中断、Avatar 和混合负载。若 CUDA API、主机设备节点、C 扩展和某阶段内核分别报错，保留原诊断并按该阶段排查。现行 9B／Genie 仍可由应用使用验证过的原端点。
+BF16 探针通过后，从网关核验文字与静态图像，打开真实 Realtime 会话核验 `session.created` 能力、PCM 输入和实际返回音频，随后验收重连、中断、Avatar 和混合负载。若 CUDA API、主机设备节点、C 扩展和某阶段内核分别报错，保留原诊断并按该阶段排查。
+
+## 构建 SM 8.7 PyTorch wheel
+
+本机的 CUDA 12.9 用户态库能初始化 SM 8.7，固定 vLLM 基础镜像里的官方 PyTorch 2.13.0+cu129 在执行 `torch.ones(..., device="cuda")` 时出现 `no kernel image`。该 wheel 的 ARM64 构建矩阵为 SM 8.0、9.0、10.0、12.0。Tegra 与桌面平台有独立的 CUDA 二进制兼容边界。 [PyTorch wheel 构建矩阵](https://github.com/pytorch/pytorch/blob/cf30153c4c131c8164ee7798e5022d810682e2cb/.ci/manywheel/build_env_setup.py) · [NVIDIA CUDA 二进制兼容](https://docs.nvidia.com/cuda/archive/12.0.1/cuda-c-programming-guide/#binary-compatibility)
+
+在原生 ARM64 构建机使用与 cu129 覆盖相同的镜像摘要，构建官方 PyTorch `v2.13.0` 对应的固定提交及子模块。构建过程沿用基础镜像的 cuDNN、NCCL、cuSPARSELt 和 C++ ABI，CUDA 目标设为 SM 8.7。初始构建限制为两个编译任务，每个 NVCC 进程使用一个内部线程。源码、CUDA 开发包和编译缓存需要 NVMe 容量。
+
+```sh
+docker build -f engine/Dockerfile.torch-sm87-cu129 --platform linux/arm64 \
+  --target artifact --build-arg MAX_JOBS=2 \
+  --output type=local,dest=/path/on/nvme/torch-sm87-dist engine
+```
+
+导出目录包含 `torch-2.13.0+cu129-*.whl` 和 `SHA256SUMS`。派生验收镜像安装 Ubuntu 的 OpenBLAS、校验 wheel 并核对该包的 SM 8.7 编译标记和 C++ ABI。使用同一个 Docker 数据目录，把派生镜像交给 Omni 构建。
+
+```sh
+docker build -f engine/Dockerfile.torch-runtime --platform linux/arm64 \
+  --build-context sm87-wheels=/path/on/nvme/torch-sm87-dist \
+  -t tuber-vllm-core:0.32.0-cu129-sm87 engine
+export VLLM_CORE_IMAGE=tuber-vllm-core:0.32.0-cu129-sm87
+docker compose -f infra-compose.yml -f infra-cu129.compose.yml build omni-engine
+docker compose -f infra-compose.yml -f infra-cu129.compose.yml run --rm --no-deps omni-engine \
+  python3 /opt/tuber-omni/cu129_runtime.py probe
+```
+
+随后依次验证音频与视觉所需的 CUDA 操作、vLLM 扩展、torchvision 和 torchaudio，再启动 MiniCPM-o。现场发现上游 vLLM 主扩展已有 SM 8.7，FlashAttention 2 只有 SM 8.0，所以两段模型注意力先使用 Triton。源码 wheel 和实际接口仍需完成实测。

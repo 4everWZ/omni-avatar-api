@@ -1,0 +1,28 @@
+# syntax=docker/dockerfile:1.7
+ARG VLLM_CORE_IMAGE=vllm/vllm-openai:v0.32.0-cu129-ubuntu2404@sha256:9e1009574f37cd2d84dc45727fe7e0a7bcefaa79fc78cff17cfa4e588bc00489
+FROM ${VLLM_CORE_IMAGE} AS build-wheel
+
+ARG PYTORCH_COMMIT=cf30153c4c131c8164ee7798e5022d810682e2cb
+ARG MAX_JOBS=2
+ENV CUDA_HOME=/usr/local/cuda-12.9
+WORKDIR /work/pytorch
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends build-essential git libopenblas-dev \
+        cuda-libraries-dev-12-9=12.9.1-1 \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN git init \
+    && git remote add origin https://github.com/pytorch/pytorch.git \
+    && git fetch --depth 1 origin "$PYTORCH_COMMIT" \
+    && git checkout --detach FETCH_HEAD \
+    && test "$(git rev-parse HEAD)" = "$PYTORCH_COMMIT" \
+    && git submodule update --init --recursive --depth 1 --jobs 2
+
+RUN uv pip install --python /usr/bin/python3 --no-cache-dir -r requirements-build.txt build
+COPY build-torch-sm87-cu129.sh /usr/local/bin/
+RUN --mount=type=cache,target=/work/pytorch/build,sharing=locked,id=pytorch-2130-cu129-sm87 \
+    /bin/sh /usr/local/bin/build-torch-sm87-cu129.sh "$MAX_JOBS"
+
+FROM scratch AS artifact
+COPY --from=build-wheel /artifact/ /

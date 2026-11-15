@@ -1,0 +1,23 @@
+# syntax=docker/dockerfile:1.7
+FROM vllm/vllm-openai:v0.32.0-cu129-ubuntu2404@sha256:9e1009574f37cd2d84dc45727fe7e0a7bcefaa79fc78cff17cfa4e588bc00489
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends libopenblas0-pthread \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN --mount=type=bind,from=sm87-wheels,target=/wheels <<'SH'
+set -eu
+cd /wheels
+sha256sum --strict -c SHA256SUMS
+set -- torch-2.13.0+cu129-cp312-cp312-linux_aarch64.whl
+test -f "$1"
+env -u UV_CONSTRAINT -u UV_OVERRIDE uv --no-config pip install \
+    --python "$(command -v python3)" --no-index --no-deps --reinstall --no-cache-dir "$PWD/$1"
+python3 - <<'PY'
+import torch
+assert torch.__version__ == "2.13.0+cu129", torch.__version__
+assert torch.version.cuda == "12.9", torch.version.cuda
+assert torch.compiled_with_cxx11_abi()
+assert "sm_87" in torch._C._cuda_getArchFlags().split()
+PY
+SH

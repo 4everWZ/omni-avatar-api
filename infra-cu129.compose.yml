@@ -9,6 +9,8 @@ services:
     build:
       context: ./engine
       dockerfile: Dockerfile.cu129
+      args:
+        - VLLM_CORE_IMAGE
     # JetPack 6's NVIDIA runtime supplies the Tegra devices and libraries.
     gpus: !reset []
     command: [python3, /opt/tuber-omni/cu129_runtime.py, serve]
