@@ -8,13 +8,13 @@ Applications use `http://omni-gateway:8000/v1` and the `omni-default` model alia
 | `GET /healthz` | Bounded upstream `/health` and model discovery checks, plus engine identity, observed wire capabilities and admission. |
 | `GET /v1/models` | Advertises `omni-default` when the configured engine model matches. |
 | `POST /v1/chat/completions` | Forwards Chat Completions JSON, including an incremental SSE response when the engine streams. |
-| `GET /v1/realtime?duplex=1&model=omni-default` | WebSocket relay for actual upstream duplex events. Forwards `autostart` and `resume` parameters. |
+| `GET /v1/realtime?duplex=1&model=omni-default` | WebSocket relay for actual upstream duplex events. Forwards `autostart` and `resume` parameters. A media service session with `program=1` requests live admission for the lifetime of its socket. |
 | `GET /api/mode` | Current admission mode, active lanes and queue occupancy. |
 | `PUT /api/mode` | Admin-only mode update. Send `{"mode":"live"}` or `{"mode":"batch"}`. |
 
 Except for liveness, requests require `Authorization: Bearer <token>`, including the WebSocket upgrade. The gateway attaches its own optional engine bearer and keeps it out of application responses. Use a different bearer for mode changes.
 
-Batch mode shares a capacity of one by default. Live mode permits one ordinary Chat Completions request and reserves one separate Realtime WebSocket. Already admitted work can drain during a mode transition. Queued requests wait for capacity within the configured deadline, then receive `429`. Closing a client connection releases its admission after closing the upstream request or socket. The engine owns actual cancellation and any detached-session grace period.
+Batch mode shares a capacity of one by default. Live mode permits one ordinary Chat Completions request and reserves one separate Realtime WebSocket. Set the `media` entry in `OMNI_GATEWAY_TOKENS` to the media bridge's dedicated bearer for automatic mode changes. A manual live setting remains active when the program disconnects. Already admitted work can drain during a mode transition. Queued requests wait for capacity within the configured deadline, then receive `429`. Closing a client connection releases its admission after closing the upstream request or socket. The engine owns actual cancellation and any detached-session grace period.
 
 | Environment | Default or meaning |
 | --- | --- |

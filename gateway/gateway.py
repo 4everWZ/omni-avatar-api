@@ -24,6 +24,7 @@ class Config:
     tokens: tuple[str, ...] = field(repr=False)
     admin_token: str = field(repr=False)
     engine_token: str = field(default="", repr=False)
+    program_token: str = field(default="", repr=False)
     engine_version: str = ""
     model_root: str = ""
     batch_cap: int = 1
@@ -64,6 +65,7 @@ class Config:
         return cls(
             engine_url=engine_url, model=required("OMNI_MODEL_ID"), checkpoint=required("OMNI_CHECKPOINT"),
             tokens=tokens, admin_token=admin, engine_token=os.environ.get("OMNI_ENGINE_TOKEN", ""),
+            program_token=additional.get("media", ""),
             engine_version=os.environ.get("OMNI_ENGINE_VERSION", ""),
             model_root=os.environ.get("OMNI_EXPECTED_MODEL_ROOT", ""),
             batch_cap=positive("OMNI_BATCH_CAP", 1, int), queue_limit=positive("OMNI_QUEUE_LIMIT", 16, int),
@@ -80,7 +82,8 @@ class Busy(Exception):
 class Admission:
     def __init__(self, config):
         self.config = config
-        self.mode = "batch"
+        self.manual_mode = "batch"
+        self.program_sessions = 0
         self.active = {"chat": 0, "realtime": 0}
         self.queued = 0
         self.changed = asyncio.Event()
@@ -90,8 +93,24 @@ class Admission:
         event.set()
 
     def set_mode(self, mode):
-        self.mode = mode
+        self.manual_mode = mode
         self._signal()
+
+    @property
+    def mode(self):
+        return "live" if self.program_sessions or self.manual_mode == "live" else "batch"
+
+    @asynccontextmanager
+    async def program(self, enabled):
+        if enabled:
+            self.program_sessions += 1
+            self._signal()
+        try:
+            yield
+        finally:
+            if enabled:
+                self.program_sessions -= 1
+                self._signal()
 
     def _available(self, lane):
         chat, realtime = self.active["chat"], self.active["realtime"]
@@ -273,6 +292,13 @@ class Gateway:
     async def realtime(self, request):
         if request.query.get("duplex") != "1" or request.query.get("model", MODEL_ALIAS) != MODEL_ALIAS:
             return failure(400, "invalid_realtime_request", f"Use duplex=1 with the {MODEL_ALIAS} alias.")
+        program = request.query.get("program") == "1"
+        if program:
+            token = request.headers["Authorization"].partition(" ")[2]
+            if not self.config.program_token or not secrets.compare_digest(
+                token.encode(), self.config.program_token.encode()
+            ):
+                return failure(403, "program_forbidden", "The media service credential is required.")
         downstream = web.WebSocketResponse(heartbeat=20, max_msg_size=MAX_FRAME, compress=False)
         if not downstream.can_prepare(request).ok:
             return failure(400, "upgrade_required", "A WebSocket upgrade is required.")
@@ -281,7 +307,7 @@ class Gateway:
         if "model" in request.query:
             query["model"] = self.config.model
         try:
-            async with self.admission.hold("realtime"), AsyncExitStack() as stack:
+            async with self.admission.program(program), self.admission.hold("realtime"), AsyncExitStack() as stack:
                 async with asyncio.timeout(self.config.health_timeout):
                     upstream = await stack.enter_async_context(self.engine.ws_connect(
                         "/v1/realtime", params=query, heartbeat=20, max_msg_size=MAX_FRAME,

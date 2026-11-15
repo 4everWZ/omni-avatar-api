@@ -7,6 +7,7 @@ from gateway import Config, create_app
 
 SERVICE_AUTH = {"Authorization": "Bearer fixture-client"}
 ADMIN_AUTH = {"Authorization": "Bearer fixture-admin"}
+MEDIA_AUTH = {"Authorization": "Bearer fixture-media"}
 
 
 class GatewayTest(unittest.IsolatedAsyncioTestCase):
@@ -78,7 +79,8 @@ class GatewayTest(unittest.IsolatedAsyncioTestCase):
         engine_url = await self.serve(engine)
         self.url = await self.serve(create_app(Config(
             engine_url=engine_url, model=self.model, checkpoint="fixture-pinned-revision",
-            tokens=("fixture-client", "fixture-second-client"), admin_token="fixture-admin",
+            tokens=("fixture-client", "fixture-second-client", "fixture-media"), admin_token="fixture-admin",
+            program_token="fixture-media",
             engine_token="fixture-engine", engine_version="fixture-declared-version", model_root=self.model_root,
             queue_timeout=0.1, request_timeout=0.8, realtime_idle_timeout=0.4,
         )))
@@ -152,6 +154,27 @@ class GatewayTest(unittest.IsolatedAsyncioTestCase):
         await asyncio.wait_for(self.chat_ended.wait(), 2)
         async with await self.chat() as next_response:
             self.assertEqual(next_response.status, 200)
+
+    async def test_scoped_media_socket_controls_live_mode_until_disconnect(self):
+        url = "/v1/realtime?duplex=1&program=1"
+        with self.assertRaises(WSServerHandshakeError) as denied:
+            await self.client.ws_connect(url, headers=SERVICE_AUTH)
+        self.assertEqual(denied.exception.status, 403)
+        async with await self.chat(stream=True) as response:
+            self.assertIn(b"first", await response.content.readline())
+            async with self.client.ws_connect(url, headers=MEDIA_AUTH) as socket:
+                self.assertEqual((await socket.receive_json())["type"], "session.created")
+                self.assertEqual(self.realtime_query, {"duplex": "1"})
+                async with self.client.get("/api/mode", headers=SERVICE_AUTH) as status:
+                    self.assertEqual((await status.json())["mode"], "live")
+            async with asyncio.timeout(2):
+                while True:
+                    async with self.client.get("/api/mode", headers=SERVICE_AUTH) as status:
+                        if (await status.json())["mode"] == "batch":
+                            break
+                    await asyncio.sleep(0.01)
+            self.chat_release.set()
+            await response.read()
 
     async def test_sse_timeout_never_fabricates_completion(self):
         async with await self.chat(stream=True) as response:
