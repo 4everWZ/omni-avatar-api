@@ -3,7 +3,6 @@ ARG VLLM_CORE_IMAGE=vllm/vllm-openai:v0.32.0-cu129-ubuntu2404@sha256:9e1009574f3
 FROM ${VLLM_CORE_IMAGE} AS build-wheel
 
 ARG PYTORCH_COMMIT=cf30153c4c131c8164ee7798e5022d810682e2cb
-ARG MAX_JOBS=2
 ENV CUDA_HOME=/usr/local/cuda-12.9
 WORKDIR /work/pytorch
 
@@ -24,6 +23,7 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends cuda-cupti-dev-12-9=12.9.79-1 cuda-nvml-dev-12-9=12.9.79-1 \
     && rm -rf /var/lib/apt/lists/*
 COPY build-torch-sm87-cu129.sh /usr/local/bin/
+ARG MAX_JOBS=2
 RUN --mount=type=cache,target=/work/pytorch/build,sharing=locked,id=pytorch-2130-cu129-sm87 \
     /bin/sh /usr/local/bin/build-torch-sm87-cu129.sh "$MAX_JOBS"
 
