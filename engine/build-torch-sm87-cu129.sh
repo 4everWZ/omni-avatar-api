@@ -25,7 +25,7 @@ ln -sf "$cudnn_dir/lib/libcudnn.so.9" /work/torch-cuda-links/libcudnn.so
 ln -sf "$nccl_dir/lib/libnccl.so.2" /work/torch-cuda-links/libnccl.so
 ln -sf "$cusparselt_dir/lib/libcusparseLt.so.0" /work/torch-cuda-links/libcusparseLt.so
 
-abi=$(python3 -c 'import torch; assert torch.__version__ == "2.13.0+cu129"; print(int(torch.compiled_with_cxx11_abi()))')
+abi=$(python3 -I -c 'import torch; assert torch.__version__ == "2.13.0+cu129"; print(int(torch.compiled_with_cxx11_abi()))')
 export CXXFLAGS="${CXXFLAGS:-} -D_GLIBCXX_USE_CXX11_ABI=$abi"
 export TORCH_NVCC_FLAGS="--threads=1 -D_GLIBCXX_USE_CXX11_ABI=$abi"
 export TORCH_CUDA_ARCH_LIST=8.7
