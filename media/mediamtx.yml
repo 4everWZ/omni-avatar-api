@@ -1,0 +1,29 @@
+authMethod: internal
+authInternalUsers:
+  - user: tuber-publisher
+    pass: unused-compose-required
+    permissions:
+      - action: publish
+        path: program
+  - user: tuber-viewer
+    pass: unused-compose-required
+    permissions:
+      - action: read
+        path: program
+
+rtsp: true
+rtspTransports: [tcp]
+rtmp: false
+hls: false
+srt: false
+moq: false
+webrtc: true
+webrtcAddress: :8889
+webrtcLocalUDPAddress: :8189
+webrtcLocalTCPAddress: ''
+webrtcAllowOrigins: []
+
+paths:
+  program:
+    source: publisher
+    overridePublisher: false

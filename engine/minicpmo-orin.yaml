@@ -1,0 +1,47 @@
+# The launcher supplies base_config from the pinned engine package.
+session_mode: duplex
+duplex_session:
+  max_sessions: 1
+
+# Initial candidates for a single SM 8.7 GPU. Measure all stages and system RAM
+# before changing these limits or increasing the gateway's ordinary concurrency.
+connectors:
+  connector_of_shared_memory:
+    extra:
+      enable_hift_graph: false
+      enable_cfm_graph: false
+      enable_code2wav_encoder_graph: false
+      cfm_fused_body: false
+
+stages:
+  - stage_id: 0
+    max_num_seqs: 2
+    max_model_len: 12288
+    max_num_batched_tokens: 12288
+    gpu_memory_utilization: 0.35
+    enforce_eager: true
+    media_io_kwargs:
+      video:
+        fps: 1
+        num_frames: 16
+    limit_mm_per_prompt:
+      image: 16
+      audio: 4
+      video: 1
+
+  - stage_id: 1
+    max_num_seqs: 2
+    max_num_batched_tokens: 4096
+    gpu_memory_utilization: 0.10
+    enforce_eager: true
+
+  - stage_id: 2
+    max_num_seqs: 2
+    gpu_memory_utilization: 0.08
+
+platforms:
+  cuda:
+    stages:
+      - stage_id: 1
+        # Upstream CUDA sets an explicit 4 GiB allocation for 16 sequences.
+        kv_cache_memory_bytes: 536870912

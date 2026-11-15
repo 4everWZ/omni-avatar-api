@@ -1,0 +1,99 @@
+name: tuber-omni-infra
+
+x-model: &model
+  OMNI_MODEL_ID: openbmb/MiniCPM-o-4_5
+  OMNI_CHECKPOINT: fb09628e98b1f55d8d5b863e0eccfcdd11bff499
+
+services:
+  model-fetch:
+    profiles: [assets]
+    image: tuber-omni-engine:0.32.0-orin
+    pull_policy: never
+    platform: linux/arm64
+    command: [python3, /opt/tuber-omni/model.py, fetch]
+    environment: *model
+    volumes:
+      - type: bind
+        source: ${OMNI_MODEL_DATA:-./data/models}
+        target: /models
+    networks: [asset-download]
+
+  omni-engine:
+    image: tuber-omni-engine:0.32.0-orin
+    build: ./engine
+    platform: linux/arm64
+    restart: unless-stopped
+    init: true
+    runtime: nvidia
+    gpus: all
+    shm_size: 2gb
+    command: [python3, /opt/tuber-omni/model.py, serve]
+    environment:
+      <<: *model
+      HF_HUB_OFFLINE: '1'
+      TRANSFORMERS_OFFLINE: '1'
+    volumes:
+      - type: bind
+        source: ${OMNI_MODEL_DATA:-./data/models}
+        target: /models
+        read_only: true
+      - type: bind
+        source: ./engine/minicpmo-orin.yaml
+        target: /opt/tuber-omni/minicpmo-orin.yaml
+        read_only: true
+    networks: [engine-private]
+    healthcheck:
+      test: [CMD, python3, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3).close()"]
+      interval: 15s
+      timeout: 5s
+      start_period: 5m
+      retries: 4
+
+  omni-gateway:
+    build: ./gateway
+    restart: unless-stopped
+    init: true
+    ports:
+      - '${OMNI_GATEWAY_BIND:-127.0.0.1}:${OMNI_GATEWAY_PORT:-8000}:8000/tcp'
+    environment:
+      <<: *model
+      OMNI_ENGINE_URL: http://omni-engine:8000
+      OMNI_ENGINE_VERSION: vLLM-Omni 0.32.0 / vLLM 0.32.0 / CUDA 13.0.2
+      OMNI_EXPECTED_MODEL_ROOT: /models/fb09628e98b1f55d8d5b863e0eccfcdd11bff499
+      OMNI_GATEWAY_TOKEN: ${OMNI_GATEWAY_TOKEN:?set OMNI_GATEWAY_TOKEN in .env}
+      OMNI_GATEWAY_ADMIN_TOKEN: ${OMNI_GATEWAY_ADMIN_TOKEN:?set OMNI_GATEWAY_ADMIN_TOKEN in .env}
+      OMNI_GATEWAY_TOKENS: ${OMNI_GATEWAY_TOKENS:-}
+      OMNI_BATCH_CAP: ${OMNI_BATCH_CAP:-1}
+      OMNI_LIVE_CAP: ${OMNI_LIVE_CAP:-1}
+      OMNI_QUEUE_TIMEOUT: ${OMNI_QUEUE_TIMEOUT:-5}
+      OMNI_REQUEST_TIMEOUT: ${OMNI_REQUEST_TIMEOUT:-120}
+      OMNI_HEALTH_TIMEOUT: ${OMNI_HEALTH_TIMEOUT:-3}
+      OMNI_REALTIME_IDLE_TIMEOUT: ${OMNI_REALTIME_IDLE_TIMEOUT:-120}
+    networks: [engine-private, shared]
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/livez', timeout=3).close()"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+
+  mediamtx:
+    image: bluenviron/mediamtx:1.21.4@sha256:c730bccdbc8739f8f0c13cefe9bea8b61926f599b88fa4d0d229baa91846c7bc
+    restart: unless-stopped
+    environment:
+      MTX_AUTHINTERNALUSERS_0_PASS: ${MEDIAMTX_PUBLISH_PASSWORD:?set MEDIAMTX_PUBLISH_PASSWORD in .env}
+      MTX_AUTHINTERNALUSERS_1_PASS: ${MEDIAMTX_READ_PASSWORD:?set MEDIAMTX_READ_PASSWORD in .env}
+      MTX_WEBRTCADDITIONALHOSTS: ${MEDIAMTX_ICE_HOST:-127.0.0.1}
+    ports:
+      - '${MEDIAMTX_SIGNAL_BIND:-127.0.0.1}:${MEDIAMTX_SIGNAL_PORT:-8889}:8889/tcp'
+      - '${MEDIAMTX_ICE_BIND:-127.0.0.1}:8189:8189/udp'
+    volumes:
+      - ./media/mediamtx.yml:/mediamtx.yml:ro
+    networks: [shared]
+
+networks:
+  engine-private:
+    internal: true
+  asset-download:
+  shared:
+    external: true
+    name: ${TUBER_OMNI_NETWORK:-tuber-omni}
