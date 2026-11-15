@@ -20,6 +20,9 @@ RUN git init \
     && git submodule update --init --recursive --depth 1 --jobs 2
 
 RUN uv pip install --python /usr/bin/python3 --no-cache-dir -r requirements-build.txt build
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends cuda-cupti-dev-12-9 \
+    && rm -rf /var/lib/apt/lists/*
 COPY build-torch-sm87-cu129.sh /usr/local/bin/
 RUN --mount=type=cache,target=/work/pytorch/build,sharing=locked,id=pytorch-2130-cu129-sm87 \
     /bin/sh /usr/local/bin/build-torch-sm87-cu129.sh "$MAX_JOBS"
