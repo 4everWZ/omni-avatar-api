@@ -2,7 +2,7 @@
 
 在 R36.4.7 上选择 `infra-cu129.compose.yml` 叠加到 `infra-compose.yml`。这条路径使用经验证可在目标 AGX 单进程加载的 NVIDIA Tegra CUDA 12.9 用户态库，加上 vLLM 官方 CUDA 12.9.1 ARM64 基础镜像和固定 vLLM-Omni 0.32.0 源码。容器构建与 MiniCPM-o 实机推理按下列步骤分别验收。基础部署继续使用 CUDA 13。 [JetPack 6 兼容矩阵](https://docs.nvidia.com/cuda/archive/12.9.2/cuda-for-tegra-appnote/index.html#use-the-right-upgrade-package) · [vLLM ARM64 构建矩阵](https://github.com/vllm-project/vllm/blob/5df63a7203cdb9328d824a27b682e77c7b9928be/.buildkite/release-pipeline.yaml)
 
-## 准备 Tegra 兼容库
+## 准备 Tegra 兼容库和运算库
 
 将下方 `compat_root` 设为实际 NVMe 的用户可写目录。运行容器的 Docker 数据目录也须有足够空间解包基础镜像和构建层。当前 CUDA 12.9.1 ARM64 基础镜像的压缩层约 11.2 GiB，MiniCPM-o 模型资产另需约 20 GB。
 
@@ -19,6 +19,27 @@ export OMNI_CUDA129_COMPAT_DIR="$compat_root/usr/local/cuda-12.9/compat"
 ```
 
 使用 Ubuntu 22.04 `arm64` 的 Tegra 包。解包过程只写指定目录。容器只读挂载兼容库。本覆盖文件关闭 SBSA 镜像启动前的 `NVIDIA_REQUIRE_CUDA` 检查，继续经 JetPack `nvidia` runtime 传递设备与驱动库。启动程序确认进程加载了指定目录中的库、`cuInit` 成功、驱动 API 报 12090、PyTorch 报 CUDA 12.9、设备为 SM 8.7，并验证 BF16 矩阵乘法。 [NVIDIA Tegra 包索引](https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/arm64/) · [NVIDIA 容器运行时](https://github.com/NVIDIA/nvidia-container-toolkit/blob/main/cmd/nvidia-container-runtime/README.md)
+
+在同一 AGX 容器中，通用 cuBLAS 无法创建运算句柄，通用 cuDNN 卷积失败。Tegra cuBLAS 12.9.2.10 的 BF16 GEMM 和 Tegra cuDNN 9.20.0.48 的卷积均在 SM 8.7 上通过。解包并设置下面两个只读挂载。覆盖 wheel 路径可使 PyTorch 的绝对路径预加载也选用实际验过的库。 [PyTorch 库加载代码](https://github.com/pytorch/pytorch/blob/cf30153c4c131c8164ee7798e5022d810682e2cb/torch/__init__.py#L330)
+
+```sh
+repo=https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/arm64
+(
+  set -eu
+  cd "$compat_root"
+  blas=libcublas-12-9_12.9.2.10-1_arm64.deb
+  dnn=libcudnn9-cuda-12_9.20.0.48-1_arm64.deb
+  curl -fL --retry 2 "$repo/$blas" -o "$blas"
+  curl -fL --retry 2 "$repo/$dnn" -o "$dnn"
+  printf '%s  %s\n' \
+    b03007e1839b8ddb815e9c6d87dad9c3648c05df199c2de45174cd30f386da71 "$blas" \
+    54477521df7b05fb347a9d660559d37ed7d703edfcb98680fe5b12dcc5f176e3 "$dnn" | sha256sum -c -
+  dpkg-deb -x "$blas" tegra-blas
+  dpkg-deb -x "$dnn" tegra-dnn
+)
+export OMNI_TEGRA_CUBLAS_DIR="$compat_root/tegra-blas/usr/local/cuda-12.9/targets/aarch64-linux/lib"
+export OMNI_TEGRA_CUDNN_DIR="$compat_root/tegra-dnn/usr/lib/aarch64-linux-gnu"
+```
 
 ## 构建与实机准入
 
