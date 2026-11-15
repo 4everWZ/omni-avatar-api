@@ -1,0 +1,22 @@
+# syntax=docker/dockerfile:1.7
+ARG VLLM_CORE_IMAGE=vllm/vllm-openai:v0.32.0-cu129-ubuntu2404@sha256:9e1009574f37cd2d84dc45727fe7e0a7bcefaa79fc78cff17cfa4e588bc00489
+FROM ${VLLM_CORE_IMAGE}
+
+ADD --checksum=sha256:759bf03190f82d402e82c380586da27a1966ec264532c517d04dc7a13104c3da https://codeload.github.com/vllm-project/vllm-omni/tar.gz/5917730a4b02aedb44d374173cdc1b10484ccd52 /tmp/vllm-omni.tar.gz
+COPY cu129_runtime.py vocoder.lock /opt/tuber-omni/
+RUN <<'SH'
+set -eu
+python_path=$(command -v python3)
+mkdir -p /tmp/vllm-omni-source
+tar -xzf /tmp/vllm-omni.tar.gz -C /tmp/vllm-omni-source --strip-components=1
+python3 /opt/tuber-omni/cu129_runtime.py pins > /tmp/cuda-abi-before.txt
+VLLM_OMNI_TARGET_DEVICE=cuda VLLM_OMNI_VERSION_OVERRIDE=0.32.0 \
+    uv pip install --python "$python_path" --no-cache-dir --constraint /tmp/cuda-abi-before.txt /tmp/vllm-omni-source
+uv pip install --python "$python_path" --no-deps --require-hashes --no-cache-dir -r /opt/tuber-omni/vocoder.lock
+python3 /opt/tuber-omni/cu129_runtime.py verify /tmp/cuda-abi-before.txt
+python3 -c 'import cosyvoice2, hyperpyyaml, onnxruntime, s3tokenizer, torchaudio; from importlib.metadata import version; assert version("vllm-omni") == "0.32.0"'
+rm -rf /tmp/vllm-omni-source /tmp/vllm-omni.tar.gz /tmp/cuda-abi-before.txt
+SH
+
+COPY model.py minicpmo-orin.yaml /opt/tuber-omni/
+ENTRYPOINT []

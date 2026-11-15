@@ -13,6 +13,8 @@
 
 上游 Docker 标签和 checkpoint 已核对，AGX 上的 Omni 镜像构建、音视频推理、共驻容量和时延仍待实机验收。若目标机装载失败，先记录 JetPack／L4T、驱动、CUDA 版本、SM、内核报错和配置。随后用适配的 ARM64 CUDA 发行版根据实际缺失内核构建对应版本，或保留现有推理档。镜像为 ARM64 只说明 CPU 架构。
 
+现有 R36.4.7 设备可试用单独的 [JetPack 6 CUDA 12.9 覆盖配置](jetpack6-cu129.md)。GPU 与音视频能力按该路径重新验收。
+
 ## 启动
 
 AGX 需 Linux ARM64、Docker Engine、Compose 2.30 及以上与 NVIDIA Container Toolkit。先核对系统、Docker 与 GPU 运行时。

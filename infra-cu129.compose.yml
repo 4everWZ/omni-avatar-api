@@ -1,0 +1,31 @@
+# Explicit JetPack 6 candidate. Always combine with infra-compose.yml.
+services:
+  model-fetch:
+    image: tuber-omni-engine:0.32.0-orin-cu129
+    runtime: runc
+
+  omni-engine:
+    image: tuber-omni-engine:0.32.0-orin-cu129
+    build:
+      context: ./engine
+      dockerfile: Dockerfile.cu129
+    # JetPack 6's NVIDIA runtime supplies the Tegra devices and libraries.
+    gpus: !reset []
+    command: [python3, /opt/tuber-omni/cu129_runtime.py, serve]
+    environment:
+      # The SBSA base hook checks the host version before the Tegra user-mode
+      # library can load. The launcher below checks CUDA before loading weights.
+      NVIDIA_DISABLE_REQUIRE: '1'
+      NVIDIA_VISIBLE_DEVICES: all
+      LD_LIBRARY_PATH: /opt/tuber-cuda-compat:/usr/local/nvidia/lib64:/usr/local/cuda/lib64:/usr/local/nvidia/lib
+    volumes:
+      - type: bind
+        source: ${OMNI_CUDA129_COMPAT_DIR:?point to extracted Jetson CUDA 12.9 compat directory}
+        target: /opt/tuber-cuda-compat
+        read_only: true
+        bind:
+          create_host_path: false
+
+  omni-gateway:
+    environment:
+      OMNI_ENGINE_VERSION: vLLM-Omni 0.32.0 / vLLM 0.32.0 / CUDA 12.9.1 (Jetson compatibility)
