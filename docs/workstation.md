@@ -19,6 +19,22 @@ docker compose -f infra-compose.yml -f infra-workstation.compose.yml ps
 
 ## 实机准入
 
+### Ava 2D 覆盖配置
+
+生成独立 `OMNI_AVATAR_INTERNAL_TOKEN`，在基础配置和工作站配置后叠加 `-f infra-avatar.compose.yml`，构建并启动 `omni-avatar` 和 `omni-gateway`。Avatar 采用 Linux host 网络发布动态 ICE UDP 端口，控制 API 仅绑定 Docker 默认桥地址（`OMNI_AVATAR_BIND`，默认 `172.17.0.1`）；先用 `docker network inspect bridge` 核实。主机防火墙需允许授权 LAN/VPN 客户端与 Avatar 的 ICE 候选建立 UDP 通信。不能仅用 SSH 的 TCP 转发验证远端 WHEP。
+
+```sh
+docker compose -f infra-compose.yml -f infra-workstation.compose.yml -f infra-avatar.compose.yml config --quiet
+docker compose -f infra-compose.yml -f infra-workstation.compose.yml -f infra-avatar.compose.yml build omni-avatar omni-gateway
+docker compose -f infra-compose.yml -f infra-workstation.compose.yml -f infra-avatar.compose.yml up -d
+```
+
+浏览器验收页由网关根路径提供。可先用 SSH 转发网关到本地 `http://localhost:8000`，媒体仍通过 LAN/VPN 直接连接主机 ICE。局域网域名访问麦克风／屏幕时需可信 HTTPS 反向代理，并转发 WebSocket；浏览器使用应用凭据，不使用管理令牌。页面提供独立 WAV／测试音源，用于在模型就绪之前检查 Ava 音画。
+
+停止时使用相同三文件组合执行 `stop`；保留 `.env` 和模型资产。原推理组合仍可独立启动。Avatar 不占 GPU；数字人驱动须在 2D 验收后另测共驻。
+
+### 验收顺序
+
 1. 先验引擎和网关。用至少两个独立的调用方验证普通／流式 Chat、结构化输出、视觉、长文正确性、排队和取消。按阶段核实设备索引、AWQ 与实际 INT4 KV，记录每卡显存、主机内存、交换、吞吐和首包。
 2. 用独立 Realtime 客户端验证语音与视觉输入、重叠语音、打断、字幕、静默与重连。测一路原生双工加另一个客户端普通请求持续运行，确认会话释放和引擎可用。
 3. 接 Avatar 会话 API，验同步音画、打断、权限隔离和资源回收。合成节目、WHEP 外部取流和 OBS 在核心服务之后单独验收。 [接口边界](api.md)

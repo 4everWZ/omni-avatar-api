@@ -12,7 +12,7 @@
 
 ## 共享 API
 
-现有网关以 `omni-default` 提供 Chat Completions 和 Realtime，模型版本、实际窗口和能力由服务回报。独立调用方使用各自的 Bearer 凭据。Avatar 会话和音画 API 已明确接口目标，服务实现待交付。 [网关接口及配置](gateway/README.md) · [Avatar 会话](docs/api.md#avatar-会话与音画)
+现有网关以 `omni-default` 提供 Chat Completions 和 Realtime，模型版本、实际窗口和能力由服务回报。独立调用方使用各自的 Bearer 凭据。独立 Avatar 服务提供 Ava 2D 会话、WHEP 音画及浏览器验收页，本地媒体与权限回归通过，工作站共驻待验收。2D 成功后，再以 Ava 为基础交付数字人驱动。[网关接口及配置](gateway/README.md) · [Avatar 会话](docs/api.md#avatar-会话与音画) · [推进计划](docs/plans/avatar-workstation.md)
 
 ## 部署状态
 

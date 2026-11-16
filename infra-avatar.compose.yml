@@ -1,0 +1,24 @@
+# Avatar has no GPU allocation. Host networking makes LAN/VPN ICE candidates reachable.
+# Its control listener binds loopback; the gateway reaches it through host-gateway.
+services:
+  omni-avatar:
+    build: ./avatar
+    image: omni-api-avatar:2d
+    network_mode: host
+    restart: unless-stopped
+    init: true
+    environment:
+      OMNI_AVATAR_INTERNAL_TOKEN: ${OMNI_AVATAR_INTERNAL_TOKEN:?set OMNI_AVATAR_INTERNAL_TOKEN in .env}
+      OMNI_AVATAR_BIND: ${OMNI_AVATAR_BIND:-172.17.0.1}
+      OMNI_AVATAR_PORT: '8090'
+    healthcheck:
+      test: [CMD, python, -c, "import os,urllib.request; urllib.request.urlopen('http://'+os.environ['OMNI_AVATAR_BIND']+':8090/livez', timeout=3).close()"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+  omni-gateway:
+    extra_hosts:
+      - host.docker.internal:host-gateway
+    environment:
+      OMNI_AVATAR_URL: http://host.docker.internal:8090
+      OMNI_AVATAR_INTERNAL_TOKEN: ${OMNI_AVATAR_INTERNAL_TOKEN:?set OMNI_AVATAR_INTERNAL_TOKEN in .env}

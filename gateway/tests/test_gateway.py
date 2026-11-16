@@ -121,6 +121,19 @@ class GatewayTest(unittest.IsolatedAsyncioTestCase):
             **options,
         })
 
+    async def test_browser_ticket_is_single_use_and_path_scoped(self):
+        async with self.client.post('/v1/browser-tickets', headers=SERVICE_AUTH,
+                                    json={'path': '/api/mode'}) as response:
+            self.assertEqual(response.status, 400)
+        async with self.client.post('/v1/browser-tickets', headers=SERVICE_AUTH,
+                                    json={'path': '/v1/realtime'}) as response:
+            ticket = (await response.json())['ticket']
+        async with self.client.ws_connect(f'/v1/realtime?duplex=1&ticket={ticket}') as socket:
+            self.assertEqual((await socket.receive_json())['type'], 'session.created')
+        with self.assertRaises(WSServerHandshakeError) as rejected:
+            await self.client.ws_connect(f'/v1/realtime?duplex=1&ticket={ticket}')
+        self.assertEqual(rejected.exception.status, 401)
+
     async def test_chat_defaults_to_text_and_preserves_explicit_modalities(self):
         for options, expected in (
             ({"response_format": {"type": "json_object"}}, ["text"]),

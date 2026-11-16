@@ -39,6 +39,8 @@ Health checks confirm the engine serves the configured model ID and report the e
 
 Run the loopback tests from this directory. They use an HTTP and WebSocket fixture without loading model weights.
 
+The optional Avatar overlay sets `OMNI_AVATAR_URL` and a separate `OMNI_AVATAR_INTERNAL_TOKEN`. Public `/v1/avatar/*` requests retain the caller's identity through a private authenticated proxy. The gateway taps duplex output without opening another engine session; a slow or failed tap closes rendering without blocking the original speech socket. `avatar=1` on Realtime reserves live admission for that socket. The browser page at `/` uses short-lived, single-use `/v1/browser-tickets` for authenticated WebSocket upgrades. See the [Avatar contract](../docs/api.md#avatar-会话与音画) for ownership, WHEP and playback semantics.
+
 ```sh
 uv run --no-project --with-requirements requirements.txt python -B -m unittest discover -s tests -v
 ```
