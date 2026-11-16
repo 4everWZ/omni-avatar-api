@@ -70,7 +70,9 @@ class AvatarService:
             raise web.HTTPTooManyRequests(reason='Avatar capacity reached')
         registered = self.registry[avatar_id]
         renderer = DRIVERS[registered['driver']](Path(registered['root']))
-        session = Session(request['owner'], avatar_id, source_id, renderer)
+        source_state = self.sources.get(source_id, {})
+        session = Session(request['owner'], avatar_id, source_id, renderer,
+                          epoch=source_state.get('epoch', -1), response_id=source_state.get('response_id'))
         self.sessions[session.id] = session
         return web.json_response(session.view(), status=201)
 
@@ -142,7 +144,8 @@ class AvatarService:
         if source_id in self.sources:
             raise web.HTTPConflict()
         socket = web.WebSocketResponse(heartbeat=20, max_msg_size=1024 * 1024)
-        self.sources[source_id] = {'owner': request['owner'], 'socket': socket}
+        source_state = {'owner': request['owner'], 'socket': socket, 'epoch': 0, 'response_id': None}
+        self.sources[source_id] = source_state
         await socket.prepare(request)
         await socket.send_json({'type': 'source.ready'})
         try:
@@ -150,11 +153,22 @@ class AvatarService:
                 if frame.type != WSMsgType.TEXT:
                     continue
                 envelope = json.loads(frame.data)
-                if envelope.get('event', {}).get('type') not in (
+                event = envelope.get('event', {})
+                kind = event.get('type')
+                if kind not in (
                         'response.audio.delta', 'response.output_audio.delta', 'response.audio_transcript.delta',
                         'response.output_audio_transcript.delta', 'response.text.delta', 'response.output_text.delta',
-                        'response.cancel', 'output_audio_buffer.clear', 'output_audio_buffer.cleared', 'barge_in'):
+                        'response.cancel', 'output_audio_buffer.clear', 'output_audio_buffer.cleared', 'barge_in',
+                        'session.created', 'session.updated', 'session.resumed', 'response.created', 'response.speak'):
                     continue
+                epoch = event.get('epoch', (event.get('metadata') or {}).get('epoch',
+                                  (event.get('session') or {}).get('epoch')))
+                if type(epoch) is int:
+                    source_state['epoch'] = max(source_state['epoch'], epoch)
+                if envelope.get('direction') == 'downstream' and kind in ('response.cancel', 'output_audio_buffer.clear', 'barge_in'):
+                    source_state['epoch'] += 1
+                if kind in ('response.created', 'response.speak'):
+                    source_state['response_id'] = event.get('response_id') or event.get('response', {}).get('id')
                 for session in tuple(self.sessions.values()):
                     if session.source == source_id and session.state == 'active':
                         try:

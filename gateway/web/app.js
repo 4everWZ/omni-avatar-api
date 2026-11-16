@@ -1,6 +1,6 @@
 'use strict';
 const $=id=>document.getElementById(id);
-let session=null,ws=null,eventWs=null,pc=null,mediaLocation=null,mic=null,screen=null,ctx=null,capture=null,heartbeat=null,screenTimer=null;
+let session=null,ws=null,eventWs=null,pc=null,mediaLocation=null,mic=null,screen=null,ctx=null,capture=null,heartbeat=null,connectionAttempt=0;
 let generation=0,subtitle='',closing=false,audioMode=false,ready=false,pcmNodes=new Set(),fallbackEnd=0,mediaReady=false;
 let mediaOrigin=0,pendingSubtitles=[],responseId=null,itemId=null,receivedMs=0,spans=[],fallbackSpans=[],restartTimer=null,mediaVersion=0;
 const receiptState={base:0,played:0,generation:0};
@@ -34,7 +34,8 @@ async function openMedia(){
   const version=mediaVersion;
   const peer=pc=new RTCPeerConnection({iceServers:[]}),stream=new MediaStream();
   peer.addTransceiver('audio',{direction:'recvonly'});peer.addTransceiver('video',{direction:'recvonly'});
-  peer.ontrack=event=>{stream.addTrack(event.track);$('avatar').srcObject=stream;$('avatar').parentElement.classList.add('playing');$('avatar').play().catch(()=>log('请点击播放器播放'));};
+  $('avatar').srcObject=stream;
+  peer.ontrack=event=>{stream.addTrack(event.track);$('avatar').parentElement.classList.add('playing');$('avatar').play().catch(error=>{if(error.name==='NotAllowedError')log('请点击播放器播放');});};
   peer.onconnectionstatechange=()=>{if(peer!==pc)return;mediaReady=peer.connectionState==='connected';if(mediaReady)stopFallback();if(peer.connectionState==='failed'){log('媒体连接失败，继续原生语音和字幕');closeMedia();}};
   await peer.setLocalDescription(await peer.createOffer());await iceComplete(peer);
   if(version!==mediaVersion)return;
@@ -59,6 +60,7 @@ function fallback(event){
 }
 async function attachAvatar(source){
   session=await json('/v1/avatar/sessions',{avatar_id:'ava',source});generation=session.generation;
+  if(closing){await api(`/v1/avatar/sessions/${session.id}`,{method:'DELETE'});session=null;return;}
   $('session').textContent=`Ava · ${session.id}`;
   eventWs=await socket(session.events_url);eventWs.onmessage=event=>{
     const message=JSON.parse(event.data);
@@ -77,6 +79,7 @@ async function attachAvatar(source){
 }
 async function startMic(){
   mic=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true}});
+  if(closing){mic.getTracks().forEach(track=>track.stop());mic=null;return;}
   await ctx.audioWorklet.addModule('/mic-worklet.js');
   capture=new AudioWorkletNode(ctx,'pcm-capture');ctx.createMediaStreamSource(mic).connect(capture);capture.connect(ctx.destination);
   capture.port.onmessage=event=>{if(!ready)return;const samples=new Int16Array(event.data);let sum=0;for(const value of samples)sum+=value*value;
@@ -87,6 +90,7 @@ async function startMic(){
 }
 async function connect(event){
   event.preventDefault();$('connect').disabled=true;$('status').textContent='连接中';closing=false;audioMode=$('source').value==='audio';
+  const attempt=++connectionAttempt;$('disconnect').disabled=false;
   try{
     ctx=new AudioContext({sampleRate:16000});await ctx.resume();
     if(audioMode)await attachAvatar({type:'audio'});
@@ -108,16 +112,18 @@ async function connect(event){
           else if(message.type==='output_audio_buffer.cleared'){stopFallback();subtitle='';$('subtitles').textContent='';}
         }catch(error){log(error.message);}
       };
-      ws.onclose=()=>{if(!closing){log('语音连接断开，请关闭后重新连接');$('status').textContent='连接断开';ready=false;}};
+      ws.onclose=()=>{if(!closing){log('语音连接断开，可重新连接');disconnect().finally(()=>$('status').textContent='连接断开');}};
       send({type:'session.update',session:{modalities:['audio','text'],input_audio_format:'pcm16',output_audio_format:'pcm16',playback_commit_policy:'ack_only',extra_body:{auto_response:true,force_listen_count:0}}});
       await startMic();
     }
+    if(attempt!==connectionAttempt)return;
     $('status').textContent=audioMode?'独立音频会话':'双工会话';$('disconnect').disabled=false;$('interrupt').disabled=false;$('screen').disabled=audioMode;
     $('audio-file').disabled=!audioMode;$('tone').disabled=!audioMode;$('source').disabled=true;$('token').disabled=true;
     heartbeat=setInterval(()=>{send({type:'session.heartbeat'});if(session)api(`/v1/avatar/sessions/${session.id}`).catch(error=>log(error.message));},20000);
   }catch(error){log(error.message);await disconnect();$('status').textContent='连接失败';}
 }
 async function disconnect(){
+  connectionAttempt++;
   closing=true;ready=false;clearInterval(heartbeat);clearTimeout(restartTimer);stopFallback();
   capture?.disconnect();capture=null;mic?.getTracks().forEach(track=>track.stop());mic=null;screen?.getTracks().forEach(track=>track.stop());screen=null;
   send({type:'session.close'});ws?.close();ws=null;eventWs?.close();eventWs=null;

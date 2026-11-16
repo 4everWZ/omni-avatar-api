@@ -138,6 +138,22 @@ class AvatarTest(unittest.IsolatedAsyncioTestCase):
         with self.assertRaises(ValueError):
             session.append({'audio': PCM, 'generation': 0})
 
+    async def test_cancel_before_first_audio_rejects_old_epoch(self):
+        source = await self.client.ws_connect('/internal/sources/source-early-cancel', headers=AUTH)
+        await source.receive_json()
+        item = await self.create(source={'type': 'realtime', 'session_id': 'source-early-cancel'})
+        events = await self.client.ws_connect(item['events_url'], headers=AUTH)
+        await events.receive_json()
+        await source.send_json({'direction': 'downstream', 'event': {'type': 'response.cancel'}})
+        self.assertEqual((await events.receive_json(timeout=2))['type'], 'avatar.cleared')
+        for response, epoch in (('stale', 0), ('fresh', 1)):
+            await source.send_json({'event': {'type': 'response.output_audio.delta', 'response_id': response,
+                                             'delta': PCM, 'metadata': {'epoch': epoch}}})
+        self.assertEqual((await events.receive_json(timeout=2))['response_id'], 'fresh')
+        self.assertEqual(len(self.app['service'].sessions[item['id']].segments), 1)
+        await events.close()
+        await source.close()
+
     async def test_receipts_cannot_claim_future_or_old_generation(self):
         item = await self.create()
         events = await self.client.ws_connect(item['events_url'], headers=AUTH)

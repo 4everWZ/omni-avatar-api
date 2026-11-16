@@ -73,6 +73,7 @@ class Session:
         if epoch is not None:
             self.epoch = max(self.epoch, epoch)
         self.generation += 1
+        self.last_ack = {}
         self.segments.clear()
         self.response_samples = 0
         self.end_sample = self.now_sample()
@@ -134,9 +135,12 @@ class Session:
             self.epoch = epoch
         response = event.get('response_id')
         if kind in ('response.cancel', 'output_audio_buffer.clear', 'barge_in') and direction == 'downstream':
-            self.clear(response)
+            # Fence audio already in flight, including a cancellation before the first delta.
+            self.clear(response, epoch=max(0, self.epoch) + 1)
         elif kind == 'output_audio_buffer.cleared':
             self.clear(response)
+        elif direction == 'upstream' and kind in ('response.created', 'response.speak'):
+            self.response_id = response or event.get('response', {}).get('id')
         elif direction == 'upstream' and kind in ('response.audio.delta', 'response.output_audio.delta'):
             if response in self.blocked_responses:
                 return

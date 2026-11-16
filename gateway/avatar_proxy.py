@@ -1,7 +1,6 @@
 """Private Avatar transport and a nonblocking tap of the existing duplex lane."""
 import asyncio
 import json
-import secrets
 
 from aiohttp import ClientError, WSMsgType, web
 
@@ -31,7 +30,8 @@ class SourceTap:
             if not isinstance(event, dict) or event.get('type') not in (
                     'response.audio.delta', 'response.output_audio.delta', 'response.audio_transcript.delta',
                     'response.output_audio_transcript.delta', 'response.text.delta', 'response.output_text.delta',
-                    'response.cancel', 'output_audio_buffer.clear', 'output_audio_buffer.cleared', 'barge_in'):
+                    'response.cancel', 'output_audio_buffer.clear', 'output_audio_buffer.cleared', 'barge_in',
+                    'session.created', 'session.updated', 'session.resumed', 'response.created', 'response.speak'):
                 return
             self.queue.put_nowait({'event': event, 'direction': direction})
         except ValueError:

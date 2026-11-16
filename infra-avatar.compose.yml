@@ -13,7 +13,7 @@ services:
     volumes:
       - avatar-control:/run/omni-avatar
     healthcheck:
-      test: [CMD, python, -c, "import socket; s=socket.socket(socket.AF_UNIX); s.settimeout(3); s.connect('/run/omni-avatar/control.sock'); s.sendall(b'GET /livez HTTP/1.0\r\n\r\n'); assert b'200 OK' in s.recv(1024)"]
+      test: [CMD, python, -c, "import socket; s=socket.socket(socket.AF_UNIX); s.settimeout(3); s.connect('/run/omni-avatar/control.sock'); s.sendall(b'GET /livez HTTP/1.0'+bytes([13,10,13,10])); assert b'200 OK' in s.recv(1024)"]
       interval: 15s
       timeout: 5s
       retries: 3
