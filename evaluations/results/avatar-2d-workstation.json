@@ -1,0 +1,105 @@
+{
+  "started_utc": "2026-11-16T17:43:49.550025+00:00",
+  "metrics_collector_host": "belal-PC",
+  "scope": "avatar_only",
+  "requested_seconds": 60,
+  "state": "passed",
+  "checks": [
+    {
+      "name": "owned_avatar_created"
+    },
+    {
+      "name": "continuous_media",
+      "elapsed_seconds": 60.10413300083019,
+      "frames": {
+        "audio": 3004,
+        "video": 1503,
+        "audible": 2996
+      },
+      "native_audio_chunks": 0,
+      "playback_evidence": "decoded_and_consumed_not_physical_output"
+    },
+    {
+      "name": "idempotent_release"
+    }
+  ],
+  "samples": [
+    {
+      "elapsed_seconds": 0.0,
+      "frames": {
+        "audio": 0,
+        "video": 0,
+        "audible": 0
+      },
+      "native_audio_chunks": 0,
+      "gpu": [
+        [
+          0,
+          292,
+          0
+        ],
+        [
+          1,
+          18,
+          0
+        ]
+      ],
+      "host_kib": {
+        "MemAvailable": 59309144,
+        "SwapFree": 31746824
+      }
+    },
+    {
+      "elapsed_seconds": 30.14,
+      "frames": {
+        "audio": 1505,
+        "video": 754,
+        "audible": 1497
+      },
+      "native_audio_chunks": 0,
+      "gpu": [
+        [
+          0,
+          292,
+          0
+        ],
+        [
+          1,
+          18,
+          0
+        ]
+      ],
+      "host_kib": {
+        "MemAvailable": 58688496,
+        "SwapFree": 31746840
+      }
+    },
+    {
+      "elapsed_seconds": 60.06,
+      "frames": {
+        "audio": 3002,
+        "video": 1502,
+        "audible": 2994
+      },
+      "native_audio_chunks": 0,
+      "gpu": [
+        [
+          0,
+          292,
+          0
+        ],
+        [
+          1,
+          18,
+          0
+        ]
+      ],
+      "host_kib": {
+        "MemAvailable": 59267500,
+        "SwapFree": 31746840
+      }
+    }
+  ],
+  "load_started_utc": "2026-11-16T17:43:49.686877+00:00",
+  "finished_utc": "2026-11-16T17:44:49.796917+00:00"
+}

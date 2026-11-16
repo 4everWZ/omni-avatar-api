@@ -140,7 +140,10 @@ class Session:
         elif kind == 'output_audio_buffer.cleared':
             self.clear(response)
         elif direction == 'upstream' and kind in ('response.created', 'response.speak'):
-            self.response_id = response or event.get('response', {}).get('id')
+            new_response = response or event.get('response', {}).get('id')
+            if new_response != self.response_id:
+                self.response_samples = 0
+            self.response_id = new_response
         elif direction == 'upstream' and kind in ('response.audio.delta', 'response.output_audio.delta'):
             if response in self.blocked_responses:
                 return

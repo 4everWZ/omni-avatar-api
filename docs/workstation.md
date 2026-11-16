@@ -39,4 +39,4 @@ docker compose -f infra-compose.yml -f infra-workstation.compose.yml -f infra-av
 2. 用独立 Realtime 客户端验证语音与视觉输入、重叠语音、打断、字幕、静默与重连。测一路原生双工加另一个客户端普通请求持续运行，确认会话释放和引擎可用。
 3. 接 Avatar 会话 API，验同步音画、打断、权限隔离和资源回收。合成节目、WHEP 外部取流和 OBS 在核心服务之后单独验收。 [接口边界](api.md)
 
-当前为工作站候选配置，GPU 构建和实测为待办。早期 Jetson 结果见[历史 AGX 证据](https://github.com/4everWZ/Tuber_Studio/blob/main/evaluations/results/omni-deployment-20261116.md)。
+固定引擎镜像构建和容器两卡识别已通过。Ava 2D 独立运行 60 秒，收到 3,004 个音频帧、1,503 个视频帧与非静音音频，跨凭据隔离及幂等释放通过；这不代表 Omni 共驻通过。[Ava 实机报告](../evaluations/results/avatar-2d-workstation.json)。Omni 普通推理、原生双工和两小时混合负载仍待验收。早期 Jetson 结果见[历史 AGX 证据](https://github.com/4everWZ/Tuber_Studio/blob/main/evaluations/results/omni-deployment-20261116.md)。

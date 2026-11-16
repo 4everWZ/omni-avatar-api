@@ -157,6 +157,34 @@ class Qualification:
         return await self.http.ws_connect(self.args.gateway.rstrip('/') + path,
                                           headers={'Authorization': 'Bearer ' + self.token}, heartbeat=20)
 
+    async def admission_checks(self):
+        payload = {'model': 'omni-default', 'max_tokens': 4096, 'stream': True,
+                   'chat_template_kwargs': {'enable_thinking': False}, 'messages': [{
+                       'role': 'user', 'content': '请从1开始逐个写出整数，一直写到6000。每个数字单独一行，不要省略，不要解释，直接开始。'}]}
+        response = await self.request('POST', '/v1/chat/completions', json=payload)
+        try:
+            async with asyncio.timeout(30):
+                while not (await response.content.readline()).startswith(b'data: '):
+                    if response.content.at_eof():
+                        raise AssertionError('Streaming request ended before queue verification')
+            health = await self.json('GET', '/healthz')
+            assert health['active']['chat'] == 1, 'Long stream did not keep an admission slot'
+            async with asyncio.timeout(30):
+                await self.request('POST', '/v1/chat/completions', other=True, expected=429, json={
+                    'model': 'omni-default', 'max_tokens': 128,
+                    'messages': [{'role': 'user', 'content': '只回答数字：2+3等于几？'}]})
+            self.check('queue_deadline_returns_429')
+        finally:
+            response.close()
+        async with asyncio.timeout(30):
+            while (await self.json('GET', '/healthz'))['active']['chat']:
+                await asyncio.sleep(.2)
+        reply = await self.json('POST', '/v1/chat/completions', json={
+            'model': 'omni-default', 'max_tokens': 128, 'chat_template_kwargs': {'enable_thinking': False},
+            'messages': [{'role': 'user', 'content': '只回答数字：2+3等于几？'}]})
+        assert '5' in reply['choices'][0]['message']['content']
+        self.check('stream_disconnect_releases_lane_and_engine_responds')
+
     async def open_avatar(self):
         source = {'type': 'audio'}
         if not self.args.avatar_only:
@@ -341,6 +369,7 @@ class Qualification:
             try:
                 if not self.args.avatar_only:
                     await self.chat_checks()
+                    await self.admission_checks()
                 await self.open_avatar()
                 await self.exercise()
                 self.report['state'] = 'passed'

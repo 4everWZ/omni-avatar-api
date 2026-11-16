@@ -16,4 +16,4 @@
 
 ## 部署状态
 
-工作站候选已提供 Compose 配置，镜像构建、GPU 路径和持续负载待工作站验收。AGX 长文答复和持续负载的历史失败留在对应证据中。 [工作站准入](docs/workstation.md#实机准入) · [AGX 实测证据](https://github.com/4everWZ/Tuber_Studio/blob/main/evaluations/results/omni-deployment-20261116.md)
+工作站固定引擎镜像已构建，容器可识别两张 3090。Ava 2D 独立音画、权限及释放检查通过；Omni 推理及两小时混合负载仍待验收。AGX 长文答复和持续负载的历史失败留在对应证据中。[工作站准入](docs/workstation.md#实机准入) · [Ava 实机报告](evaluations/results/avatar-2d-workstation.json) · [AGX 实测证据](https://github.com/4everWZ/Tuber_Studio/blob/main/evaluations/results/omni-deployment-20261116.md)
