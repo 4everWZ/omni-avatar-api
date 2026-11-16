@@ -86,3 +86,5 @@ AGX 已导出 SM 8.7 wheel，并通过容器内张量、BF16 矩阵乘法、卷�
 AGX 的早期设备级自动探测给 Thinker 留出 0 GiB KV，因此配置显式缓存分配。Thinker 的 36 层、8 个 KV 头和 128 维 head 使用逐 token、逐 head 的 4-bit Triton 打包，含缩放信息约 1.79 GiB 可容纳一个完整 Chat 窗口和一个原生双工滚动窗口，分配 2 GiB。Talker 分配 512 MiB。启动前核对 OpenBMB 官方 AWQ 快照，启动后核对实报窗口、两阶段实际 KV 格式及音画协议。窗口和推理并发的联合上限以实机混合负载为准。
 
 Thinker 的每步输入预算为 2,048 token。两个请求都可调度时，`long_prefill_token_threshold: 1024` 给每路在该步留输入空间。单路可使用整批预算。此配置解决长预填占满单步预算的调度条件，Chat 总窗口继续使用 checkpoint 实报值。 [固定版 vLLM 调度器](https://github.com/vllm-project/vllm/blob/5df63a7203cdb9328d824a27b682e77c7b9928be/vllm/v1/core/sched/scheduler.py#L640)
+
+MiniCPM-o 原生会话的 Code2Wav 资源跟随会话保有。首段语音前和已结束的语音段之间可以静默，资源按会话租约和关闭清理。实际语音段中途的缺块、普通有限请求等继续按连接器原超时处理。 [固定版 Omni 异步连接器](https://github.com/vllm-project/vllm-omni/blob/5917730a4b02aedb44d374173cdc1b10484ccd52/vllm_omni/distributed/omni_connectors/transfer_adapter/chunk_transfer_adapter.py#L1496)
