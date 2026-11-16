@@ -84,3 +84,5 @@ docker compose -f infra-compose.yml -f infra-cu129.compose.yml run --rm --no-dep
 AGX 已导出 SM 8.7 wheel，并通过容器内张量、BF16 矩阵乘法、卷积和注意力预检。继承的 TorchCodec 0.17.0 图像扩展要求 CUDA 13 NVRTC。CUDA 12.9 镜像换用官方同版本 ARM64 CPU 解码 wheel，构建阶段核对 `AudioDecoder` 和 `VideoDecoder` 导入。模型计算继续使用 CUDA。 [TorchCodec 官方 wheel 索引](https://download.pytorch.org/whl/cpu/torchcodec/)
 
 AGX 的早期设备级自动探测给 Thinker 留出 0 GiB KV，因此配置显式缓存分配。Thinker 的 36 层、8 个 KV 头和 128 维 head 使用逐 token、逐 head 的 4-bit Triton 打包，含缩放信息约 1.79 GiB 可容纳一个完整 Chat 窗口和一个原生双工滚动窗口，分配 2 GiB。Talker 分配 512 MiB。启动前核对 OpenBMB 官方 AWQ 快照，启动后核对实报窗口、两阶段实际 KV 格式及音画协议。窗口和推理并发的联合上限以实机混合负载为准。
+
+Thinker 的每步输入预算为 2,048 token。两个请求都可调度时，`long_prefill_token_threshold: 1024` 给每路在该步留输入空间。单路可使用整批预算。此配置解决长预填占满单步预算的调度条件，Chat 总窗口继续使用 checkpoint 实报值。 [固定版 vLLM 调度器](https://github.com/vllm-project/vllm/blob/5df63a7203cdb9328d824a27b682e77c7b9928be/vllm/v1/core/sched/scheduler.py#L640)

@@ -19,6 +19,9 @@ stages:
     kv_cache_dtype: int4_per_token_head
     # Chunk prefill work independently of the checkpoint's full Chat window.
     max_num_batched_tokens: 2048
+    # Leave an equal share of the stage budget for a second eligible request.
+    # vLLM uses the full batch budget when this is the only eligible request.
+    long_prefill_token_threshold: 1024
     gpu_memory_utilization: 0.35
     enforce_eager: true
     media_io_kwargs:
