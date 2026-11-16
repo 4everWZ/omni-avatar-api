@@ -43,7 +43,7 @@ export OMNI_TEGRA_CUDNN_DIR="$compat_root/tegra-dnn/usr/lib/aarch64-linux-gnu"
 
 ## 构建与实机准入
 
-沿[基础设施指南](infra-setup.md)设置网关和媒体凭据、创建共享网络和模型目录。构建使用固定 ARM64 vLLM 镜像摘要与 Omni 源码归档校验值，保留基础镜像里的 PyTorch、torchvision、torchaudio、Triton、vLLM 和 CUDA ABI 相关包。Compose 两种配置共用相同模型 revision 和网关别名。
+沿[基础设施指南](infra-setup.md)设置网关凭据、创建共享网络和模型目录。构建使用固定 ARM64 vLLM 镜像摘要与 Omni 源码归档校验值，保留基础镜像里的 PyTorch、torchvision、torchaudio、Triton、vLLM 和 CUDA ABI 相关包。Compose 两种配置共用相同模型 revision 和网关别名。节目传输另用 `infra-media.compose.yml`。
 
 ```sh
 docker compose -f infra-compose.yml -f infra-cu129.compose.yml build omni-engine omni-gateway

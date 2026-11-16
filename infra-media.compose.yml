@@ -1,0 +1,15 @@
+# Optional program transport. Combine with infra-compose.yml and the selected engine profile.
+services:
+  mediamtx:
+    image: bluenviron/mediamtx:1.21.4@sha256:c730bccdbc8739f8f0c13cefe9bea8b61926f599b88fa4d0d229baa91846c7bc
+    restart: unless-stopped
+    environment:
+      MTX_AUTHINTERNALUSERS_0_PASS: ${MEDIAMTX_PUBLISH_PASSWORD:?set MEDIAMTX_PUBLISH_PASSWORD in .env}
+      MTX_AUTHINTERNALUSERS_1_PASS: ${MEDIAMTX_READ_PASSWORD:?set MEDIAMTX_READ_PASSWORD in .env}
+      MTX_WEBRTCADDITIONALHOSTS: ${MEDIAMTX_ICE_HOST:-127.0.0.1}
+    ports:
+      - '${MEDIAMTX_SIGNAL_BIND:-127.0.0.1}:${MEDIAMTX_SIGNAL_PORT:-8889}:8889/tcp'
+      - '${MEDIAMTX_ICE_BIND:-127.0.0.1}:8189:8189/udp'
+    volumes:
+      - ./media/mediamtx.yml:/mediamtx.yml:ro
+    networks: [shared]
