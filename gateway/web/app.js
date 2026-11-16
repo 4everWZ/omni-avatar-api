@@ -92,8 +92,8 @@ async function startMic(){
   await context.audioWorklet.addModule('/mic-worklet.js');
   if(closing||attempt!==connectionAttempt)return;
   capture=new AudioWorkletNode(ctx,'pcm-capture');ctx.createMediaStreamSource(mic).connect(capture);capture.connect(ctx.destination);
-  capture.port.onmessage=event=>{if(!ready)return;const samples=new Int16Array(event.data);let sum=0;for(const value of samples)sum+=value*value;
-    const packet={type:'input_audio_buffer.append',audio:pcmBase64(event.data),format:'pcm16',sample_rate_hz:16000,is_speech:Math.sqrt(sum/samples.length)>350};
+  capture.port.onmessage=event=>{if(!ready)return;
+    const packet={type:'input_audio_buffer.append',audio:pcmBase64(event.data),format:'pcm16',sample_rate_hz:16000};
     if(screen?.active){const video=$('screen-preview');if(video?.videoWidth){const canvas=document.createElement('canvas');canvas.width=640;canvas.height=Math.round(video.videoHeight*640/video.videoWidth);canvas.getContext('2d').drawImage(video,0,0,canvas.width,canvas.height);packet.video_frames=[canvas.toDataURL('image/jpeg',.7).split(',')[1]];}}
     send(packet);
   };
@@ -121,7 +121,6 @@ async function connect(event){
             else log('Avatar 暂不可用，继续原生双工');
           }else if(message.type==='session.created'){
             ready=true;
-            if(message.session?.capabilities?.supports_barge_in)send({type:'session.update',session:{overlap_policy:'barge_in_on_speech'}});
             log('原生双工已就绪');
           }else if(message.type==='response.created'||message.type==='response.speak'){
             const id=message.response_id??message.response?.id;
