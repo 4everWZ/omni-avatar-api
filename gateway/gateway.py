@@ -258,6 +258,8 @@ class Gateway:
         if not isinstance(payload, dict) or payload.get("model") != MODEL_ALIAS:
             return failure(400, "model_not_found", f"Use the {MODEL_ALIAS} alias.")
         payload["model"] = self.config.model
+        if payload.get("modalities") is None:
+            payload["modalities"] = ["text"]
         outgoing = None
         try:
             async with self.admission.hold("chat"), asyncio.timeout(self.config.request_timeout):

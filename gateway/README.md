@@ -7,7 +7,7 @@ Applications use `http://omni-gateway:8000/v1` and the `omni-default` model alia
 | `GET /livez` | Local process liveness. This endpoint is public and does not contact the engine. |
 | `GET /healthz` | Bounded upstream `/health` and model discovery checks, plus engine identity, observed wire capabilities and admission. |
 | `GET /v1/models` | Advertises `omni-default` when the configured engine model matches. |
-| `POST /v1/chat/completions` | Forwards Chat Completions JSON, including an incremental SSE response when the engine streams. |
+| `POST /v1/chat/completions` | Forwards Chat Completions JSON, including an incremental SSE response when the engine streams. Omitted or null output modalities request text. Explicit modalities pass through. |
 | `GET /v1/realtime?duplex=1&model=omni-default` | WebSocket relay for actual upstream duplex events. Forwards `autostart` and `resume` parameters. A media service session with `program=1` requests live admission for the lifetime of its socket. |
 | `GET /api/mode` | Current admission mode, active lanes and queue occupancy. |
 | `PUT /api/mode` | Admin-only mode update. Send `{"mode":"live"}` or `{"mode":"batch"}`. |

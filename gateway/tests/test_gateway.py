@@ -43,6 +43,7 @@ class GatewayTest(unittest.IsolatedAsyncioTestCase):
 
         async def chat(request):
             body = await request.json()
+            self.chat_payload = body
             self.assertEqual(request.headers.get("Authorization"), "Bearer fixture-engine")
             self.assertEqual(body["model"], self.model)
             if not body.get("stream"):
@@ -87,10 +88,21 @@ class GatewayTest(unittest.IsolatedAsyncioTestCase):
         self.client = ClientSession(base_url=self.url)
         self.addAsyncCleanup(self.client.close)
 
-    async def chat(self, stream=False, *, headers=SERVICE_AUTH):
+    async def chat(self, stream=False, *, headers=SERVICE_AUTH, **options):
         return await self.client.post("/v1/chat/completions", headers=headers, json={
             "model": "omni-default", "stream": stream, "messages": [{"role": "user", "content": "test"}],
+            **options,
         })
+
+    async def test_chat_defaults_to_text_and_preserves_explicit_modalities(self):
+        for options, expected in (
+            ({"response_format": {"type": "json_object"}}, ["text"]),
+            ({"modalities": None}, ["text"]),
+            ({"modalities": ["text", "audio"]}, ["text", "audio"]),
+        ):
+            async with await self.chat(**options) as response:
+                self.assertEqual(response.status, 200)
+                self.assertEqual(self.chat_payload["modalities"], expected)
 
     async def test_auth_model_discovery_and_health_are_engine_bound(self):
         async with await self.chat(headers={}) as response:
