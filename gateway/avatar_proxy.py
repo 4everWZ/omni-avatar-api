@@ -1,6 +1,7 @@
 """Private Avatar transport and a nonblocking tap of the existing duplex lane."""
 import asyncio
 import json
+import re
 
 from aiohttp import ClientError, WSMsgType, web
 
@@ -86,6 +87,9 @@ class AvatarProxy:
         return SourceTap(client, f'{self.base_url}/internal/sources/{source_id}', self.headers(owner))
 
     async def handle(self, request):
+        # Do not let URL normalization turn a public proxy path into /internal/*.
+        if not re.fullmatch(r'/v1/avatar/sessions(?:/[A-Za-z0-9_-]+(?:/(?:audio|events|whep)(?:/[A-Za-z0-9_-]+)?)?)?', request.path):
+            raise web.HTTPNotFound()
         if not self.base_url or not self.token:
             return web.json_response({'error': {'code': 'avatar_unavailable'}}, status=503)
         client = request.app['avatar_http']

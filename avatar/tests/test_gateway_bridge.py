@@ -7,6 +7,7 @@ from unittest.mock import patch
 from pathlib import Path
 
 from aiohttp import ClientSession, web
+from yarl import URL
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / 'gateway'))
 from gateway import Config, create_app as gateway_app
@@ -113,3 +114,11 @@ class BridgeTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual((await voice.receive_json(timeout=2))['type'], 'session.created')
         self.assertFalse(self.avatar['service'].sources)
         await voice.close()
+
+    async def test_proxy_cannot_normalize_a_public_path_into_private_source_control(self):
+        client = await self.gateway()
+        for dots in ('%2e%2e', '%252e%252e'):
+            path = URL(f'/v1/avatar/{dots}/{dots}/internal/sources/injected', encoded=True)
+            async with client.get(path, headers=AUTH) as response:
+                self.assertEqual(response.status, 404)
+            self.assertFalse(self.avatar['service'].sources)

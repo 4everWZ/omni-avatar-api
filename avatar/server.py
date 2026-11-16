@@ -146,9 +146,9 @@ class AvatarService:
         socket = web.WebSocketResponse(heartbeat=20, max_msg_size=1024 * 1024)
         source_state = {'owner': request['owner'], 'socket': socket, 'epoch': 0, 'response_id': None}
         self.sources[source_id] = source_state
-        await socket.prepare(request)
-        await socket.send_json({'type': 'source.ready'})
         try:
+            await socket.prepare(request)
+            await socket.send_json({'type': 'source.ready'})
             async for frame in socket:
                 if frame.type != WSMsgType.TEXT:
                     continue

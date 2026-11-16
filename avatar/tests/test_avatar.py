@@ -45,6 +45,14 @@ class AvatarTest(unittest.IsolatedAsyncioTestCase):
         async with self.client.get(path, headers=AUTH) as response:
             self.assertEqual((await response.json())['state'], 'closed')
 
+    async def test_failed_source_handshake_does_not_leave_a_reserved_source(self):
+        async with self.client.get('/internal/sources/failed-upgrade', headers=AUTH) as response:
+            self.assertEqual(response.status, 400)
+        self.assertNotIn('failed-upgrade', self.app['service'].sources)
+        source = await self.client.ws_connect('/internal/sources/failed-upgrade', headers=AUTH)
+        self.assertEqual((await source.receive_json())['type'], 'source.ready')
+        await source.close()
+
     async def test_invalid_inputs_and_stale_generation(self):
         item = await self.create()
         for payload in ({'audio': PCM}, {'audio': '!bad', 'generation': 0},
