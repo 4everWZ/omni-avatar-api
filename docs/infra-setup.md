@@ -1,4 +1,6 @@
-# AGX 基础设施预备与运行
+# AGX 历史部署
+
+此页用于复现早期 AGX 配置。当前主线的启动与验收见[工作站部署](workstation.md)。
 
 `infra-compose.yml` 启动 MiniCPM-o 4.5 和共享推理网关。业务 Compose 可独立启动或重启。两者通过外部 Docker 网络 `tuber-omni` 相连。应用访问 `http://omni-gateway:8000`，模型引擎在独立的内部网络。网关公开 `omni-default`，首版提供 Chat Completions、Realtime 和模型列表，健康状态同时显示部署锁定的版本与上游探测结果。MediaMTX 由可选覆盖文件启动。
 

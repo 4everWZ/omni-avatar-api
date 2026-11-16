@@ -1,6 +1,6 @@
 # Omni inference gateway
 
-Applications use `http://omni-gateway:8000/v1` and the `omni-default` model alias. The gateway translates the requested alias to the engine's configured model ID. Upstream response bodies and Realtime events keep their wire format. Deploy one gateway process for each upstream engine so its admission counts cover all callers of that engine.
+Applications use a configured gateway URL and the `omni-default` model alias. On the shared Compose network, the URL is `http://omni-gateway:8000/v1`. The gateway translates the requested alias to the engine's configured model ID. Upstream response bodies and Realtime events keep their wire format. Deploy one gateway process for each upstream engine so its admission counts cover all callers of that engine.
 
 | Endpoint | Behavior |
 | --- | --- |

@@ -1,4 +1,6 @@
-# JetPack 6 的 CUDA 12.9 验证路径
+# JetPack 6 的历史 CUDA 12.9 验证路径
+
+此页保留 AGX 兼容性实验。当前主线见[工作站部署](workstation.md)。
 
 在 R36.4.7 上选择 `infra-cu129.compose.yml` 叠加到 `infra-compose.yml`。这条路径使用经验证可在目标 AGX 单进程加载的 NVIDIA Tegra CUDA 12.9 用户态库，加上 vLLM 官方 CUDA 12.9.1 ARM64 基础镜像和固定 vLLM-Omni 0.32.0 源码。容器构建与 MiniCPM-o 实机推理按下列步骤分别验收。基础部署继续使用 CUDA 13。 [JetPack 6 兼容矩阵](https://docs.nvidia.com/cuda/archive/12.9.2/cuda-for-tegra-appnote/index.html#use-the-right-upgrade-package) · [vLLM ARM64 构建矩阵](https://github.com/vllm-project/vllm/blob/5df63a7203cdb9328d824a27b682e77c7b9928be/.buildkite/release-pipeline.yaml)
 
