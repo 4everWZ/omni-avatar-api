@@ -42,6 +42,11 @@ stages:
 platforms:
   cuda:
     stages:
+      - stage_id: 0
+        # On unified Orin RAM the device-level profiler left zero cache.
+        # 36 layers × 8 KV heads × 128 × two BF16 tensors is 144 KiB per token.
+        # Two 12,288-token streams need about 3.38 GiB before block overhead.
+        kv_cache_memory_bytes: 4294967296
       - stage_id: 1
         # Upstream CUDA sets an explicit 4 GiB allocation for 16 sequences.
         kv_cache_memory_bytes: 536870912
