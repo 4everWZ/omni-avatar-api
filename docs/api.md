@@ -37,13 +37,13 @@ Avatar 由独立服务持有，所有外部请求通过共享网关鉴权。用�
 
 创建返回 201，包含 `id`、`generation`、`state`、`format`、`media_url`、`events_url` 和 `audio_url`。显式音频通过 `POST audio_url` 提交 `{ "audio":"<base64>", "generation":0, "format":"pcm16", "sample_rate_hz":24000 }`，仅接受单声道 PCM16。每块最多五秒，未播缓冲最多三十秒。`{"type":"clear"}` 清除未播媒体并递增代次；旧代次输入返回 400。
 
-Realtime 客户端仍使用原协议。启用 Avatar 覆盖配置后，网关额外发送 `gateway.session.created`，提供 `source_session_id` 和 `avatar_available`。将创建参数的 `source` 改为 `{"type":"realtime","session_id":"<source_session_id>"}`，只允许同一应用凭据绑定。内部复制音频和控制事件，不占第二路推理。`?avatar=1` 在连接期间自动进入 live 准入模式，以便另一个调用方同时发普通请求；原有 `program=1` 仍要求媒体专用凭据。
+Realtime 客户端仍使用原协议。客户端以 `?avatar=1` 选择 Avatar 后，网关额外发送 `gateway.session.created`，提供 `source_session_id` 和 `avatar_available`。将创建参数的 `source` 改为 `{"type":"realtime","session_id":"<source_session_id>"}`，只允许同一应用凭据绑定。内部复制音频和控制事件，不占第二路推理。`?avatar=1` 在连接期间自动进入 live 准入模式，以便另一个调用方同时发普通请求；原有 `program=1` 仍要求媒体专用凭据。未选择 Avatar 的 Realtime 连接保持原事件流。
 
 ### 音画与事件
 
 - 向 `media_url` POST `application/sdp` 的完整 ICE offer，同时请求音频和视频；201 返回 SDP answer 和 `Location`。首版为非 trickle WHEP，DELETE `Location` 幂等释放订阅。每会话最多两个订阅者。媒体连接协商 Opus 和浏览器支持的视频编码；2D 输出为 640×720、25 FPS、不含 Alpha。
 - `X-Avatar-Timeline-Origin-Ms` 将该订阅的媒体时间零点映射到 Avatar 会话时间。音频与视频由同一服务端时间线驱动；字幕事件携带该时间线上的 `start_ms`。
-- `events_url` 是鉴权 WebSocket。事件包括 `avatar.snapshot`、`avatar.audio.queued`、`avatar.subtitle`、`avatar.cleared`、`avatar.failed`、`avatar.closed` 与 `avatar.resync_required`。慢消费者收到 resync 后须重新建立会话；字幕与音频均按代次失效。
+- `events_url` 是鉴权 WebSocket。事件包括 `avatar.snapshot`、`avatar.audio.queued`、`avatar.subtitle`、`avatar.cleared`、`avatar.failed`、`avatar.closed` 与 `avatar.resync_required`。`source_epoch` 提供上游打断栅栏（显式音频源为 -1），用于与原语音事件对齐。慢消费者收到 resync 后须重新建立会话；字幕与音频均按代次失效。
 - `avatar.audio.queued` 提供音频在媒体时间线的 `start_ms/end_ms`、`response_id` 和原回复的 `source_start_ms`。它表示排入媒体时间线，不表示已经播放。
 - 消费者可在事件连接提交 `{"type":"playback.ack","generation":0,"played_ms":1000}`。服务保存为 `consumer_report`，不将它等同生成或传输证明。Realtime 历史回执仍由消费者按上游协议发送到原语音连接，使用回复相对位置。
 - 打断会清除服务端旧代次缓冲；消费者同时停止本地播放并重建 WHEP 接收器，以丢弃已经进入客户端缓冲的旧帧。关闭源连接会关闭绑定的 Avatar；语音恢复后须用新的来源标识重建 Avatar。
@@ -54,4 +54,4 @@ Realtime 客户端仍使用原协议。启用 Avatar 覆盖配置后，网关额
 
 ### 可插拔渲染与后续数字人
 
-`avatar/avatars.json` 登记 `avatar_id`、驱动和素材目录；`OMNI_AVATAR_REGISTRY` 可指定替代登记文件。驱动边界为能力声明、带时间戳和音量的渲染、代次清除及关闭，媒体与权限不依赖具体驱动。首版 `sprite2d` 使用 Ava 的四状态素材。2D 实机验收成功后，再以同一 Ava 为基础实现数字人驱动；数字人模型、视觉形式及性能目标在该阶段确定。推进顺序见[当前计划](plans/avatar-workstation.md)。
+`avatar/avatars.json` 登记 `avatar_id`、驱动和素材目录；`OMNI_AVATAR_REGISTRY` 可指定替代登记文件。驱动接收带采样起点和代次的原始 PCM，按会话时间戳提供画面，并实现能力声明、代次清除和关闭；音频入队与取帧应保持非阻塞，神经驱动可在独立 worker 推理。媒体与权限不依赖具体驱动。首版 `sprite2d` 使用 Ava 的四状态素材和共享时间线的音量。2D 实机验收成功后，再以同一 Ava 为基础实现数字人驱动；数字人模型、视觉形式及性能目标在该阶段确定。推进顺序见[当前计划](plans/avatar-workstation.md)。

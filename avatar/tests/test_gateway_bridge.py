@@ -3,6 +3,7 @@ import asyncio
 import base64
 import sys
 import unittest
+from unittest.mock import patch
 from pathlib import Path
 
 from aiohttp import ClientSession, web
@@ -81,4 +82,34 @@ class BridgeTest(unittest.IsolatedAsyncioTestCase):
         await voice.receive_json()
         await voice.send_json({'type': 'fixture.generate'})
         self.assertEqual((await voice.receive_json(timeout=2))['type'], 'response.output_audio.delta')
+        await voice.close()
+
+    async def test_source_tap_processes_heartbeat_pongs(self):
+        original = ClientSession.ws_connect
+        def faster_internal_heartbeat(client, url, **kwargs):
+            if '/internal/sources/' in str(url):
+                kwargs['heartbeat'] = .1
+            return original(client, url, **kwargs)
+        with patch.object(ClientSession, 'ws_connect', faster_internal_heartbeat):
+            client = await self.gateway()
+            voice = await client.ws_connect('/v1/realtime?duplex=1&avatar=1', headers=AUTH)
+            source = await voice.receive_json()
+            await voice.receive_json()
+            async with client.post('/v1/avatar/sessions', headers=AUTH, json={
+                    'avatar_id': 'ava', 'source': {'type': 'realtime', 'session_id': source['source_session_id']}}) as response:
+                avatar = await response.json()
+            events = await client.ws_connect(avatar['events_url'], headers=AUTH)
+            await events.receive_json()
+            await asyncio.sleep(.6)
+            await voice.send_json({'type': 'fixture.generate'})
+            self.assertEqual((await voice.receive_json(timeout=2))['type'], 'response.output_audio.delta')
+            self.assertEqual((await events.receive_json(timeout=2))['type'], 'avatar.audio.queued')
+            await voice.close()
+            await events.close()
+
+    async def test_plain_realtime_keeps_original_event_stream_with_avatar_enabled(self):
+        client = await self.gateway()
+        voice = await client.ws_connect('/v1/realtime?duplex=1', headers=AUTH)
+        self.assertEqual((await voice.receive_json(timeout=2))['type'], 'session.created')
+        self.assertFalse(self.avatar['service'].sources)
         await voice.close()

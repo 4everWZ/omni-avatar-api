@@ -2,6 +2,7 @@
 const $=id=>document.getElementById(id);
 let session=null,ws=null,eventWs=null,pc=null,mediaLocation=null,mic=null,screen=null,ctx=null,capture=null,heartbeat=null,connectionAttempt=0;
 let generation=0,subtitle='',closing=false,audioMode=false,ready=false,pcmNodes=new Set(),fallbackEnd=0,mediaReady=false;
+let voiceEpoch=-1,awaitingClear=false,blockedResponses=new Set();
 let mediaOrigin=0,pendingSubtitles=[],responseId=null,itemId=null,receivedMs=0,spans=[],fallbackSpans=[],restartTimer=null,mediaVersion=0;
 const receiptState={base:0,played:0,generation:0};
 function log(text){const rows=$('events').textContent.split('\n').filter(Boolean);rows.push(`${new Date().toLocaleTimeString()} ${text}`);$('events').textContent=rows.slice(-40).join('\n');$('events').scrollTop=$('events').scrollHeight;}
@@ -30,8 +31,8 @@ async function closeMedia(){
   if(mediaLocation){const path=mediaLocation;mediaLocation=null;await api(path,{method:'DELETE'}).catch(()=>{});}
 }
 async function openMedia(){
-  await closeMedia();if(!session||closing)return;
-  const version=mediaVersion;
+  const pendingClose=closeMedia(),version=mediaVersion;
+  await pendingClose;if(version!==mediaVersion||!session||closing)return;
   const peer=pc=new RTCPeerConnection({iceServers:[]}),stream=new MediaStream();
   peer.addTransceiver('audio',{direction:'recvonly'});peer.addTransceiver('video',{direction:'recvonly'});
   $('avatar').srcObject=stream;
@@ -59,13 +60,19 @@ function fallback(event){
   pcmNodes.add(node);node.onended=()=>pcmNodes.delete(node);node.start(start);
 }
 async function attachAvatar(source){
-  session=await json('/v1/avatar/sessions',{avatar_id:'ava',source});generation=session.generation;
-  if(closing){await api(`/v1/avatar/sessions/${session.id}`,{method:'DELETE'});session=null;return;}
+  const attempt=connectionAttempt;
+  const created=await json('/v1/avatar/sessions',{avatar_id:'ava',source});
+  if(closing||attempt!==connectionAttempt){await api(`/v1/avatar/sessions/${created.id}`,{method:'DELETE'});return;}
+  session=created;generation=session.generation;
   $('session').textContent=`Ava · ${session.id}`;
-  eventWs=await socket(session.events_url);eventWs.onmessage=event=>{
+  const events=await socket(session.events_url);
+  if(closing||attempt!==connectionAttempt){events.close();return;}
+  eventWs=events;eventWs.onmessage=event=>{
+    if(eventWs!==events||closing)return;
     const message=JSON.parse(event.data);
     if(message.type==='avatar.cleared'){
-      generation=message.generation;subtitle='';pendingSubtitles=[];spans=[];$('subtitles').textContent='';stopFallback();
+      generation=message.generation;subtitle='';pendingSubtitles=[];spans=[];$('subtitles').textContent='';
+      if(audioMode||voiceEpoch<message.source_epoch)stopFallback();
       // Replace the receiver to discard any old generation already in its jitter buffer.
       restartMedia();
     }else if(message.type==='avatar.subtitle')pendingSubtitles.push(message);
@@ -74,13 +81,16 @@ async function attachAvatar(source){
     else if(message.type==='avatar.closed'){log('Avatar 已关闭');closeMedia();}
     else if(message.type==='avatar.resync_required'){log('事件接收过慢，请重新连接');disconnect();}
   };
-  eventWs.onclose=()=>{if(!closing)log('Avatar 事件连接已断开');};
+  eventWs.onclose=()=>{if(eventWs===events&&!closing)log('Avatar 事件连接已断开');};
   await openMedia();log('Avatar 已创建，等待音频');
 }
 async function startMic(){
-  mic=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true}});
-  if(closing){mic.getTracks().forEach(track=>track.stop());mic=null;return;}
-  await ctx.audioWorklet.addModule('/mic-worklet.js');
+  const attempt=connectionAttempt,context=ctx;
+  const stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true}});
+  if(closing||attempt!==connectionAttempt){stream.getTracks().forEach(track=>track.stop());return;}
+  mic=stream;
+  await context.audioWorklet.addModule('/mic-worklet.js');
+  if(closing||attempt!==connectionAttempt)return;
   capture=new AudioWorkletNode(ctx,'pcm-capture');ctx.createMediaStreamSource(mic).connect(capture);capture.connect(ctx.destination);
   capture.port.onmessage=event=>{if(!ready)return;const samples=new Int16Array(event.data);let sum=0;for(const value of samples)sum+=value*value;
     const packet={type:'input_audio_buffer.append',audio:pcmBase64(event.data),format:'pcm16',sample_rate_hz:16000,is_speech:Math.sqrt(sum/samples.length)>350};
@@ -90,29 +100,42 @@ async function startMic(){
 }
 async function connect(event){
   event.preventDefault();$('connect').disabled=true;$('status').textContent='连接中';closing=false;audioMode=$('source').value==='audio';
-  const attempt=++connectionAttempt;$('disconnect').disabled=false;
+  const attempt=++connectionAttempt;$('disconnect').disabled=false;$('source').disabled=true;$('token').disabled=true;
   try{
     ctx=new AudioContext({sampleRate:16000});await ctx.resume();
+    if(attempt!==connectionAttempt)return;
     if(audioMode)await attachAvatar({type:'audio'});
     else{
-      ws=await socket('/v1/realtime','&duplex=1&model=omni-default&avatar=1');
-      ws.onmessage=async event=>{const message=JSON.parse(event.data);
+      const openedSocket=await socket('/v1/realtime','&duplex=1&model=omni-default&avatar=1');
+      if(attempt!==connectionAttempt){openedSocket.close();return;}
+      ws=openedSocket;
+      const activeSocket=ws;
+      ws.onmessage=async event=>{if(ws!==activeSocket||closing)return;const message=JSON.parse(event.data);
         try{
+          const epoch=message.metadata?.epoch??message.epoch??message.session?.epoch;
+          const output=['response.audio.delta','response.output_audio.delta','response.audio_transcript.delta','response.output_audio_transcript.delta','response.output_text.delta'].includes(message.type);
+          if(output&&(awaitingClear||blockedResponses.has(message.response_id)||(Number.isInteger(epoch)&&epoch<voiceEpoch)))return;
+          if(Number.isInteger(epoch)&&epoch>voiceEpoch){if(voiceEpoch>=0){stopFallback();subtitle='';$('subtitles').textContent='';}voiceEpoch=epoch;}
           if(message.type==='gateway.session.created'){
             if(message.avatar_available)await attachAvatar({type:'realtime',session_id:message.source_session_id});
             else log('Avatar 暂不可用，继续原生双工');
           }else if(message.type==='session.created'){
             ready=true;
+            if(message.session?.capabilities?.supports_barge_in)send({type:'session.update',session:{overlap_policy:'barge_in_on_speech'}});
             log('原生双工已就绪');
+          }else if(message.type==='response.created'||message.type==='response.speak'){
+            const id=message.response_id??message.response?.id;
+            if(awaitingClear){if(id)blockedResponses.add(id);return;}
+            if(id&&responseId!==id){responseId=id;itemId=message.item_id??`item_${id}`;receivedMs=0;}
           }else if(['response.audio.delta','response.output_audio.delta'].includes(message.type)){
             if(responseId!==message.response_id){responseId=message.response_id;itemId=message.item_id;receivedMs=0;}
             receivedMs+=atob(message.delta).length/2/(message.sample_rate_hz||24000)*1000;fallback(message);
           }else if(['response.audio_transcript.delta','response.output_audio_transcript.delta','response.output_text.delta'].includes(message.type)&&!mediaReady){subtitle+=message.delta;$('subtitles').textContent=subtitle.slice(-800);}
           else if(message.type==='error')log(message.error?.message||JSON.stringify(message));
-          else if(message.type==='output_audio_buffer.cleared'){stopFallback();subtitle='';$('subtitles').textContent='';}
+          else if(message.type==='output_audio_buffer.cleared'){if(message.response_id??responseId)blockedResponses.add(message.response_id??responseId);awaitingClear=false;stopFallback();subtitle='';$('subtitles').textContent='';}
         }catch(error){log(error.message);}
       };
-      ws.onclose=()=>{if(!closing){log('语音连接断开，可重新连接');disconnect().finally(()=>$('status').textContent='连接断开');}};
+      ws.onclose=()=>{if(ws===activeSocket&&!closing){log('语音连接断开，可重新连接');disconnect().finally(()=>$('status').textContent='连接断开');}};
       send({type:'session.update',session:{modalities:['audio','text'],input_audio_format:'pcm16',output_audio_format:'pcm16',playback_commit_policy:'ack_only',extra_body:{auto_response:true,force_listen_count:0}}});
       await startMic();
     }
@@ -129,13 +152,14 @@ async function disconnect(){
   send({type:'session.close'});ws?.close();ws=null;eventWs?.close();eventWs=null;
   await closeMedia();if(session)await api(`/v1/avatar/sessions/${session.id}`,{method:'DELETE'}).catch(error=>log(error.message));session=null;
   await ctx?.close().catch(()=>{});ctx=null;subtitle='';pendingSubtitles=[];$('subtitles').textContent='';$('session').textContent='尚无活动会话';
+  voiceEpoch=-1;awaitingClear=false;blockedResponses.clear();responseId=null;receivedMs=0;
   $('connect').disabled=false;$('disconnect').disabled=true;for(const id of ['interrupt','screen','audio-file','tone'])$(id).disabled=true;$('source').disabled=false;$('token').disabled=false;$('status').textContent='未连接';
 }
 async function interrupt(){
   stopFallback();subtitle='';pendingSubtitles=[];$('subtitles').textContent='';
   if(session)await closeMedia();
   if(audioMode&&session){await json(session.audio_url,{type:'clear'});}
-  else{send({type:'response.cancel'});send({type:'output_audio_buffer.clear'});}
+  else{if(responseId)blockedResponses.add(responseId);awaitingClear=true;send({type:'response.cancel'});send({type:'output_audio_buffer.clear'});}
   log('已请求打断');
 }
 async function pushAudio(samples){

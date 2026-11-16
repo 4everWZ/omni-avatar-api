@@ -9,7 +9,7 @@ class SourceTap:
     def __init__(self, client, url, headers):
         self.client, self.url, self.headers = client, url, headers
         self.queue = asyncio.Queue(maxsize=32)
-        self.socket = self.task = None
+        self.socket = self.task = self.reader = None
         self.failed = False
 
     async def __aenter__(self):
@@ -18,6 +18,7 @@ class SourceTap:
                 self.socket = await self.client.ws_connect(self.url, headers=self.headers, heartbeat=20)
                 await self.socket.receive_json()
             self.task = asyncio.create_task(self.send())
+            self.reader = asyncio.create_task(self.receive())
         except (ClientError, TimeoutError, ValueError):
             self.failed = True
         return self
@@ -53,10 +54,23 @@ class SourceTap:
             if self.socket:
                 await self.socket.close()
 
+    async def receive(self):
+        # aiohttp processes ping/pong only while receive() is being driven.
+        # A write-only tap otherwise closes after its first heartbeat interval.
+        try:
+            async for frame in self.socket:
+                if frame.type == WSMsgType.ERROR:
+                    break
+        finally:
+            self.failed = True
+            if self.task:
+                self.task.cancel()
+
     async def __aexit__(self, *args):
-        if self.task:
-            self.task.cancel()
-            await asyncio.gather(self.task, return_exceptions=True)
+        tasks = [task for task in (self.task, self.reader) if task]
+        for task in tasks:
+            task.cancel()
+        await asyncio.gather(*tasks, return_exceptions=True)
         if self.socket:
             await self.socket.close()
 

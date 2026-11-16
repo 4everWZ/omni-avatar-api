@@ -384,12 +384,15 @@ class Gateway:
                     ))
                 await downstream.prepare(request)
                 tap = None
-                if self.config.avatar_url and self.config.avatar_token:
+                if avatar_live and self.config.avatar_token:
                     source_id = secrets.token_urlsafe(24)
                     tap = await stack.enter_async_context(self.avatar.tap(
                         request.app['avatar_http'], source_id, request['owner']))
                     await downstream.send_json({'type': 'gateway.session.created',
                                                 'source_session_id': source_id, 'avatar_available': not tap.failed})
+                elif request.query.get('avatar') == '1':
+                    await downstream.send_json({'type': 'gateway.session.created',
+                                                'source_session_id': None, 'avatar_available': False})
                 await self.relay(upstream, downstream, tap)
                 return downstream
         except Busy:

@@ -51,6 +51,7 @@ class Session:
 
     def emit(self, kind, **fields):
         event = {'type': kind, 'session_id': self.id, 'generation': self.generation,
+                 'source_epoch': self.epoch,
                  'timestamp_ms': self.now_sample() * 1000 // RATE, **fields}
         self.recent_events.append(event)
         for queue in tuple(self.events):
@@ -103,6 +104,7 @@ class Session:
         start = max(self.end_sample, now + RATE // 10)
         if start + len(pcm) // 2 - now > RATE * MAX_AUDIO_SECONDS:
             raise ValueError('Audio exceeds thirty-second playback buffer')
+        self.renderer.push_audio(pcm, RATE, start, self.generation)
         self.segments.append((start, pcm))
         self.end_sample = start + len(pcm) // 2
         self.touched = monotonic()

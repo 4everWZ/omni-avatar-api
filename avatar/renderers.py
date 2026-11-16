@@ -8,6 +8,7 @@ from PIL import Image
 
 class Renderer(Protocol):
     capabilities: dict
+    def push_audio(self, pcm: bytes, sample_rate: int, start_sample: int, generation: int) -> None: ...
     def render(self, timestamp: float, rms: float) -> Image.Image: ...
     def clear(self, generation: int) -> None: ...
     def close(self) -> None: ...
@@ -25,6 +26,11 @@ class SpriteRenderer:
                 pose = atlas.crop((x * width, y * height, (x + 1) * width, (y + 1) * height))
                 pose.thumbnail((600, 680), Image.Resampling.LANCZOS)
                 self.poses.append(pose)
+
+    def push_audio(self, pcm, sample_rate, start_sample, generation):
+        # Sprite animation samples amplitude from the shared timeline. Neural drivers
+        # can enqueue this PCM in their worker without changing session or media APIs.
+        pass
 
     def render(self, timestamp, rms):
         blink = timestamp % 4.7 < .14

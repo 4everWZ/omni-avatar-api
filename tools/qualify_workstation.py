@@ -22,6 +22,7 @@ import av
 from aiohttp import ClientSession, ClientTimeout
 from aiortc import RTCConfiguration, RTCPeerConnection, RTCSessionDescription
 from PIL import Image
+from long_context import DOCUMENTS, NEEDLE
 
 
 def read_env(path):
@@ -106,12 +107,14 @@ class Qualification:
                    'max_tokens': 256, 'chat_template_kwargs': {'enable_thinking': False}}
         start = monotonic()
         ordinary = await self.json('POST', '/v1/chat/completions', json=payload)
-        assert '5' in ordinary['choices'][0]['message']['content']
+        assert ordinary['choices'][0]['message']['content'].strip() == '5'
         self.check('ordinary_chat', seconds=monotonic() - start)
         schema = {'type': 'object', 'properties': {'sum': {'type': 'integer', 'const': 5}},
                   'required': ['sum'], 'additionalProperties': False}
         structured = await self.json('POST', '/v1/chat/completions', json=payload | {
+            'messages': [{'role': 'user', 'content': 'Return a JSON object with one integer property sum, the sum of 2 and 3.'}],
             'response_format': {'type': 'json_schema', 'json_schema': {'name': 'sum', 'strict': True, 'schema': schema}}})
+        assert structured['choices'][0]['finish_reason'] == 'stop'
         assert json.loads(structured['choices'][0]['message']['content']) == {'sum': 5}
         self.check('structured_chat')
         content = ''
@@ -121,7 +124,7 @@ class Qualification:
                     chunk = json.loads(line[6:])
                     for choice in chunk.get('choices', []):
                         content += choice.get('delta', {}).get('content') or ''
-        assert '5' in content
+        assert content.strip() == '5'
         self.check('second_caller_streaming_chat')
         image = Image.new('RGB', (192, 192), 'red')
         encoded = io.BytesIO()
@@ -132,26 +135,35 @@ class Qualification:
         answer = vision['choices'][0]['message']['content'].lower()
         assert '红' in answer or 'red' in answer
         self.check('vision_color_correct')
-        needle = '校验编号为73291584。'
-        filler = '这是一条无关的背景记录，请继续阅读后面的记录。\n'
-        low, high = 1, window
-        long_payload = None
-        count = 0
-        while low <= high:
-            middle = (low + high) // 2
-            message = filler * (middle // 2) + needle + filler * (middle - middle // 2) + '\n只回答校验编号的八位数字。'
-            candidate = payload | {'messages': [{'role': 'user', 'content': message}]}
-            measured = await self.json('POST', '/v1/chat/prompt_tokens', json=candidate)
-            if measured['count'] <= window - 1024:
-                long_payload, count = candidate, measured['count']
-                low = middle + 1
-            else:
-                high = middle - 1
-        assert long_payload and count > window - 2048
-        start = monotonic()
-        reply = await self.json('POST', '/v1/chat/completions', json=long_payload)
-        assert '73291584' in reply['choices'][0]['message']['content']
-        self.check('long_context_correct', prompt_tokens=count, seconds=monotonic() - start)
+        for name, document in DOCUMENTS.items():
+            def candidate(records):
+                return payload | {'max_tokens': 1024, 'messages': [{'role': 'user', 'content': document(records)}]}
+            empty = (await self.json('POST', '/v1/chat/prompt_tokens', json=candidate(0)))['count']
+            hundred = (await self.json('POST', '/v1/chat/prompt_tokens', json=candidate(100)))['count']
+            # Estimate an upper bound before binary search, avoiding million-token
+            # count requests for a model whose entire window is only 40960.
+            low, high = 0, math.ceil(200 * window / (hundred - empty))
+            long_payload, count = None, 0
+            while low <= high:
+                middle = (low + high) // 2
+                body = candidate(middle)
+                measured = await self.json('POST', '/v1/chat/prompt_tokens', json=body)
+                if measured['count'] <= window - 1024:
+                    long_payload, count = body, measured['count']
+                    low = middle + 1
+                else:
+                    high = middle - 1
+            assert long_payload and count > window - 2048
+            start = monotonic()
+            reply = await self.json('POST', '/v1/chat/completions', json=long_payload)
+            answer = reply['choices'][0]['message']['content'] or ''
+            self.report.setdefault('long_context_attempts', []).append({'case': name, 'prompt_tokens': count,
+                'finish_reason': reply['choices'][0]['finish_reason'],
+                'completion_tokens': reply.get('usage', {}).get('completion_tokens'),
+                'visible_body_characters': len(answer), 'correct': NEEDLE in answer})
+            self.save()
+            assert NEEDLE in answer, f'Long-context retrieval failed for {name} at {count} prompt tokens'
+            self.check('long_context_correct', case=name, prompt_tokens=count, seconds=monotonic() - start)
 
     async def socket(self, path):
         return await self.http.ws_connect(self.args.gateway.rstrip('/') + path,
@@ -289,6 +301,7 @@ class Qualification:
             values = dict(line.split(':', 1) for line in meminfo.read_text().splitlines())
             item['host_kib'] = {k: int(values[k].strip().split()[0]) for k in ('MemAvailable', 'SwapFree')}
         self.report['samples'].append(item)
+        self.report['speech_question_transcript'] = self.transcript[:1024]
         self.save()
 
     async def exercise(self):
