@@ -31,7 +31,7 @@ Batch mode shares a capacity of one by default. Live mode permits one ordinary C
 | `OMNI_BATCH_CAP` | `1` |
 | `OMNI_QUEUE_LIMIT` | `16` queued requests |
 | `OMNI_QUEUE_TIMEOUT` | `5` seconds |
-| `OMNI_REQUEST_TIMEOUT` | `120` seconds for a Chat Completions call, including streaming. |
+| `OMNI_REQUEST_TIMEOUT` | `1200` seconds to receive the Chat request body. After admission, a fresh total deadline of the same duration covers the upstream request and complete SSE response. Set an explicit value to override both. |
 | `OMNI_HEALTH_TIMEOUT` | `3` seconds for upstream probes, connects and WebSocket handshake. |
 | `OMNI_REALTIME_IDLE_TIMEOUT` | `120` seconds without application frames in either direction. |
 

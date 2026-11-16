@@ -1,5 +1,7 @@
 import asyncio
+import os
 import unittest
+from unittest.mock import patch
 
 from aiohttp import ClientSession, ClientPayloadError, WSServerHandshakeError, web
 
@@ -8,6 +10,22 @@ from gateway import Config, create_app
 SERVICE_AUTH = {"Authorization": "Bearer fixture-client"}
 ADMIN_AUTH = {"Authorization": "Bearer fixture-admin"}
 MEDIA_AUTH = {"Authorization": "Bearer fixture-media"}
+
+
+class ConfigTest(unittest.TestCase):
+    def test_chat_deadline_default_and_explicit_override(self):
+        fixture = {
+            "OMNI_GATEWAY_TOKEN": "fixture-client",
+            "OMNI_GATEWAY_ADMIN_TOKEN": "fixture-admin",
+            "OMNI_CHECKPOINT": "fixture-checkpoint",
+            "OMNI_MODEL_ID": "fixtures/actual-omni",
+        }
+        with patch.dict(os.environ, fixture, clear=True):
+            self.assertEqual(Config.from_env().request_timeout, 1200)
+            os.environ["OMNI_REQUEST_TIMEOUT"] = "425"
+            config = Config.from_env()
+            self.assertEqual(config.request_timeout, 425)
+            self.assertEqual(config.realtime_idle_timeout, 120)
 
 
 class GatewayTest(unittest.IsolatedAsyncioTestCase):

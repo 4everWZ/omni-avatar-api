@@ -30,7 +30,7 @@ class Config:
     batch_cap: int = 1
     queue_limit: int = 16
     queue_timeout: float = 5
-    request_timeout: float = 120
+    request_timeout: float = 1200
     health_timeout: float = 3
     realtime_idle_timeout: float = 120
 
@@ -71,7 +71,8 @@ class Config:
             engine_version=os.environ.get("OMNI_ENGINE_VERSION", ""),
             model_root=os.environ.get("OMNI_EXPECTED_MODEL_ROOT", model_root),
             batch_cap=positive("OMNI_BATCH_CAP", 1, int), queue_limit=positive("OMNI_QUEUE_LIMIT", 16, int),
-            queue_timeout=positive("OMNI_QUEUE_TIMEOUT", 5), request_timeout=positive("OMNI_REQUEST_TIMEOUT", 120),
+            queue_timeout=positive("OMNI_QUEUE_TIMEOUT", 5),
+            request_timeout=positive("OMNI_REQUEST_TIMEOUT", cls.request_timeout),
             health_timeout=positive("OMNI_HEALTH_TIMEOUT", 3),
             realtime_idle_timeout=positive("OMNI_REALTIME_IDLE_TIMEOUT", 120),
         )
