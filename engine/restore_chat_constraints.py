@@ -18,6 +18,41 @@ replacement = """                setattr(params, field_name, value)
         # Use vLLM's protocol conversion for response_format and structured_outputs.
         if (constraints := request.extract_structured_outputs()) is not None:
             params.structured_outputs = constraints
+        elif (
+            self.model_config.hf_config.model_type == "minicpmo"
+            and self._effective_chat_template_kwargs(request).get("enable_thinking") is True
+            and (request.modalities or ["text"]) == ["text"]
+            and not (request.tools or request.stop or request.stop_token_ids)
+        ):
+            from vllm.sampling_params import StructuredOutputsParams
+
+            tokenizer = self.renderer.get_tokenizer()
+            vocab = tokenizer.get_vocab() if tokenizer is not None else {}
+            markers = ("<think>", "</think>", "<|im_end|>", "<|endoftext|>")
+            if all(marker in vocab for marker in markers):
+                start, end, *stops = [vocab[marker] for marker in markers]
+                # Allow a direct reply or a closed thought followed by a reply.
+                # Token-ID boundaries match the parser; stop is legal only
+                # after a reply. The caller's generation budget still applies.
+                excluded = [start, end, *stops]
+                thought = {
+                    "type": "tag",
+                    "begin": {"type": "token", "token": start},
+                    "content": {"type": "any_tokens", "exclude_tokens": [start, *stops]},
+                    "end": {"type": "token", "token": end},
+                }
+                structure = {
+                    "type": "structural_tag",
+                    "format": {
+                        "type": "sequence",
+                        "elements": [
+                            {"type": "optional", "content": thought},
+                            {"type": "exclude_token", "exclude_tokens": excluded},
+                            {"type": "any_tokens", "exclude_tokens": excluded},
+                        ],
+                    },
+                }
+                params.structured_outputs = StructuredOutputsParams(structural_tag=json.dumps(structure))
         return params
 """
 if source.count(anchor) != 1:
