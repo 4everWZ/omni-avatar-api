@@ -41,18 +41,19 @@ docker compose -f infra-compose.yml ps
 
 下载只在 `model-fetch` 的独立网络执行。`omni-engine` 使用已完成的本地快照和内部网络。模型缓存保留在宿主、业务数据由应用 Compose 持有。平时更新应用使用其自身 Compose 命令。
 
-网关默认在宿主回环绑定 8000。验证时可用 SSH 转发到其回环端口，或配置受控 LAN／VPN 的绑定地址与防火墙。内网应用容器始终使用 Docker 服务名。浏览器默认应经工作台的授权播放入口读节目。MediaMTX 信令默认宿主回环 8889，ICE UDP 默认宿主回环 8189。远端浏览器或 OBS 使用时，将 `MEDIAMTX_ICE_BIND` 和 `MEDIAMTX_ICE_HOST` 指向实际可达的内网／VPN 接口，开放该接口的 8189/UDP。普通 SSH 端口转发只转 TCP 信令。网页麦克风与屏幕采集在远端使用 HTTPS，HTTPS 反向代理可后续把工作台与播放入口挂到同一可信域。
+网关默认在宿主回环绑定 8000。验证时可用 SSH 转发到其回环端口，或配置受控 LAN／VPN 的绑定地址与防火墙。内网应用容器始终使用 Docker 服务名。MediaMTX 用独立的播放凭据授权 WHEP。信令默认宿主回环 8889，ICE UDP 默认宿主回环 8189。远端浏览器或 OBS 使用时，将 `MEDIAMTX_ICE_BIND` 和 `MEDIAMTX_ICE_HOST` 指向实际可达的内网／VPN 接口，开放该接口的 8189/UDP。普通 SSH 端口转发只转 TCP 信令。网页麦克风与屏幕采集在远端使用 HTTPS，HTTPS 反向代理可后续把工作台与播放入口挂到同一可信域。
 
 | 用途 | 内部地址与凭据 |
 | --- | --- |
 | 网关业务使用 | `http://omni-gateway:8000/v1`，Bearer 对应应用令牌，模型 `omni-default` |
 | 网关模式控制 | `http://omni-gateway:8000/api/mode`，管理令牌应用在服务端，由直播会话切换 |
 | 节目摄取 | `rtsp://mediamtx:8554/program`，RTSP/TCP，`tuber-publisher` 与 `MEDIAMTX_PUBLISH_PASSWORD` |
-| 节目读取 | `http://mediamtx:8889/program/whep`，`tuber-viewer` 与 `MEDIAMTX_READ_PASSWORD`，播放器经工作台授权接入 |
+| 节目读取 | `http://mediamtx:8889/program/whep`，播放器使用 `tuber-viewer` 与 `MEDIAMTX_READ_PASSWORD` |
 
 ## 核验与回退
 
 - 用应用凭据检查 `/healthz` 和 `/v1/models`，发一条 `model=omni-default` 的 Chat Completions，并测一次同一别名的 Realtime 会话。从 `session.created` 读取 `session.capabilities`。再测图像、PCM 音频实际回流、字幕、中断和已播回执，分别保存结果。 [双工接口](https://docs.vllm.ai/projects/vllm-omni/en/v0.32.0/serving/realtime_duplex_api/)
+- Omni 0.32.0 接收 Chat Completions 的 `response_format`，部署镜像补上从已解析协议到 Thinker 采样参数的转交。升级时复验流式与普通响应的 JSON Schema，以及非法 schema 的错误返回。 [锁定版采样实现](https://github.com/vllm-project/vllm-omni/blob/5917730a4b02aedb44d374173cdc1b10484ccd52/vllm_omni/entrypoints/openai/serving_chat.py#L1423)
 - `engine/minicpmo-orin.yaml` 继承镜像自带的三阶段配置。初始一条双工会话加一条普通请求，先用保守窗口核对 CUDA 各阶段内核。整机共驻目标为 Omni 30 GiB、Avatar 6 GiB、约 8 GiB 可用余量。按阶段记录实际权重、KV 和工作区，并以整机报告验收。当前网关只允许 Live 普通并发 1。提高到 2 需要同步调整网关和阶段准入，并验收缓存、设备余量和两小时直播混合负载。
 - 验证 WHEP 播放客户端和 OBS 的实际音视频、ICE 与重连。独立确认只读用户无法发布、发布用户无法拉流。媒体确认与推理健康分别验收。
 - 引擎配置、资产路径或依赖更新后先独立验证镜像与模型。停止候选时使用 `docker compose -f infra-compose.yml stop`，保留模型资产及业务 Compose 持久卷。回退切应用 Provider／媒体路由到实际已验的 9B 与 Genie 配置。
