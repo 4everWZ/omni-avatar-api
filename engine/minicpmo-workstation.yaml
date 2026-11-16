@@ -1,0 +1,45 @@
+# Per-stage placement for the first dual RTX 3090 qualification.
+session_mode: duplex
+duplex_session:
+  max_sessions: 1
+
+connectors:
+  connector_of_shared_memory:
+    extra:
+      enable_hift_graph: false
+      enable_cfm_graph: false
+      enable_code2wav_encoder_graph: false
+      cfm_fused_body: false
+
+stages:
+  - stage_id: 0
+    devices: "0"
+    max_num_seqs: 2
+    kv_cache_dtype: int4_per_token_head
+    max_num_batched_tokens: 2048
+    long_prefill_token_threshold: 1024
+    gpu_memory_utilization: 0.65
+    enforce_eager: true
+    default_sampling_params:
+      max_tokens: 4096
+  - stage_id: 1
+    devices: "1"
+    max_num_seqs: 2
+    kv_cache_dtype: int4_per_token_head
+    max_num_batched_tokens: 4096
+    gpu_memory_utilization: 0.25
+    enforce_eager: true
+  - stage_id: 2
+    devices: "1"
+    max_num_seqs: 2
+    gpu_memory_utilization: 0.35
+
+platforms:
+  cuda:
+    stages:
+      - stage_id: 0
+        kv_cache_memory_bytes: 2147483648
+        attention_backend: TRITON_ATTN
+      - stage_id: 1
+        kv_cache_memory_bytes: 536870912
+        attention_backend: TRITON_ATTN

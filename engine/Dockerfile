@@ -1,4 +1,5 @@
-FROM vllm/vllm-omni:v0.32.0-aarch64@sha256:6da195b87ca635601559ea11a6dd175758b0fa68cbada3a4529e01f36bc92df1
+ARG OMNI_BASE_IMAGE=vllm/vllm-omni:v0.32.0-aarch64@sha256:6da195b87ca635601559ea11a6dd175758b0fa68cbada3a4529e01f36bc92df1
+FROM ${OMNI_BASE_IMAGE}
 
 COPY vocoder.lock /opt/tuber-omni/vocoder.lock
 RUN env -u UV_CONSTRAINT -u UV_OVERRIDE uv --no-config pip install \

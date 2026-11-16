@@ -2,4 +2,4 @@
 step-audio2==1.0.0 --hash=sha256:0f0066b41c622f0611d48b9c78834454ef4b9950b0e28e72432ceb2d71f5ce25
 hyperpyyaml==1.2.2 --hash=sha256:3c5864bdc8864b2f0fbd7bc495e7e8fdf2dfd5dd80116f72da27ca96a128bdeb
 ruamel.yaml==0.18.17 --hash=sha256:9c8ba9eb3e793efdf924b60d521820869d5bf0cb9c6f1b82d82de8295e290b9d
-ruamel.yaml.clib==0.2.15 --hash=sha256:71845d377c7a47afc6592aacfea738cc8a7e876d586dfba814501d8c53c1ba60
+ruamel.yaml.clib==0.2.15 --hash=sha256:71845d377c7a47afc6592aacfea738cc8a7e876d586dfba814501d8c53c1ba60 --hash=sha256:11e5499db1ccbc7f4b41f0565e4f799d863ea720e01d3e99fa0b7b5fcd7802c9

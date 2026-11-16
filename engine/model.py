@@ -59,7 +59,7 @@ def serve(model_id, revision, path):
     upstream = Path(next(iter(spec.submodule_search_locations))) / "deploy" / "minicpmo_4_5.yaml"
     if not upstream.is_file():
         raise RuntimeError("Pinned vLLM-Omni package does not include the MiniCPM-o deployment config")
-    overlay_path = Path(__file__).with_name("minicpmo-orin.yaml")
+    overlay_path = Path(os.environ.get("OMNI_DEPLOY_CONFIG") or Path(__file__).with_name("minicpmo-orin.yaml"))
     overlay = yaml.safe_load(overlay_path.read_text(encoding="utf-8"))
     overlay["base_config"] = str(upstream)
     thinker = next(stage for stage in overlay["stages"] if stage["stage_id"] == 0)
