@@ -81,7 +81,7 @@ async function startMic(){
   capture=new AudioWorkletNode(ctx,'pcm-capture');ctx.createMediaStreamSource(mic).connect(capture);capture.connect(ctx.destination);
   capture.port.onmessage=event=>{if(!ready)return;const samples=new Int16Array(event.data);let sum=0;for(const value of samples)sum+=value*value;
     const packet={type:'input_audio_buffer.append',audio:pcmBase64(event.data),format:'pcm16',sample_rate_hz:16000,is_speech:Math.sqrt(sum/samples.length)>350};
-    if(screen?.active){const video=$('screen-preview');if(video?.videoWidth){const canvas=document.createElement('canvas');canvas.width=640;canvas.height=Math.round(video.videoHeight*640/video.videoWidth);canvas.getContext('2d').drawImage(video,0,0,canvas.width,canvas.height);packet.video_frames=[canvas.toDataURL('image/jpeg',.7)];}}
+    if(screen?.active){const video=$('screen-preview');if(video?.videoWidth){const canvas=document.createElement('canvas');canvas.width=640;canvas.height=Math.round(video.videoHeight*640/video.videoWidth);canvas.getContext('2d').drawImage(video,0,0,canvas.width,canvas.height);packet.video_frames=[canvas.toDataURL('image/jpeg',.7).split(',')[1]];}}
     send(packet);
   };
 }

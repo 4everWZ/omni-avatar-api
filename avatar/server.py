@@ -252,5 +252,8 @@ def create_app(token=None, **options):
 
 
 if __name__ == '__main__':
-    web.run_app(create_app(), host=os.environ.get('OMNI_AVATAR_BIND', '127.0.0.1'),
-                port=int(os.environ.get('OMNI_AVATAR_PORT', '8090')), handler_cancellation=True, access_log=None)
+    if socket_path := os.environ.get('OMNI_AVATAR_SOCKET'):
+        web.run_app(create_app(), path=socket_path, handler_cancellation=True, access_log=None)
+    else:
+        web.run_app(create_app(), host=os.environ.get('OMNI_AVATAR_BIND', '127.0.0.1'),
+                    port=int(os.environ.get('OMNI_AVATAR_PORT', '8090')), handler_cancellation=True, access_log=None)

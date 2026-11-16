@@ -12,7 +12,7 @@ from contextlib import AsyncExitStack, asynccontextmanager
 from dataclasses import dataclass, field
 from urllib.parse import urlsplit
 
-from aiohttp import ClientError, ClientSession, ClientTimeout, ClientWSTimeout, DummyCookieJar, WSMsgType, web
+from aiohttp import ClientError, ClientSession, ClientTimeout, ClientWSTimeout, DummyCookieJar, UnixConnector, WSMsgType, web
 from avatar_proxy import AvatarProxy
 
 MODEL_ALIAS = "omni-default"
@@ -39,6 +39,7 @@ class Config:
     realtime_idle_timeout: float = 120
     avatar_url: str = ""
     avatar_token: str = field(default="", repr=False)
+    avatar_socket: str = ""
 
     @classmethod
     def from_env(cls):
@@ -83,6 +84,7 @@ class Config:
             realtime_idle_timeout=positive("OMNI_REALTIME_IDLE_TIMEOUT", 120),
             avatar_url=os.environ.get("OMNI_AVATAR_URL", ""),
             avatar_token=os.environ.get("OMNI_AVATAR_INTERNAL_TOKEN", ""),
+            avatar_socket=os.environ.get("OMNI_AVATAR_SOCKET", ""),
         )
 
 
@@ -223,6 +225,7 @@ class Gateway:
         ) as session:
             self.engine = session
             async with ClientSession(timeout=ClientTimeout(total=None, connect=3),
+                                     connector=UnixConnector(path=self.config.avatar_socket) if self.config.avatar_socket else None,
                                      cookie_jar=DummyCookieJar(), trust_env=False) as avatar_http:
                 app['avatar_http'] = avatar_http
                 yield

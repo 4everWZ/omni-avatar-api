@@ -21,7 +21,7 @@ docker compose -f infra-compose.yml -f infra-workstation.compose.yml ps
 
 ### Ava 2D 覆盖配置
 
-生成独立 `OMNI_AVATAR_INTERNAL_TOKEN`，在基础配置和工作站配置后叠加 `-f infra-avatar.compose.yml`，构建并启动 `omni-avatar` 和 `omni-gateway`。Avatar 采用 Linux host 网络发布动态 ICE UDP 端口，控制 API 仅绑定 Docker 默认桥地址（`OMNI_AVATAR_BIND`，默认 `172.17.0.1`）；先用 `docker network inspect bridge` 核实。主机防火墙需允许授权 LAN/VPN 客户端与 Avatar 的 ICE 候选建立 UDP 通信。不能仅用 SSH 的 TCP 转发验证远端 WHEP。
+生成独立 `OMNI_AVATAR_INTERNAL_TOKEN`，在基础配置和工作站配置后叠加 `-f infra-avatar.compose.yml`，构建并启动 `omni-avatar` 和 `omni-gateway`。Avatar 采用 Linux host 网络发布动态 ICE UDP 端口，控制 API 通过私有共享卷中的 Unix socket 与网关相连，不监听宿主 TCP 端口。主机防火墙需允许授权 LAN/VPN 客户端与 Avatar 的 ICE 候选建立 UDP 通信。不能仅用 SSH 的 TCP 转发验证远端 WHEP。
 
 ```sh
 docker compose -f infra-compose.yml -f infra-workstation.compose.yml -f infra-avatar.compose.yml config --quiet
