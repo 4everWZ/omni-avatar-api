@@ -78,7 +78,12 @@ def patch_transfer_source(source):
         if epoch < 0 or external_id != duplex_resource_request_id(DuplexFence(session_id, epoch), "stage0"):
             return False
         with self._receiver_state_lock:
-            return request.request_id not in self._minicpmo_speaking
+            # The receiver marks a real codec chunk ready before the scheduler
+            # can consume it and reset the wait clock.
+            return (
+                request.request_id in self._finished_load_reqs
+                or request.request_id not in self._minicpmo_speaking
+            )
 
     def collect_timed_out_request_ids(
         self,
