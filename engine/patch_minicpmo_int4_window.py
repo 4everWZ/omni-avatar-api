@@ -8,7 +8,10 @@ def patch_window_source(source):
     changes = (
         (
             "from __future__ import annotations\n",
-            "from __future__ import annotations\n\nfrom .minicpmo_int4_window import rotate_packed_int4_keys\n",
+            "from __future__ import annotations\n\n"
+            "from vllm.logger import init_logger\n"
+            "from .minicpmo_int4_window import rotate_packed_int4_keys\n\n"
+            "_int4_window_logger = init_logger(__name__)\n",
         ),
         (
             "        page_size_padded=layer_spec.page_size_padded,\n",
@@ -45,6 +48,15 @@ def patch_window_source(source):
             '        )\n'
             '    elif layout == "BHND":\n'
             '        keys = k_pool[b_idx, h_idx, o_idx, :expected_head_dim]\n',
+        ),
+        (
+            "            # Evict worker-held unit history so state.window_units remains bounded\n",
+            "                if runner.kv_caches[0].dtype == torch.uint8:\n"
+            "                    _int4_window_logger.info(\n"
+            '                        "MiniCPM-o INT4 native KV reanchor applied: shift_tokens=%d retained_tokens=%d layers=%d",\n'
+            "                        plan.delta, positions.numel(), len(runner.kv_caches),\n"
+            "                    )\n\n"
+            "            # Evict worker-held unit history so state.window_units remains bounded\n",
         ),
     )
     for anchor, replacement in changes:
