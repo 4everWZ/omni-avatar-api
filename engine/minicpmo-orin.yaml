@@ -17,7 +17,8 @@ stages:
   - stage_id: 0
     max_num_seqs: 2
     max_model_len: 12288
-    max_num_batched_tokens: 12288
+    # Chunk prefill to reduce peak RAM while keeping the 12,288-token window.
+    max_num_batched_tokens: 4096
     gpu_memory_utilization: 0.35
     enforce_eager: true
     media_io_kwargs:
