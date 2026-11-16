@@ -79,4 +79,6 @@ docker compose -f infra-compose.yml -f infra-cu129.compose.yml run --rm --no-dep
   python3 /opt/tuber-omni/cu129_runtime.py probe
 ```
 
-随后依次验证音频与视觉所需的 CUDA 操作、vLLM 扩展、torchvision 和 torchaudio，再启动 MiniCPM-o。现场发现上游 vLLM 主扩展已有 SM 8.7，FlashAttention 2 只有 SM 8.0，所以两段模型注意力先使用 Triton。源码 wheel 和实际接口仍需完成实测。
+随后依次验证音频与视觉所需的 CUDA 操作、vLLM 扩展、torchvision 和 torchaudio，再启动 MiniCPM-o。现场发现上游 vLLM 主扩展已有 SM 8.7，FlashAttention 2 只有 SM 8.0，所以两段模型注意力先使用 Triton。完整三阶段加载和接口继续按实机准入验收。
+
+AGX 已导出 SM 8.7 wheel，并通过容器内张量、BF16 矩阵乘法、卷积和注意力预检。继承的 TorchCodec 0.17.0 图像扩展要求 CUDA 13 NVRTC。CUDA 12.9 镜像换用官方同版本 ARM64 CPU 解码 wheel，构建阶段核对 `AudioDecoder` 和 `VideoDecoder` 导入。模型计算继续使用 CUDA。 [TorchCodec 官方 wheel 索引](https://download.pytorch.org/whl/cpu/torchcodec/)
