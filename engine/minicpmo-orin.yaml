@@ -16,9 +16,9 @@ connectors:
 stages:
   - stage_id: 0
     max_num_seqs: 2
-    max_model_len: 12288
-    # Chunk prefill to reduce peak RAM while keeping the 12,288-token window.
-    max_num_batched_tokens: 4096
+    kv_cache_dtype: int4_per_token_head
+    # Chunk prefill work independently of the checkpoint's full Chat window.
+    max_num_batched_tokens: 2048
     gpu_memory_utilization: 0.35
     enforce_eager: true
     media_io_kwargs:
@@ -32,6 +32,7 @@ stages:
 
   - stage_id: 1
     max_num_seqs: 2
+    kv_cache_dtype: int4_per_token_head
     max_num_batched_tokens: 4096
     gpu_memory_utilization: 0.10
     enforce_eager: true
@@ -44,10 +45,10 @@ platforms:
   cuda:
     stages:
       - stage_id: 0
-        # On unified Orin RAM the device-level profiler left zero cache.
-        # 36 layers × 8 KV heads × 128 × two BF16 tensors is 144 KiB per token.
-        # Two 12,288-token streams need about 3.38 GiB before block overhead.
-        kv_cache_memory_bytes: 4294967296
+        # 36 layers × 8 heads × 2 × (64 INT4 bytes + 1 FP32 scale) per token.
+        # A full Chat and the native duplex sliding window use about 1.79 GiB.
+        kv_cache_memory_bytes: 2147483648
+        attention_backend: TRITON_ATTN
       - stage_id: 1
         # Upstream CUDA sets an explicit 4 GiB allocation for 16 sequences.
         kv_cache_memory_bytes: 536870912

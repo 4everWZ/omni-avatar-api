@@ -59,6 +59,14 @@ class GatewayTest(unittest.IsolatedAsyncioTestCase):
             finally:
                 self.chat_ended.set()
 
+        async def prompt_tokens(request):
+            self.assertEqual(request.headers.get("Authorization"), "Bearer fixture-engine")
+            body = await request.json()
+            self.assertEqual(body["model"], self.model)
+            self.assertEqual(body["modalities"], ["text"])
+            self.assertEqual(body["chat_template_kwargs"], {"enable_thinking": True})
+            return web.json_response({"count": 40900})
+
         async def realtime(request):
             self.assertEqual(request.headers.get("Authorization"), "Bearer fixture-engine")
             self.realtime_query = dict(request.query)
@@ -76,6 +84,7 @@ class GatewayTest(unittest.IsolatedAsyncioTestCase):
         engine.add_routes([
             web.get("/health", health), web.get("/version", version), web.get("/v1/models", models),
             web.post("/v1/chat/completions", chat), web.get("/v1/realtime", realtime),
+            web.post("/v1/chat/prompt_tokens", prompt_tokens),
         ])
         engine_url = await self.serve(engine)
         self.url = await self.serve(create_app(Config(
@@ -103,6 +112,15 @@ class GatewayTest(unittest.IsolatedAsyncioTestCase):
             async with await self.chat(**options) as response:
                 self.assertEqual(response.status, 200)
                 self.assertEqual(self.chat_payload["modalities"], expected)
+
+    async def test_prompt_tokens_use_authenticated_engine_route_without_starting_chat(self):
+        body = {"model": "omni-default", "messages": [{"role": "user", "content": "原文"}],
+                "chat_template_kwargs": {"enable_thinking": True}}
+        async with self.client.post("/v1/chat/prompt_tokens", json=body) as response:
+            self.assertEqual(response.status, 401)
+        async with self.client.post("/v1/chat/prompt_tokens", headers=SERVICE_AUTH, json=body) as response:
+            self.assertEqual(await response.json(), {"count": 40900})
+        self.assertFalse(self.chat_started.is_set())
 
     async def test_auth_model_discovery_and_health_are_engine_bound(self):
         async with await self.chat(headers={}) as response:

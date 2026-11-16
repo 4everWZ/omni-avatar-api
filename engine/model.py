@@ -38,6 +38,16 @@ def fetch(model_id, revision, path):
     temporary.replace(path / ".snapshot-ready")
 
 
+def checkpoint_chat_window(path):
+    config = json.loads((path / "config.json").read_text(encoding="utf-8"))
+    if config.get("quantization_config", {}).get("quant_method") != "awq":
+        raise ValueError("The MiniCPM-o profile requires the AWQ checkpoint")
+    window = config.get("max_position_embeddings")
+    if type(window) is not int or window < 4096:
+        raise ValueError("The AWQ checkpoint did not report a valid Chat context")
+    return window
+
+
 def serve(model_id, revision, path):
     import yaml
 
@@ -52,6 +62,8 @@ def serve(model_id, revision, path):
     overlay_path = Path(__file__).with_name("minicpmo-orin.yaml")
     overlay = yaml.safe_load(overlay_path.read_text(encoding="utf-8"))
     overlay["base_config"] = str(upstream)
+    thinker = next(stage for stage in overlay["stages"] if stage["stage_id"] == 0)
+    thinker["max_model_len"] = checkpoint_chat_window(path)
     with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", suffix=".yaml", delete=False) as deploy:
         yaml.safe_dump(overlay, deploy)
     cmd = [

@@ -83,6 +83,4 @@ docker compose -f infra-compose.yml -f infra-cu129.compose.yml run --rm --no-dep
 
 AGX 已导出 SM 8.7 wheel，并通过容器内张量、BF16 矩阵乘法、卷积和注意力预检。继承的 TorchCodec 0.17.0 图像扩展要求 CUDA 13 NVRTC。CUDA 12.9 镜像换用官方同版本 ARM64 CPU 解码 wheel，构建阶段核对 `AudioDecoder` 和 `VideoDecoder` 导入。模型计算继续使用 CUDA。 [TorchCodec 官方 wheel 索引](https://download.pytorch.org/whl/cpu/torchcodec/)
 
-AGX 的设备级自动探测给 Thinker 留出 0 GiB KV。固定模型用 36 层、8 个 KV 头、128 维及 BF16，两个 12,288-token 请求约需 3.38 GiB，首轮固定 4 GiB。Talker 维持 512 MiB。该配置完成三个阶段加载，实测从容器启动到 HTTP 健康约六分钟。Compose 的启动宽限覆盖首次加载和预热。
-
-Thinker 每批预填从 12,288 收紧到 4,096 token，模型窗口仍为 12,288。包含真实双工、Avatar 编码和一次后台 Chat Completions 的短测中，整机最低可用内存从 6.68 GiB 提升到 11.33 GiB。持续共驻的内存下限以正式混合负载记录为准。
+AGX 的早期设备级自动探测给 Thinker 留出 0 GiB KV，因此配置显式缓存分配。Thinker 的 36 层、8 个 KV 头和 128 维 head 使用逐 token、逐 head 的 4-bit Triton 打包，含缩放信息约 1.79 GiB 可容纳一个完整 Chat 窗口和一个原生双工滚动窗口，分配 2 GiB。Talker 分配 512 MiB。启动前核对 OpenBMB 官方 AWQ 快照，启动后核对实报窗口、两阶段实际 KV 格式及音画协议。窗口和推理并发的联合上限以实机混合负载为准。

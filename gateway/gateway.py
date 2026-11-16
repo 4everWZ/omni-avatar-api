@@ -62,12 +62,14 @@ class Config:
             raise ValueError("Gateway service and admin tokens must be distinct")
         if positive("OMNI_LIVE_CAP", 1, int) != 1:
             raise ValueError("OMNI_LIVE_CAP is fixed at one pending mixed-load verification")
+        checkpoint = required("OMNI_CHECKPOINT")
+        model_root = f"/models/{checkpoint}" if os.environ.get("OMNI_REQUIRE_CHECKPOINT_ROOT") == "1" else ""
         return cls(
-            engine_url=engine_url, model=required("OMNI_MODEL_ID"), checkpoint=required("OMNI_CHECKPOINT"),
+            engine_url=engine_url, model=required("OMNI_MODEL_ID"), checkpoint=checkpoint,
             tokens=tokens, admin_token=admin, engine_token=os.environ.get("OMNI_ENGINE_TOKEN", ""),
             program_token=additional.get("media", ""),
             engine_version=os.environ.get("OMNI_ENGINE_VERSION", ""),
-            model_root=os.environ.get("OMNI_EXPECTED_MODEL_ROOT", ""),
+            model_root=os.environ.get("OMNI_EXPECTED_MODEL_ROOT", model_root),
             batch_cap=positive("OMNI_BATCH_CAP", 1, int), queue_limit=positive("OMNI_QUEUE_LIMIT", 16, int),
             queue_timeout=positive("OMNI_QUEUE_TIMEOUT", 5), request_timeout=positive("OMNI_REQUEST_TIMEOUT", 120),
             health_timeout=positive("OMNI_HEALTH_TIMEOUT", 3),
@@ -247,19 +249,38 @@ class Gateway:
             return failure(503, "model_unavailable", "The configured engine model is unavailable.")
         return web.json_response({"object": "list", "data": [model | {"id": MODEL_ALIAS, "root": MODEL_ALIAS}]})
 
-    async def chat(self, request):
+    async def chat_payload(self, request):
         try:
             async with asyncio.timeout(self.config.request_timeout):
                 payload = await request.json()
         except (ValueError, UnicodeError):
-            return failure(400, "invalid_json", "Expected a JSON Chat Completions request.")
+            return None, failure(400, "invalid_json", "Expected a JSON Chat Completions request.")
         except TimeoutError:
-            return failure(408, "request_timeout", "The request body did not arrive in time.")
+            return None, failure(408, "request_timeout", "The request body did not arrive in time.")
         if not isinstance(payload, dict) or payload.get("model") != MODEL_ALIAS:
-            return failure(400, "model_not_found", f"Use the {MODEL_ALIAS} alias.")
+            return None, failure(400, "model_not_found", f"Use the {MODEL_ALIAS} alias.")
         payload["model"] = self.config.model
         if payload.get("modalities") is None:
             payload["modalities"] = ["text"]
+        return payload, None
+
+    async def prompt_tokens(self, request):
+        payload, error = await self.chat_payload(request)
+        if error is not None:
+            return error
+        try:
+            async with asyncio.timeout(self.config.health_timeout):
+                async with self.engine.post("/v1/chat/prompt_tokens", json=payload, allow_redirects=False) as upstream:
+                    return web.Response(status=upstream.status, body=await upstream.read(), content_type="application/json")
+        except TimeoutError:
+            return failure(504, "tokenizer_timeout", "The engine did not return a prompt token count in time.")
+        except ClientError:
+            return failure(502, "engine_unavailable", "The engine could not count prompt tokens.")
+
+    async def chat(self, request):
+        payload, error = await self.chat_payload(request)
+        if error is not None:
+            return error
         outgoing = None
         try:
             async with self.admission.hold("chat"), asyncio.timeout(self.config.request_timeout):
@@ -393,6 +414,7 @@ def create_app(config=None):
         web.get("/livez", livez), web.get("/healthz", gateway.health),
         web.get("/api/mode", gateway.mode), web.put("/api/mode", gateway.mode),
         web.get("/v1/models", gateway.aliased_models), web.post("/v1/chat/completions", gateway.chat),
+        web.post("/v1/chat/prompt_tokens", gateway.prompt_tokens),
         web.get("/v1/realtime", gateway.realtime),
     ])
     return app
