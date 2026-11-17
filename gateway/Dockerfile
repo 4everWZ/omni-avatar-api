@@ -1,9 +1,0 @@
-FROM python:3.12-slim-bookworm
-WORKDIR /srv/gateway
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-COPY --chmod=0644 gateway.py avatar_proxy.py responses_proxy.py ./
-COPY web ./web
-USER 10001:10001
-EXPOSE 8000
-CMD ["python", "-u", "gateway.py"]

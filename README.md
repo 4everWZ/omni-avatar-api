@@ -1,23 +1,127 @@
-# Omni + Avatar API
+# Omni Avatar API
 
-面向多个应用的原生双工 Omni 和 Avatar 音画 API。现有共享网关覆盖普通推理、视觉和实时会话。目标接口允许应用为实时会话订阅同步的 Avatar 音画。各应用自行持有用户、记忆、任务和业务工具。
+[English](README.md) | [简体中文](README.zh-CN.md)
 
-**主部署目标是双 RTX 3090 的 Linux x86-64 工作站。** 主线叠加 `infra-compose.yml`、`infra-workstation.compose.yml`、`infra-avatar.compose.yml` 和 `infra-inference.compose.yml`，将实时 Omni 与后台长上下文 LLM 分卡部署。 [工作站部署](docs/workstation.md) · [服务接口](docs/api.md)
+Shared, self-hosted inference and talking-avatar services for real-time assistants and applications that need a long-context LLM. One authenticated gateway exposes multimodal Omni, a separate Responses API backend, and pluggable avatar rendering.
 
-| 入口 | 用途 |
+Applications own their users, conversation memory, agent orchestration and tool execution. This repository provides the inference and media services those applications call.
+
+## Features
+
+- **Real-time multimodal assistant:** MiniCPM-o Chat Completions and native duplex Realtime with an 8K recent-context window.
+- **Long-context inference:** a separate Qwen3.5 backend with Responses, incremental SSE, structured output and function-call output. Chat Completions remains available for compatible clients.
+- **Pluggable avatars:** built-in Ava 2D, or a reference-image-driven Ditto talking portrait; audio and video are delivered over WHEP with interruption and generation handling.
+- **Shared infrastructure:** per-application bearer credentials, independent backend admission, bounded queues, cancellation and caller-owned response continuation.
+- **Pinned deployments:** model revisions and inference images are fixed; model downloads are separate from offline serving.
+
+## Architecture
+
+| Component | Responsibility |
 | --- | --- |
-| 上述四文件组合 | 工作站主线：GPU 1 实时 Omni，GPU 0 长上下文 LLM，同宿主 Ava 与鉴权网关。 |
-| `infra-portrait.compose.yml` | 参考图驱动的会议式 Ava，GPU 0 与 LLM 共驻。 |
-| `infra-vpn.compose.yml` | 保留回环监听，另向指定私网 VPN 地址发布鉴权 API。 |
-| `infra-media.compose.yml` | 可选节目传输。仅在需要节目媒体时叠加。 |
-| AGX 历史配置 | 基础文件的 ARM64 配置与 CUDA 12.9 覆盖用于历史复现。 [AGX 指南](docs/infra-setup.md) · [JetPack 6 指南](docs/jetpack6-cu129.md) |
+| Gateway | Public authentication, model aliases, streaming proxies and independent backend admission. |
+| Omni engine | Low-latency voice/vision interaction and recent conversation context. |
+| LLM engine | Long-context text inference for external applications and orchestrators. |
+| Avatar service | Owned sessions, audio timeline, renderer lifecycle and WHEP media. |
+| Portrait worker | Optional GPU-backed reference preparation and neural frame generation. |
 
-## 共享 API
+The validated workstation layout uses **two RTX 3090s**: GPU 1 runs Omni; GPU 0 runs the text LLM and the optional portrait worker. Ava 2D rendering uses the host CPU. Historical AGX Orin profiles remain available for reproduction. See [architecture](docs/architecture.md) and [deployment profiles](docs/deployment/workstation.md).
 
-`/v1` 的 `omni-default` 提供约 8K 多轮近期窗口的 Chat 和 Realtime；`/llm/v1/responses` 的 `llm-default` 提供后台长上下文推理与增量 SSE。两者独立准入，应用持有外部记忆并执行工具调用。独立 Avatar 服务提供 Ava 2D 会话、WHEP 音画及浏览器页。会议式说话头像通过可选 `infra-portrait.compose.yml` 提供参考图上传、异步准备及 Ditto 神经渲染，不强制 3D，沿用可插拔接口。[网关接口及配置](gateway/README.md) · [Avatar 会话](docs/api.md#avatar-会话与音画) · [推进计划](docs/plans/avatar-workstation.md)
+## Quick start
 
-## 部署状态
+Run the deployment on a Linux NVIDIA workstation with Docker Engine, a recent Docker Compose plugin, NVIDIA Container Toolkit and Python 3.12+. Python is used by the deployment entrypoint; application dependencies run inside containers.
 
-分卡推理已部署。Responses 流式输出、归属隔离、续接、22,753-token 多轮历史、结构化回复、工具调用输出及取消通过；原生双工与 Ava 2D 连续运行约 20 分钟，期间完成 40 次后台 LLM 请求。按用户要求以约半小时功能检查替代两小时负载。LLM 配置窗口 262144，完整窗口的质量尚未验证；会议式神经头像已通过 25 fps、同步与打断恢复检查；浏览器实物播放仍需人工确认。[工作站准入](docs/workstation.md#实机准入) · [功能证据](evaluations/results/inference-functional-workstation.json) · [断流生命周期](evaluations/results/responses-stream-lifecycle.json)
+From the repository root:
 
-会议式 Ava：120 秒共驻期间实际生成 3,012 张神经帧，最大音画时间线采样偏差 58 ms，音频预留 1200 ms。[头像功能](evaluations/results/portrait-functional-workstation.json) · [重启与取消恢复](evaluations/results/portrait-lifecycle-workstation.json) · [实测画面](evaluations/results/ava-talking-portrait.png)
+```sh
+cp .env.example .env
+```
+
+Set **different random values** for `OMNI_GATEWAY_TOKEN`, `OMNI_GATEWAY_ADMIN_TOKEN` and `OMNI_AVATAR_INTERNAL_TOKEN`. Set `OMNI_MODEL_DATA` to storage with enough space for the pinned model snapshots. The [.env example](.env.example) documents the available settings.
+
+Create the shared application network once, then build, download and start:
+
+```sh
+docker network create tuber-omni
+python tools/compose.py -- build omni-engine omni-gateway omni-avatar
+python tools/compose.py -- --profile assets run --rm model-fetch
+python tools/compose.py -- --profile assets run --rm llm-model-fetch
+python tools/compose.py -- up -d --wait
+```
+
+The default stack includes Omni, the text LLM, the gateway and Ava 2D. The API listens on **`http://127.0.0.1:8000`**. The browser demo is served at `/`. WHEP media requires direct LAN/VPN connectivity; remote microphone and screen capture need a trusted browser context.
+
+To add neural portraits:
+
+```sh
+python tools/compose.py --portrait -- build omni-portrait
+python tools/compose.py --portrait -- --profile assets run --rm portrait-assets
+python tools/compose.py --portrait -- up -d --wait
+```
+
+The entrypoint anchors `.env`, build contexts and bind mounts to the repository root. Add `--vpn` to publish on `OMNI_GATEWAY_VPN_BIND`, or `--media` for optional MediaMTX transport. Alternative hardware/evaluation stacks use `--target`. See the [workstation guide](docs/deployment/workstation.md) before changing profiles or migrating an existing installation.
+
+## API
+
+All inference and avatar endpoints require an application bearer token. Administrative credentials are separate.
+
+| Base/path | Model | Use |
+| --- | --- | --- |
+| `/v1/chat/completions` | `omni-default` | Multimodal Chat, including streamed text. |
+| `/v1/realtime?duplex=1&model=omni-default` | `omni-default` | Native duplex WebSocket. |
+| `/llm/v1/responses` | `llm-default` | Long-context inference and incremental Responses SSE. |
+| `/llm/v1/chat/completions` | `llm-default` | Chat-compatible clients. |
+| `/v1/avatar/*` | — | Reference uploads, preparation jobs, sessions, audio and WHEP. |
+| `/healthz`, `/llm/healthz` | — | Authenticated backend identity, readiness and admission. |
+
+For example, with the OpenAI Python SDK and an application token in the client environment:
+
+```python
+import os
+from openai import OpenAI
+
+client = OpenAI(
+    base_url="http://localhost:8000/llm/v1",
+    api_key=os.environ["OMNI_GATEWAY_TOKEN"],
+)
+with client.responses.stream(
+    model="llm-default",
+    input="Say hello in one sentence.",
+    extra_body={"chat_template_kwargs": {"enable_thinking": False}},
+) as stream:
+    for event in stream:
+        if event.type == "response.output_text.delta":
+            print(event.delta, end="", flush=True)
+```
+
+The service implements the pinned engine's HTTP/SSE Responses subset. Function tools are returned for the caller to execute; response continuation is process-local. See the [API contract](docs/api.md) and [gateway reference](services/gateway/README.md) for supported operations, ownership and cancellation.
+
+## Repository layout
+
+```text
+services/                 Independently built service boundaries
+  gateway/                Authentication and inference/media proxies
+  inference/              Launchers, model configs, pinned patches and images
+  avatar/                 Sessions, renderers and WebRTC media
+  portrait/               Reference preparation and neural rendering
+deploy/                   Compose layers and optional media configuration
+tools/                    Deployment, qualification and diagnostic entrypoints
+tests/                    Cross-service and deployment-tooling tests
+docs/                     Architecture, API, development and deployment guides
+evaluations/              Shared fixtures and retained real-device evidence
+```
+
+`data/`, `runtime/`, `tmp/` and `.env` are local, ignored artifacts. Service dependencies are isolated by image; services communicate through HTTP/WebSocket/Unix-socket contracts rather than importing each other's implementation.
+
+## Development and validation
+
+See [development](docs/development.md) for dependency-isolated tests and local service entrypoints, and [tools](tools/README.md) for real-device qualification commands.
+
+The recorded workstation checks cover 8K Omni multi-turn recall, Responses streaming and continuation, about 22K tokens of LLM history, and 25 fps talking-portrait co-residency under light background traffic. The configured 262K LLM window has not been fully quality-qualified; decoded media does not establish physical speaker/microphone playback. Detailed evidence and remaining limits belong in the [workstation guide](docs/deployment/workstation.md), not in the setup procedure.
+
+## Documentation
+
+- [API contract](docs/api.md)
+- [Architecture and module boundaries](docs/architecture.md)
+- [Workstation deployment and migration](docs/deployment/workstation.md)
+- [AGX Orin reproduction](docs/deployment/orin.md) · [JetPack 6 / CUDA 12.9](docs/deployment/jetpack6-cu129.md)
+- [Development](docs/development.md) · [Deployment and qualification tools](tools/README.md)

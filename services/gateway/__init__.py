@@ -1,0 +1,1 @@
+"""Authenticated public inference gateway."""
