@@ -48,7 +48,8 @@ def serve(model, revision, path):
                '--max-model-len', str(window), '--max-num-seqs', os.environ.get('LLM_MAX_NUM_SEQS', '4'),
                '--max-num-batched-tokens', '2048', '--enforce-eager',
                '--language-model-only', '--no-enable-prefix-caching',
-               '--gpu-memory-utilization', '0.90',
+               # Fixed KV bytes below own allocation; leave startup headroom for Ditto.
+               '--gpu-memory-utilization', '0.85',
                '--kv-cache-memory-bytes', os.environ.get('LLM_KV_CACHE_BYTES', '9663676416'),
                '--mamba-ssm-cache-dtype', 'float32', '--reasoning-parser', 'qwen3',
                '--enable-auto-tool-choice', '--tool-call-parser', 'qwen3_coder']
