@@ -31,3 +31,5 @@ python -m tools.qualification.concurrency --env .env --report tmp/llm-concurrenc
 共享语音和长文输入位于 `evaluations/fixtures/`，验收与诊断工具共同使用该层，彼此不导入流程实现。
 
 `tools.qualification.concurrency` 验证四路 Responses 的输出区间实际重叠、约 28K 输入加三路短请求混跑、续接、token 压力导致的 429、剩余预算允许短 Chat 及取消释放。可用 `--engine-metrics http://<引擎私网地址>:8000/metrics` 同时采样 `vllm:num_requests_running` 并要求达到 4；不对外发布该端点。报告保留输入／输出计量、首增量与结束时间、准入和运行序列采样，不把异步提交数当成同时生成数。
+
+`tools.qualification.portrait --reference <PNG> --seconds 90 --concurrent-llm 4` 在原生语音／神经头像播放期间执行四路各 256-token SSE，并要求完整输出区间重叠、真实神经帧达到 25 fps、采样时间线偏差小于 160 ms、取消后恢复。LLM 数字与输出夹具使用温度 0，保持判定内容不变；服务仍保留调用方的采样选择。启用头像时的 GPU 批次空档会降低单路 token 速度，报告记录实际首增量和结束时间。

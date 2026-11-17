@@ -22,7 +22,7 @@ uv run --no-project --with-requirements services/gateway/requirements.txt python
 uv run --no-project --with-requirements services/avatar/requirements.txt python -B -m unittest discover -s services/avatar/tests -v
 uv run --no-project --with-requirements services/avatar/requirements.txt python -B -m unittest discover -s tests/integration -v
 uv run --no-project --with aiohttp --with pillow python -B -m unittest discover -s services/portrait/tests -v
-python -B -m unittest services.inference.tests.test_model services.inference.tests.test_chat_validation services.inference.tests.test_patch_minicpmo_awq_stages tests.tooling.test_compose -v
+python -B -m unittest services.inference.tests.test_model services.inference.tests.test_chat_validation services.inference.tests.test_llm_admission services.inference.tests.test_patch_minicpmo_awq_stages tests.tooling.test_compose -v
 ```
 
 INT4 layout/reference tests additionally need PyTorch. Use the pinned inference environment rather than installing GPU libraries into the host's default Python:

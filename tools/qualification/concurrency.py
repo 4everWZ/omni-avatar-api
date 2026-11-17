@@ -91,6 +91,10 @@ class ConcurrencyQualification:
             try:
                 model = await self.json('GET', '/llm/v1/models')
                 assert model['data'][0]['max_model_len'] == 262144
+                health = await self.json('GET', '/llm/healthz')
+                assert health['checkpoint_root_verified']
+                self.report.update(model=health['configured_model'], checkpoint=health['checkpoint'],
+                                   sampling_temperature=0, scope='four_way_responses_and_token_budget')
                 self.report['checks'].append({'single_request_window': 262144})
                 self.report['checks'].append({'four_short_requests': await stream_group(
                     self.http, self.args.gateway, self.token)})

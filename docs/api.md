@@ -33,6 +33,8 @@ LLM 单请求上限保留 262144 tokens，引擎和网关默认允许 4 个生�
 
 `LLM_MAX_NUM_SEQS` 同时配置引擎和网关（默认 4）；`LLM_TOKEN_BUDGET` 是全局活跃预算，不改变模型窗口。`LLM_QUEUE_LIMIT`、`LLM_QUEUE_TIMEOUT`、`LLM_REQUEST_TIMEOUT` 可独立设置后台排队和总期限，默认继承现有 16／5 秒／1200 秒；Omni 的实时通道保持独立。提高并发或预算必须重新验证显存和头像共驻表现。
 
+启用神经头像覆盖时，`LLM_GPU_STEP_PAUSE_MS=250` 让每个真实 GPU 批次完成后再让出执行时间，并关闭 LLM 异步批次重叠；同一批次仍可生成四个序列，SSE 按实际生成即时转发。此配置优先保证 25 fps，实测四路各输出 256 tokens 时约 3.4 tokens/s/路。未启用神经头像覆盖时默认不让出该时间。该计算配额与 token 显存预算分别生效；当前保留 8bit 权重、浮点 KV 和 FP32 SSM。
+
 当前验收范围是 provider API，具体 Antigravity／agent-orchestrator 客户端接入留在应用项目。[provider 约定](../services/gateway/README.md#external-orchestration-clients)。
 
 ## Avatar 会话与音画

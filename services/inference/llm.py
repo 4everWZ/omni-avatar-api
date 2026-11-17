@@ -50,14 +50,10 @@ def serve(model, revision, path):
                '--max-num-batched-tokens', '2048', '--enforce-eager',
                '--language-model-only', '--no-enable-prefix-caching',
                # Fixed KV bytes below own allocation; leave startup headroom for Ditto.
-               '--gpu-memory-utilization', os.environ.get('LLM_GPU_MEMORY_UTILIZATION', '0.85'),
+               '--gpu-memory-utilization', '0.85',
                '--kv-cache-memory-bytes', os.environ.get('LLM_KV_CACHE_BYTES', '9663676416'),
                '--mamba-ssm-cache-dtype', 'float32', '--reasoning-parser', 'qwen3',
                '--enable-auto-tool-choice', '--tool-call-parser', 'qwen3_coder']
-    cache_dtype = os.environ.get('LLM_KV_CACHE_DTYPE', 'auto')
-    if cache_dtype != 'auto':
-        command.extend(['--kv-cache-dtype', cache_dtype,
-                        '--attention-backend', 'TRITON_ATTN'])
     pause = float(os.environ.get('LLM_GPU_STEP_PAUSE_MS', '0'))
     if not math.isfinite(pause) or pause < 0:
         raise ValueError('LLM_GPU_STEP_PAUSE_MS must be nonnegative and finite')

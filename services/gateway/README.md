@@ -52,7 +52,7 @@ With `deploy/compose/inference.yml`, use `/llm/v1` and `llm-default`. The primar
 ```python
 from openai import OpenAI
 client = OpenAI(base_url="http://localhost:18080/llm/v1", api_key="<application bearer>")
-with client.responses.stream(model="llm-default", input="你好") as stream:
+with client.responses.stream(model="llm-default", input="你好", max_output_tokens=512) as stream:
     for event in stream:
         if event.type == "response.output_text.delta":
             print(event.delta, end="", flush=True)
@@ -73,5 +73,7 @@ The text engine and gateway default to four generation sequences (`LLM_MAX_NUM_S
 Set explicit `max_output_tokens` (Chat: `max_completion_tokens` / `max_tokens`) for shorter requests. Omitting it preserves the engine's default output limit and can reserve the entire remaining window, serializing requests. FIFO queueing prevents a stream of short requests from starving a long request. Capacity waits time out with `429` and `Retry-After`; an individually impossible reservation returns `400`. `/llm/api/mode` exposes reserved/available tokens and active sequences. Foreground, background, disconnect and cancellation use the same resource lease. Four short simultaneous generations are the qualification target; four full-window requests are outside this memory budget.
 
 Optional `LLM_QUEUE_LIMIT`, `LLM_QUEUE_TIMEOUT` and `LLM_REQUEST_TIMEOUT` configure only this backend; unset/empty values inherit the parent gateway's values (normally 16 / 5 s / 1200 s). Omni admission remains independent. Raising sequence or token limits requires renewed GPU and portrait co-residency qualification.
+
+The neural-portrait overlay sets `LLM_GPU_STEP_PAUSE_MS=250`: synchronous GPU batches yield compute after completion, while retaining up to four sequences per batch. This is engine scheduling, not delayed SSE delivery. The measured portrait-priority profile produces about 3.4 tokens/s per request for four simultaneous 256-token outputs. Deploying without the portrait overlay leaves this pause disabled by default. Token reservations protect memory; batch yielding separately protects the renderer's compute budget.
 
 Antigravity documents an [external OpenAI-compatible provider interface](https://antigravity.google/docs/sdk/local-models/#external-openai-compatible-servers); [Agent Orchestrator](https://github.com/OrchestratorInc/agent-orchestrator) manages agent clients as a separate layer. This service is validated as a provider, with two independently continued caller histories and concurrently submitted typed SSE requests. Specific orchestration clients have not been integrated here. [Provider fixture evidence](../../evaluations/results/orchestrator-provider-workstation.json).

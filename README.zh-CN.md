@@ -86,6 +86,7 @@ client = OpenAI(
 with client.responses.stream(
     model="llm-default",
     input="用一句话打个招呼。",
+    max_output_tokens=512,
     extra_body={"chat_template_kwargs": {"enable_thinking": False}},
 ) as stream:
     for event in stream:
@@ -116,7 +117,7 @@ evaluations/              共享测试输入和保留的实机证据
 
 [开发指南](docs/development.md)说明依赖隔离的测试方式与本地服务入口；[工具说明](tools/README.md)提供实机验收命令。
 
-现有工作站记录覆盖 Omni 8K 多轮检索、Responses 流式与续接、约 22K tokens 的 LLM 历史，以及轻量后台请求下的 25 fps 说话头像共驻。完整 262K LLM 窗口质量尚未验收，媒体解码通过也不代表物理麦克风／扬声器已确认。详细证据与剩余限制见[工作站指南](docs/deployment/workstation.md)。
+现有记录覆盖 Omni 8K 多轮检索、Responses 续接、约 22K tokens 的 LLM 历史，以及四路较短请求实际同时生成与 25 fps 神经头像共驻。头像优先配置会让出 GPU 时间；四路各输出 256 tokens 时，实测单路约 3.4 tokens/s。完整 262K 窗口质量仍待验收，媒体解码也不代表物理麦克风／扬声器已确认。证据与限制见[工作站指南](docs/deployment/workstation.md)。
 
 ## 文档
 
