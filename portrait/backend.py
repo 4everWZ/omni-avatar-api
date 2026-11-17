@@ -221,6 +221,10 @@ class CudaFrame:
         logging.warning('Portrait compiled/eager FP16 difference: max=%g mean=%g',
                         difference.max().item(), difference.mean().item())
         self.source = source
+        del reference, difference
+        # Eager comparison/autotuning scratch is disposable. Graph-owned pools
+        # and model tensors remain live; return unused global cache to the LLM.
+        torch.cuda.empty_cache()
 
     def __call__(self, feature, source, driving):
         if feature is not self.source:
