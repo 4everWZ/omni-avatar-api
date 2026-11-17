@@ -1,0 +1,12 @@
+{
+  "state": "passed",
+  "sdk": "openai",
+  "version": "3.35.1",
+  "checks": [
+    "typed_responses_stream",
+    "get_final_response",
+    "previous_response_id",
+    "retrieve"
+  ],
+  "text_delta_events": 2
+}
