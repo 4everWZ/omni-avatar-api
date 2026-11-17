@@ -32,6 +32,11 @@ class ResponsesProxy:
             task.cancel()
         await asyncio.gather(*tuple(self.monitors), return_exceptions=True)
 
+    def track_background(self, response_id, lease):
+        task = asyncio.create_task(self.monitor(response_id, lease))
+        self.monitors.add(task)
+        task.add_done_callback(self.monitors.discard)
+
     async def monitor(self, response_id, lease):
         terminal = False
         try:
@@ -104,6 +109,9 @@ class ResponsesProxy:
                         allow_redirects=False) as upstream:
                     content_type = upstream.headers.get('Content-Type', 'application/json')
                     if upstream.content_type == 'text/event-stream':
+                        if creating and upstream.status == 200 and payload.get('background'):
+                            self.track_background(payload['request_id'], lease)
+                            lease = None
                         outgoing = web.StreamResponse(status=upstream.status, headers={
                             'Content-Type': content_type, 'Cache-Control': 'no-cache', 'X-Accel-Buffering': 'no'})
                         await outgoing.prepare(request)
@@ -116,9 +124,7 @@ class ResponsesProxy:
                         result = json.loads(body)
                         if result.get('id') != payload['request_id']:
                             return error(502, 'response_identity_mismatch', 'Backend returned an unexpected response identity.')
-                        task = asyncio.create_task(self.monitor(payload['request_id'], lease))
-                        self.monitors.add(task)
-                        task.add_done_callback(self.monitors.discard)
+                        self.track_background(payload['request_id'], lease)
                         lease = None
                     return web.Response(status=upstream.status, body=body, headers={'Content-Type': content_type})
         except (TimeoutError, ClientError, ValueError):

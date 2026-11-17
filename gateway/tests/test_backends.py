@@ -163,3 +163,20 @@ class BackendIsolationTest(unittest.IsolatedAsyncioTestCase):
         self.assertIn(b'event: response.output_text.delta', data)
         response.close()
         await asyncio.wait_for(self.ended.wait(), 2)
+
+    async def test_background_stream_disconnect_keeps_quota_until_cancelled(self):
+        import json
+        stream = await self.http.post('/llm/v1/responses', json={
+            'model': 'llm-default', 'input': 'hello', 'stream': True, 'background': True})
+        response_id = None
+        async with asyncio.timeout(1):
+            while response_id is None:
+                line = await stream.content.readline()
+                if line.startswith(b'data: '):
+                    response_id = json.loads(line[6:])['response']['id']
+        stream.close()
+        await asyncio.wait_for(self.ended.wait(), 2)
+        async with self.http.post('/llm/v1/responses', json={'model': 'llm-default', 'input': 'busy'}) as response:
+            self.assertEqual(response.status, 429)
+        async with self.http.post('/llm/v1/responses/' + response_id + '/cancel') as response:
+            self.assertEqual((await response.json())['status'], 'cancelled')
