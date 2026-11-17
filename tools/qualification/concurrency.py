@@ -10,10 +10,14 @@ from aiohttp import ClientSession, ClientTimeout
 from .workstation import read_env
 
 
-async def stream_group(http, gateway, token, inputs=None):
-    """Require all four output intervals to overlap, not just HTTP submission."""
+SHORT_PROMPT = 'Write the integers from 1 to 200, one integer per line.'
+
+
+async def stream_requests(http, gateway, token, inputs, request_options=None):
+    """Measure actual token usage and the output intervals of concurrent requests."""
     origin = monotonic()
-    inputs = inputs or ['Write the integers from 1 to 200, one integer per line.'] * 4
+    request_options = request_options or [{} for _ in inputs]
+    assert len(request_options) == len(inputs)
     async def one(index, text):
         first, last, terminal, deltas = None, None, None, 0
         output = []
@@ -22,7 +26,7 @@ async def stream_group(http, gateway, token, inputs=None):
                 headers={'Authorization': 'Bearer ' + token}, json={
                     'model': 'llm-default', 'input': text, 'stream': True, 'store': False,
                     'max_output_tokens': 256, 'temperature': 0,
-                    'chat_template_kwargs': {'enable_thinking': False}}) as response:
+                    'chat_template_kwargs': {'enable_thinking': False}, **request_options[index]}) as response:
             assert response.status == 200, ('stream', index, response.status)
             async for line in response.content:
                 if not line.startswith(b'data: '):
@@ -38,13 +42,27 @@ async def stream_group(http, gateway, token, inputs=None):
                     terminal = monotonic() - origin
                     usage = event['response'].get('usage')
         assert first is not None and last > first and terminal and deltas > 2
+        tokens = usage['output_tokens']
         return {'index': index, 'first_delta_seconds': first, 'last_delta_seconds': last,
                 'terminal_seconds': terminal, 'delta_events': deltas, 'usage': usage,
+                'end_to_end_output_tps': tokens / terminal,
+                'output_interval_tps': (tokens - 1) / (last - first),
                 'output_excerpt': ''.join(output)[:96]}
     results = await asyncio.gather(*(one(i, text) for i, text in enumerate(inputs)))
     overlap = min(item['last_delta_seconds'] for item in results) - max(item['first_delta_seconds'] for item in results)
     assert overlap > 0, results
-    return {'requests': results, 'four_output_intervals_overlap_seconds': overlap}
+    return {'requests': results, 'concurrency': len(results), 'output_intervals_overlap_seconds': overlap,
+            'aggregate_end_to_end_output_tps': sum(item['usage']['output_tokens'] for item in results)
+                / max(item['terminal_seconds'] for item in results)}
+
+
+async def stream_group(http, gateway, token, inputs=None):
+    """Require all four output intervals to overlap, not just HTTP submission."""
+    inputs = inputs or [SHORT_PROMPT] * 4
+    assert len(inputs) == 4
+    result = await stream_requests(http, gateway, token, inputs)
+    result['four_output_intervals_overlap_seconds'] = result['output_intervals_overlap_seconds']
+    return result
 
 
 class ConcurrencyQualification:
@@ -119,6 +137,20 @@ class ConcurrencyQualification:
                                  for part in item.get('content', []))
                 assert 'ALPHA1729' in output
                 self.report['checks'].append({'owned_continuation': True, 'usage': continued['usage']})
+
+                codes = ['ALPHA1729', 'BRAVO8642', 'CHARLIE3957', 'DELTA6083']
+                seeds = [await self.json('POST', '/llm/v1/responses', json={
+                    'model': 'llm-default', 'input': 'Remember this project code: ' + code + '. Say received.',
+                    'temperature': 0, 'max_output_tokens': 32,
+                    'chat_template_kwargs': {'enable_thinking': False}}) for code in codes]
+                branches = await stream_requests(self.http, self.args.gateway, self.token,
+                    ['Print the project code, then write the integers from 1 to 200, one per line.'] * 4,
+                    [{'previous_response_id': seed['id']} for seed in seeds])
+                for code, result in zip(codes, branches['requests']):
+                    assert code in result['output_excerpt'], result
+                    assert not any(other in result['output_excerpt'] for other in codes if other != code), result
+                self.report['checks'].append({'four_worker_continuations_isolated': True, **branches})
+                print('four_worker_continuations_isolated', flush=True)
 
                 # Reserve most of the budget with a low-input, long-running background job.
                 job = await self.json('POST', '/llm/v1/responses', json={

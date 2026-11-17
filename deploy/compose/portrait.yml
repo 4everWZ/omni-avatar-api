@@ -1,8 +1,61 @@
 # Append after the four-file inference mainline. GPU0 is shared with the LLM.
 services:
-  llm-engine:
+  gpu-mps:
+    image: omni-api-engine:0.32.0-workstation
+    pull_policy: never
+    user: '0:0'
+    entrypoint: /bin/sh
+    command:
+      - -ec
+      - |
+        mkdir -p /run/omni-mps /mps-log
+        chmod 777 /run/omni-mps /mps-log
+        nvidia-cuda-mps-control -f -M &
+        daemon=$$!
+        shutdown() {
+          trap - TERM INT
+          echo quit | nvidia-cuda-mps-control >/dev/null 2>&1 || true
+          wait "$$daemon" || true
+          exit 0
+        }
+        trap shutdown TERM INT
+        wait "$$daemon"
+    restart: unless-stopped
+    stop_grace_period: 30s
+    network_mode: none
+    ipc: shareable
+    shm_size: 2gb
+    runtime: nvidia
+    gpus:
+      - driver: nvidia
+        device_ids: ['0']
     environment:
-      LLM_GPU_STEP_PAUSE_MS: ${LLM_GPU_STEP_PAUSE_MS:-250}
+      CUDA_MPS_PIPE_DIRECTORY: /run/omni-mps
+      CUDA_MPS_LOG_DIRECTORY: /mps-log
+    volumes:
+      - mps-control:/run/omni-mps
+      - mps-log:/mps-log
+    healthcheck:
+      test: [CMD-SHELL, "echo get_server_list | nvidia-cuda-mps-control >/dev/null"]
+      interval: 5s
+      timeout: 3s
+      start_period: 10s
+      retries: 4
+
+  llm-engine:
+    ipc: service:gpu-mps
+    pid: service:gpu-mps
+    shm_size: !reset null
+    depends_on:
+      gpu-mps:
+        condition: service_healthy
+        restart: true
+    environment:
+      CUDA_MPS_PIPE_DIRECTORY: /run/omni-mps
+      CUDA_MPS_CLIENT_PRIORITY: '1'
+      CUDA_MPS_ACTIVE_THREAD_PERCENTAGE: ${LLM_MPS_ACTIVE_THREAD_PERCENTAGE:-20}
+    volumes:
+      - mps-control:/run/omni-mps
 
   portrait-assets:
     profiles: [assets]
@@ -25,16 +78,24 @@ services:
     gpus:
       - driver: nvidia
         device_ids: ['0']
-    shm_size: 1gb
+    ipc: service:gpu-mps
+    pid: service:gpu-mps
+    depends_on:
+      gpu-mps:
+        condition: service_healthy
+        restart: true
     environment:
       OMNI_AVATAR_INTERNAL_TOKEN: ${OMNI_AVATAR_INTERNAL_TOKEN:?set internal token}
       HF_HUB_OFFLINE: '1'
       TRANSFORMERS_OFFLINE: '1'
+      CUDA_MPS_PIPE_DIRECTORY: /run/omni-mps
+      CUDA_MPS_CLIENT_PRIORITY: '0'
     volumes:
       - ${OMNI_PORTRAIT_MODELS:-./data/portrait}:/portrait:ro
       - portrait-data:/data
       - portrait-cache:/cache
       - portrait-control:/run/omni-portrait
+      - mps-control:/run/omni-mps
     healthcheck:
       test: [CMD, python, -c, "import socket; s=socket.socket(socket.AF_UNIX); s.settimeout(3); s.connect('/run/omni-portrait/control.sock'); s.sendall(b'GET /livez HTTP/1.0'+bytes([13,10,13,10])); assert b'200 OK' in s.recv(1024)"]
       interval: 15s
@@ -52,6 +113,8 @@ services:
       - portrait-control:/run/omni-portrait:ro
 
 volumes:
+  mps-control:
+  mps-log:
   portrait-data:
   portrait-cache:
   portrait-control:

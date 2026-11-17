@@ -1,6 +1,5 @@
 """Pinned, independent text inference; never executes tools or stores memory."""
 import json
-import math
 import os
 from pathlib import Path
 import sys
@@ -47,19 +46,16 @@ def serve(model, revision, path):
                '--model', str(path), '--served-model-name', model,
                '--host', '0.0.0.0', '--port', '8000', '--dtype', 'bfloat16',
                '--max-model-len', str(window), '--max-num-seqs', os.environ.get('LLM_MAX_NUM_SEQS', '4'),
-               '--max-num-batched-tokens', '2048', '--enforce-eager',
+               '--max-num-batched-tokens', '2048',
+               '--compilation-config', json.dumps({'mode': 0, 'cudagraph_mode': 'FULL_DECODE_ONLY',
+                                                    'cudagraph_capture_sizes': [1, 2, 4]}),
+               '--no-async-scheduling',
                '--language-model-only', '--no-enable-prefix-caching',
                # Fixed KV bytes below own allocation; leave startup headroom for Ditto.
                '--gpu-memory-utilization', '0.85',
                '--kv-cache-memory-bytes', os.environ.get('LLM_KV_CACHE_BYTES', '9663676416'),
                '--mamba-ssm-cache-dtype', 'float32', '--reasoning-parser', 'qwen3',
                '--enable-auto-tool-choice', '--tool-call-parser', 'qwen3_coder']
-    pause = float(os.environ.get('LLM_GPU_STEP_PAUSE_MS', '0'))
-    if not math.isfinite(pause) or pause < 0:
-        raise ValueError('LLM_GPU_STEP_PAUSE_MS must be nonnegative and finite')
-    if pause:
-        # Finish each real GPU batch before yielding compute to the portrait.
-        command.append('--no-async-scheduling')
     os.execvp(command[0], command)
 
 
