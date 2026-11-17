@@ -14,6 +14,14 @@ class PortraitQualification(InferenceQualification):
         self.report['scope'] = 'reference_ditto_native_omni_responses'
         self.render_samples = []
 
+    async def ordinary_request(self):
+        if getattr(self.args, 'concurrent_llm', 1) == 4 and self.avatar is not None:
+            from .concurrency import stream_group
+            result = await stream_group(self.http, self.args.gateway.rstrip('/'), self.other)
+            self.check('four_simultaneous_responses_while_neural_avatar_active', **result)
+        else:
+            await super().ordinary_request()
+
     async def chat_checks(self):
         # These backends have a separate qualification; here exercise co-residency.
         await self.ordinary_request()
@@ -67,6 +75,9 @@ class PortraitQualification(InferenceQualification):
 
     async def exercise(self):
         await super().exercise()
+        if getattr(self.args, 'concurrent_llm', 1) == 4:
+            assert any(item['name'] == 'four_simultaneous_responses_while_neural_avatar_active'
+                       for item in self.report['checks']), 'Four-way generation did not finish during the media check'
         final = await self.json('GET', '/v1/avatar/sessions/' + self.avatar['id'])
         last = final['renderer']
         assert last['generated_frames'] >= self.args.seconds * 25, last
@@ -93,6 +104,7 @@ if __name__ == '__main__':
     parser.add_argument('--gateway', default='http://127.0.0.1:8000')
     parser.add_argument('--env', default='.env')
     parser.add_argument('--seconds', type=int, default=120)
+    parser.add_argument('--concurrent-llm', type=int, choices=(1, 4), default=1)
     parser.add_argument('--reference', required=True)
     parser.add_argument('--wav', default=str(Path(__file__).resolve().parents[2] / 'evaluations/fixtures/question.wav'))
     parser.add_argument('--report', default='tmp/portrait-functional.json')

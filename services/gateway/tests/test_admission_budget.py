@@ -49,8 +49,7 @@ class TokenBudgetTests(unittest.IsolatedAsyncioTestCase):
             await asyncio.sleep(.01)
             self.assertEqual(self.admission.queued, 2)
             self.assertEqual(order, [])
-        await asyncio.gather(large_started := asyncio.create_task(self.wait_until(lambda: order)),
-                             asyncio.sleep(.01))
+        await self.wait_until(lambda: order)
         release_long.set()
         await asyncio.gather(large, small)
         self.assertEqual(order, ['long', 'short'])

@@ -1,5 +1,6 @@
 """Pinned, independent text inference; never executes tools or stores memory."""
 import json
+import math
 import os
 from pathlib import Path
 import sys
@@ -53,6 +54,12 @@ def serve(model, revision, path):
                '--kv-cache-memory-bytes', os.environ.get('LLM_KV_CACHE_BYTES', '9663676416'),
                '--mamba-ssm-cache-dtype', 'float32', '--reasoning-parser', 'qwen3',
                '--enable-auto-tool-choice', '--tool-call-parser', 'qwen3_coder']
+    pause = float(os.environ.get('LLM_GPU_STEP_PAUSE_MS', '0'))
+    if not math.isfinite(pause) or pause < 0:
+        raise ValueError('LLM_GPU_STEP_PAUSE_MS must be nonnegative and finite')
+    if pause:
+        # Finish each real GPU batch before yielding compute to the portrait.
+        command.append('--no-async-scheduling')
     os.execvp(command[0], command)
 
 

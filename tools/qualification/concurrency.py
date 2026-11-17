@@ -117,8 +117,11 @@ class ConcurrencyQualification:
 
                 # Reserve most of the budget with a low-input, long-running background job.
                 job = await self.json('POST', '/llm/v1/responses', json={
-                    'model': 'llm-default', 'input': 'Write all integers from 1 to 100000, one per line.',
+                    'model': 'llm-default', 'input': 'Return the required JSON array of ones.',
                     'background': True, 'max_output_tokens': 200000,
+                    'text': {'format': {'type': 'json_schema', 'name': 'budget_hold', 'strict': True,
+                        'schema': {'type': 'array', 'items': {'type': 'integer', 'const': 1},
+                                   'minItems': 8192, 'maxItems': 8192}}},
                     'chat_template_kwargs': {'enable_thinking': False}})
                 self.background = job['id']
                 state = await self.json('GET', '/llm/api/mode')
@@ -150,7 +153,8 @@ class ConcurrencyQualification:
                 raise
             finally:
                 if self.background:
-                    await self.json('POST', '/llm/v1/responses/' + self.background + '/cancel')
+                    async with self.http.post(self.args.gateway + '/llm/v1/responses/' + self.background + '/cancel') as response:
+                        await response.read()
                 self.stop.set()
                 await sampler
                 self.save()
