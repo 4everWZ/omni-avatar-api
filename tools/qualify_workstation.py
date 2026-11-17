@@ -326,10 +326,7 @@ class Qualification:
 
         async def ordinary_calls():
             while True:
-                reply = await self.json('POST', '/v1/chat/completions', other=True, json={
-                    'model': 'omni-default', 'messages': [{'role': 'user', 'content': '只回答数字：2+3等于几？'}],
-                    'max_tokens': 128, 'chat_template_kwargs': {'enable_thinking': False}})
-                assert '5' in reply['choices'][0]['message']['content']
+                await self.ordinary_request()
                 self.report['ordinary_calls'] = self.report.get('ordinary_calls', 0) + 1
                 await asyncio.sleep(30)
 
@@ -356,6 +353,12 @@ class Qualification:
         await self.metrics()
         self.check('continuous_media', elapsed_seconds=monotonic() - self.started, frames=self.frames,
                    native_audio_chunks=self.native_audio, playback_evidence='decoded_and_consumed_not_physical_output')
+
+    async def ordinary_request(self):
+        reply = await self.json('POST', '/v1/chat/completions', other=True, json={
+            'model': 'omni-default', 'messages': [{'role': 'user', 'content': '只回答数字：2+3等于几？'}],
+            'max_tokens': 128, 'chat_template_kwargs': {'enable_thinking': False}})
+        assert '5' in reply['choices'][0]['message']['content']
 
     async def cleanup(self):
         for task in self.tasks:

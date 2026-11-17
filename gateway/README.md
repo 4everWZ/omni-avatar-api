@@ -1,6 +1,6 @@
 # Omni inference gateway
 
-Applications use a configured gateway URL and the `omni-default` model alias. On the shared Compose network, the URL is `http://omni-gateway:8000/v1`. The gateway translates the requested alias to the engine's configured model ID. Upstream response bodies and Realtime events keep their wire format. Deploy one gateway process for each upstream engine so its admission counts cover all callers of that engine.
+Applications use a configured gateway URL and the `omni-default` model alias. On the shared Compose network, the URL is `http://omni-gateway:8000/v1`. The gateway translates the requested alias to the engine's configured model ID. Upstream response bodies and Realtime events keep their wire format. The workstation overlay registers a second backend at `/llm`: each backend has its own upstream session, health checks and admission counters. All callers of each engine share that engine’s admission.
 
 | Endpoint | Behavior |
 | --- | --- |
@@ -44,3 +44,20 @@ The optional Avatar overlay sets `OMNI_AVATAR_URL` and a separate `OMNI_AVATAR_I
 ```sh
 uv run --no-project --with-requirements requirements.txt python -B -m unittest discover -s tests -v
 ```
+
+## Long-context Responses backend
+
+With `infra-inference.compose.yml`, use `/llm/v1` and `llm-default`. The primary endpoint is `POST /llm/v1/responses`; Chat Completions remains compatible. `/llm/healthz`, `/llm/v1/models` and `/llm/api/mode` describe only this backend. LLM capacity does not consume Omni admission. Text-backend configuration uses `LLM_ENGINE_URL`, `LLM_MODEL_ID`, `LLM_CHECKPOINT`, and optional `LLM_ENGINE_TOKEN`; timeout settings are shared with the parent gateway; see the Compose overlay for pinned values.
+
+```python
+from openai import OpenAI
+client = OpenAI(base_url="http://localhost:18080/llm/v1", api_key="<application bearer>")
+with client.responses.stream(model="llm-default", input="你好") as stream:
+    for event in stream:
+        if event.type == "response.output_text.delta":
+            print(event.delta, end="", flush=True)
+```
+
+HTTP Responses supports incremental SSE (`stream: true`), JSON Schema, function-call output, owned `previous_response_id`, retrieval via `GET /llm/v1/responses/{id}` and cancellation via `POST /llm/v1/responses/{id}/cancel`. Only function tools are accepted; the service executes no tools. Hosted tools, conversation IDs, item references, cloud WebSocket/compact/delete endpoints are outside the pinned engine's supported subset. `/llm/v1/chat/prompt_tokens` counts Chat templates, not the entire Responses continuation lineage.
+
+The gateway replaces caller-supplied request IDs with authenticated owner-bound response IDs. Foreign retrieval, cancellation and continuation return 404. Stored responses live in engine RAM and disappear on restart; callers retain durable business history. Foreground stream disconnection cancels upstream work. Background work, including `background: true` plus streaming, keeps its admission lease after disconnection until completion, cancellation or deadline. Keep the admin secret stable across gateway restarts to retain response ownership verification.
