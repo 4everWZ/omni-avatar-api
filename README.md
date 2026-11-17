@@ -16,4 +16,4 @@
 
 ## 部署状态
 
-工作站固定引擎镜像已构建，容器可识别两张 3090。Ava 2D 独立音画、权限、释放及原生双工 120 秒短混合检查通过。当前 AWQ／INT4 KV 候选的近 4 万 tokens 长文检索失败，整体验收未通过；两小时负载及数字人阶段尚未开展。[工作站准入](docs/workstation.md#实机准入) · [双工与 Ava 短检查](evaluations/results/native-avatar-workstation.json) · [长文失败证据](evaluations/results/omni-workstation-int4.json) · [历史 AGX 证据](https://github.com/4everWZ/Tuber_Studio/blob/main/evaluations/results/omni-deployment-20261116.md)
+工作站固定引擎镜像已构建，容器可识别两张 3090。Ava 2D 独立音画、权限、释放及原生双工 120 秒短混合检查通过。近 4 万 tokens 检索在 AWQ、BF16、INT8／浮点 KV 和直接文本骨干参考中仍未通过，整体验收受可靠满窗要求阻塞；官方建议的最大多模态输入为 8K，不能将配置上限作为质量保证。两小时负载及数字人阶段尚未开展。[工作站准入](docs/workstation.md#实机准入) · [待选上下文方案](docs/plans/avatar-workstation.md#上下文调研与待选方案) · [双工与 Ava 短检查](evaluations/results/native-avatar-workstation.json) · [长文失败证据](evaluations/results/omni-workstation-int4.json) · [历史 AGX 证据](https://github.com/4everWZ/Tuber_Studio/blob/main/evaluations/results/omni-deployment-20261116.md)

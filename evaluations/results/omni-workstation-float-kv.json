@@ -1,0 +1,50 @@
+{
+  "started_utc": "2026-11-17T05:22:45.490499+00:00",
+  "metrics_collector_host": "belal-PC",
+  "scope": "awq_float_kv_8g_flash_same_window_chat_preflight",
+  "requested_seconds": 120,
+  "state": "failed",
+  "checks": [
+    {
+      "name": "engine_identity",
+      "window": 40960,
+      "checkpoint": "927faefa0bce96e557945e106f3b3d8b4d39f4b2",
+      "root_verified": true
+    },
+    {
+      "name": "ordinary_chat",
+      "seconds": 0.17560395086184144
+    },
+    {
+      "name": "structured_chat"
+    },
+    {
+      "name": "second_caller_streaming_chat"
+    },
+    {
+      "name": "vision_color_correct"
+    }
+  ],
+  "samples": [],
+  "candidate": {
+    "model": "openbmb/MiniCPM-o-4_5-awq",
+    "revision": "927faefa0bce96e557945e106f3b3d8b4d39f4b2",
+    "thinker_kv_cache_dtype": "auto",
+    "thinker_attention_backend": "FLASH_ATTN",
+    "talker_kv_cache_dtype": "int4_per_token_head",
+    "thinker_gpu_utilization": 0.65,
+    "thinker_kv_cache_memory_bytes": 8589934592
+  },
+  "long_context_attempts": [
+    {
+      "case": "repeated",
+      "prompt_tokens": 39932,
+      "finish_reason": "stop",
+      "completion_tokens": 1,
+      "visible_body_characters": 0,
+      "correct": false
+    }
+  ],
+  "failure": "AssertionError: Long-context retrieval failed for repeated at 39932 prompt tokens",
+  "finished_utc": "2026-11-17T05:23:02.864613+00:00"
+}

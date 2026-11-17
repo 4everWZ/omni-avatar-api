@@ -14,3 +14,5 @@ python tools/qualify_workstation.py --env .env --seconds 7200 --report tmp/works
 在工作站运行可以收集其 GPU 和内存指标。也可使用现有 Avatar 镜像，挂载代码及单独可写的报告目录，以读取 `.env` 的宿主 UID 运行，使用 host 网络和 `--gpus all`；不需要修改宿主 Python。
 
 完整模式还用持续 SSE 占据普通准入，检查另一请求排队到期返回 429，再断开 SSE 并确认容量释放和后续推理可用。该工具不替代浏览器对麦克风、屏幕采集、重连、静默、重叠语音、字幕同步、打断和渲染故障降级的验收。报告中 `scope=avatar_only` 或时长不足 7200 秒，均不能作为两小时 Omni 混合负载通过的证据。
+
+`reference_minicpmo_text.py` 是长文定位工具：只读取同一官方 BF16 快照的 `llm.*` 权重，严格加载 Qwen3 文本骨干，用 Transformers SDPA、BF16 KV 和贪心解码运行短问答及相同的 39,932-token 检索。它按层分布到两张 GPU；使用现有引擎镜像中的 PyTorch、Transformers、Accelerate 与 safetensors，不需修改宿主依赖。运行前停止占 GPU 的引擎，挂载仓库与只读模型目录，用 `--gpus all`，结束后恢复原 Compose 服务。入口为 `python3 tools/reference_minicpmo_text.py --checkpoint /models/<revision> --report tmp/text-reference.json`。它不经过 Omni 的多模态编码器、服务调度或输出解析；`state=completed` 只表示完成测试，必须检查各 case 的 `correct`。该结果不替代 Omni API 或原生双工验收。

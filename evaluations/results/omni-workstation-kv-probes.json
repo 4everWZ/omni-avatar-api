@@ -7,19 +7,19 @@
     {
       "thinker_kv": "auto",
       "attention_backend": "TRITON_ATTN",
-      "state": "stalled",
+      "state": "stopped_without_result",
       "observed": "GPU 0 remained at 100% utilization with no visible response for several minutes. A py-spy dump found the engine main thread waiting for OmniAsyncGPUModelRunnerOutput and both output builders waiting in torch.cuda.Event.synchronize.",
       "kv_capacity_reported_tokens": 106206,
       "gpu_memory_observed_mib": [13154, 5915],
-      "conclusion": "This probe does not establish that a higher-precision KV cache fixes correctness. The unresolved CUDA wait makes this execution path unsuitable for acceptance."
+      "conclusion": "No correctness result before manual stop. CUDA event waits alone do not establish a deadlock. The duplex-reported token capacity is window-adjusted and does not establish sufficient physical KV for a full 40960-token Chat; the 2 GiB budget needs separate checking."
     },
     {
       "thinker_kv": "auto",
       "attention_backend": "FLASH_ATTN",
-      "state": "stalled",
+      "state": "stopped_without_result",
       "max_tokens": 64,
       "observed": "The same approximately 39932-token prompt produced no visible response for several minutes, with GPU 0 continuously busy. Reducing the output budget did not make this path suitable for acceptance.",
-      "conclusion": "Changing the attention backend alone did not resolve the stalled higher-precision KV probe."
+      "conclusion": "No correctness result before manual stop. This does not establish a deadlock or rule out higher-precision KV; physical cache capacity was not validated for full-window Chat."
     },
     {
       "thinker_kv": "int4_per_token_head",
