@@ -24,14 +24,16 @@ class InferenceQualification(Qualification):
         self.report['scope'] = 'decoupled_responses_omni_avatar_functional'
 
     async def responses(self, input, **options):
-        body = {'model': 'llm-default', 'input': input, 'max_output_tokens': 256,
+        body = {'model': 'llm-default', 'input': input, 'max_output_tokens': 256, 'temperature': 0,
                 'chat_template_kwargs': {'enable_thinking': False}, **options}
         return await self.json('POST', '/llm/v1/responses', json=body)
 
     async def ordinary_request(self):
         reply = await self.json('POST', '/llm/v1/responses', other=True, json={
             'model': 'llm-default', 'input': '只回答数字：2+3等于几？', 'store': False,
-            'max_output_tokens': 32, 'chat_template_kwargs': {'enable_thinking': False}})
+            'max_output_tokens': 32, 'temperature': 0, 'chat_template_kwargs': {'enable_thinking': False}})
+        if output_text(reply).strip() != '5':
+            self.report['ordinary_fixture_output'] = output_text(reply)
         assert output_text(reply).strip() == '5'
 
     async def vision_check(self):

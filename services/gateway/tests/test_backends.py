@@ -15,13 +15,14 @@ class BackendPolicyTest(unittest.TestCase):
                              queue_timeout=2, request_timeout=7)
         self.environment = {'LLM_ENGINE_URL': 'http://llm', 'LLM_MODEL_ID': 'text', 'LLM_CHECKPOINT': 'text'}
 
-    def test_text_policy_is_independent_without_adding_gpu_slots(self):
+    def test_text_policy_is_independent(self):
         with patch.dict(os.environ, self.environment | {'LLM_QUEUE_LIMIT': '32', 'LLM_QUEUE_TIMEOUT': '120',
                                                        'LLM_REQUEST_TIMEOUT': '900'}, clear=True):
             child = self.parent.text_backend()
         self.assertEqual((child.queue_limit, child.queue_timeout, child.request_timeout), (32, 120, 900))
         self.assertEqual((self.parent.queue_limit, self.parent.queue_timeout, self.parent.request_timeout), (9, 2, 7))
-        self.assertEqual(child.batch_cap, 1)
+        self.assertEqual(child.batch_cap, 4)
+        self.assertEqual(child.token_budget, 262144)
         self.assertFalse(child.realtime_enabled)
 
     def test_unset_or_empty_values_inherit(self):
@@ -31,7 +32,9 @@ class BackendPolicyTest(unittest.TestCase):
             self.assertEqual((child.queue_limit, child.queue_timeout, child.request_timeout), (9, 2, 7))
 
     def test_invalid_settings_fail_before_serving(self):
-        for key, values in {'LLM_QUEUE_TIMEOUT': ['0', '-1', 'inf', 'nan'],
+        for key, values in {'LLM_MAX_NUM_SEQS': ['0', '-1', '1.5'],
+                            'LLM_TOKEN_BUDGET': ['0', '-1', 'nan'],
+                            'LLM_QUEUE_TIMEOUT': ['0', '-1', 'inf', 'nan'],
                             'LLM_REQUEST_TIMEOUT': ['0', 'inf'], 'LLM_QUEUE_LIMIT': ['0', '1.5']}.items():
             for value in values:
                 with self.subTest(key=key, value=value), patch.dict(os.environ, self.environment | {key: value}, clear=True):
@@ -51,6 +54,7 @@ class BackendIsolationTest(unittest.IsolatedAsyncioTestCase):
         self.ended = asyncio.Event()
         self.release = asyncio.Event()
         self.responses = {}
+        self.counted = []
 
         async def engine(model):
             async def models(request):
@@ -106,10 +110,18 @@ class BackendIsolationTest(unittest.IsolatedAsyncioTestCase):
                     data['status'] = 'cancelled'
                 return web.json_response(data)
 
+            async def count(request):
+                payload = await request.json()
+                self.counted.append(payload)
+                return web.json_response({'reserved_tokens': 1001 if payload.get('input') == 'oversized' else 250,
+                                          'sequences': 1})
+
             app = web.Application()
             app.add_routes([web.get('/health', lambda r: web.Response()),
                             web.get('/v1/models', models), web.post('/v1/chat/completions', chat),
                             web.post('/tokenize', tokenize), web.post('/v1/responses', responses),
+                            web.post('/internal/admission/responses', count),
+                            web.post('/internal/admission/chat', count),
                             web.get('/v1/responses/{response_id}', responses),
                             web.post('/v1/responses/{response_id}/cancel', responses)])
             return await self.serve(app)
@@ -119,9 +131,46 @@ class BackendIsolationTest(unittest.IsolatedAsyncioTestCase):
         text = replace(config, engine_url=await engine('text'), model='text', checkpoint='text',
                        model_root='/models/text', model_alias='llm-default', public_prefix='/llm',
                        realtime_enabled=False, prompt_tokens_path='/tokenize')
+        self.parent_config, self.text_config = config, text
         self.url = await self.serve(create_app(config, text))
         self.http = ClientSession(base_url=self.url, headers={'Authorization': 'Bearer client'})
         self.addAsyncCleanup(self.http.close)
+
+    async def test_weighted_background_leases_span_four_slots_and_cancellation(self):
+        url = await self.serve(create_app(self.parent_config, replace(
+            self.text_config, batch_cap=4, token_budget=1000)))
+        async with ClientSession(base_url=url, headers={'Authorization': 'Bearer client'}) as http:
+            identifiers = []
+            for _ in range(4):
+                async with http.post('/llm/v1/responses', json={
+                        'model': 'llm-default', 'input': 'test', 'background': True}) as response:
+                    self.assertEqual(response.status, 200)
+                    identifiers.append((await response.json())['id'])
+            async with http.get('/llm/api/mode') as response:
+                state = await response.json()
+                self.assertEqual((state['active']['chat'], state['reserved_tokens']), (4, 1000))
+            async with http.post('/llm/v1/responses', json={'model': 'llm-default', 'input': 'test'}) as response:
+                self.assertEqual(response.status, 429)
+            async with http.post('/llm/v1/responses/' + identifiers.pop() + '/cancel') as response:
+                self.assertEqual(response.status, 200)
+            async with asyncio.timeout(2):
+                while True:
+                    async with http.get('/llm/api/mode') as response:
+                        if (await response.json())['reserved_tokens'] == 750:
+                            break
+                    await asyncio.sleep(.01)
+            before = len(self.counted)
+            async with http.post('/llm/v1/responses', headers={'Authorization': 'Bearer foreign'}, json={
+                    'model': 'llm-default', 'input': 'next', 'previous_response_id': identifiers[0]}) as response:
+                self.assertEqual(response.status, 404)
+            self.assertEqual(len(self.counted), before)
+            async with http.post('/llm/v1/responses', json={
+                    'model': 'llm-default', 'input': 'oversized'}) as response:
+                self.assertEqual(response.status, 400)
+            for identifier in identifiers:
+                async with http.post('/llm/v1/responses/' + identifier + '/cancel') as response:
+                    self.assertEqual(response.status, 200)
+            self.assertTrue(all(payload['model'] == 'text' for payload in self.counted))
 
     async def test_explicit_routes_models_auth_and_tokenizer(self):
         for prefix, alias, model in [('', 'omni-default', 'omni'), ('/llm', 'llm-default', 'text')]:

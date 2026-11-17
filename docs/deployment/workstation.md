@@ -27,7 +27,17 @@ python tools/compose.py -- up -d
 
 Chat 无跨请求业务记忆：应用每次提交希望使用的 messages；Realtime 由原生引擎保留活跃近期历史并按策略滑动。调用方可将外部记忆选入提示。服务不提供记忆库、自动摘要、Agent 循环或工具执行。两个模型通过不同前缀显式调用，网关不根据输入猜测或自动改用另一个模型。
 
-GPU 设备通过容器设备请求隔离；每个容器只见自己的物理卡，因此阶段配置均使用本地设备 0。后台 LLM 单请求准入，KV 保留浮点，Gated DeltaNet 的 SSM 状态使用 FP32，不与权重一起量化。Omni 单路实时和普通推理的预算独立于 LLM。新分工的峰值与未来数字人余量须实测，不把旧跨卡结果当作新单卡共驻通过。
+GPU 设备通过容器设备请求隔离；每个容器只见自己的物理卡，因此阶段配置均使用本地设备 0。后台 LLM 保留单请求 262144 上限，默认最多 4 个生成序列，共享 262144 输入加最大输出的活跃 token 预算；具体排队与预留语义见 [API](../api.md)。KV 保留浮点，Gated DeltaNet 的 SSM 状态使用 FP32，不与权重一起量化。Omni 准入独立于 LLM；四路满窗口不在现有显存保证范围。
+
+## 四路并发与计算预算
+
+当前保留 9B 8bit 权重、9 GiB 浮点 KV、FP32 SSM 和原卡位：GPU 0 为 LLM 与 Ditto，GPU 1 为完整 Omni。`LLM_MAX_NUM_SEQS=4` 同时控制引擎和网关；活跃请求共享 `LLM_TOKEN_BUDGET=262144`，按完整输入加最大输出预留，见 [API](../api.md)。长短请求按 FIFO 等待，不能把异步排队视为四路生成。
+
+神经头像覆盖默认 `LLM_GPU_STEP_PAUSE_MS=250`，在实际 GPU 批次结束后让出执行空档，保持四序列同批生成并即时转发 SSE；没有神经头像覆盖时默认关闭。该配置按用户优先级保障四路与 25 fps，非吞吐最大化配置。四路各 256 输出 tokens 时，单路约 3.4 tokens/s，输出区间重叠 74.4 秒。降低让出时间须重验头像时间线；提高 token 预算须重验显存，两者不能相互替代。
+
+Ditto 运动预测改用 FP16，并保留十步采样、RNG、分辨率和原参考图接口。图重放严格比较编译前向，另用固定输入验证 FP32 到 FP16 的数值漂移。90 秒共驻检查产生 2,266 张真实神经帧，接收 2,305 视频／4,606 音频帧及 57 个原生语音块；最大采样时间线偏差 61 ms，原生取消和恢复通过。[四路与头像](../../evaluations/results/portrait-four-way-workstation.json)。这不保证四个满窗口同时推理，也不替代完整 262K 质量验收或长期满载 SLA。
+
+同一配置的引擎指标采到 4 个同时运行序列；28,528-token 输入与三路短请求混跑通过。单请求 token 预留超过剩余预算时，即使序列槽未满也返回排队超时 429；剩余预算可接短 Chat，取消后预留归零。[并发与预算](../../evaluations/results/llm-four-way-workstation.json)。新增渲染计量路径下，Responses 续接、JSON Schema、function 往返、增量 SSE、22K 多轮历史与 Omni 8K 边界复验通过。[兼容性](../../evaluations/results/responses-budget-compatibility.json)。
 
 ## Avatar 与访问
 

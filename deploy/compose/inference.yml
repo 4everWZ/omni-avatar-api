@@ -40,6 +40,7 @@ services:
       HF_HUB_OFFLINE: '1'
       TRANSFORMERS_OFFLINE: '1'
       VLLM_ENABLE_RESPONSES_API_STORE: '1'
+      LLM_MAX_NUM_SEQS: ${LLM_MAX_NUM_SEQS:-4}
     volumes:
       - ${OMNI_MODEL_DATA:-./data/models}:/models:ro
     networks: [engine-private]
@@ -57,3 +58,5 @@ services:
       LLM_QUEUE_LIMIT: ${LLM_QUEUE_LIMIT:-}
       LLM_QUEUE_TIMEOUT: ${LLM_QUEUE_TIMEOUT:-}
       LLM_REQUEST_TIMEOUT: ${LLM_REQUEST_TIMEOUT:-}
+      LLM_MAX_NUM_SEQS: ${LLM_MAX_NUM_SEQS:-4}
+      LLM_TOKEN_BUDGET: ${LLM_TOKEN_BUDGET:-262144}

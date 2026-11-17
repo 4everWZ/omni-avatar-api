@@ -9,7 +9,7 @@ Applications own their users, conversation memory, agent orchestration and tool 
 ## Features
 
 - **Real-time multimodal assistant:** MiniCPM-o Chat Completions and native duplex Realtime with an 8K recent-context window.
-- **Long-context inference:** a separate Qwen3.5 backend with Responses, incremental SSE, structured output and function-call output. Chat Completions remains available for compatible clients.
+- **Long-context inference:** a separate Qwen3.5 backend with a 262K per-request window, up to four generation sequences under a shared token budget, Responses, incremental SSE, structured output and function-call output. Chat Completions remains available for compatible clients.
 - **Pluggable avatars:** built-in Ava 2D, or a reference-image-driven Ditto talking portrait; audio and video are delivered over WHEP with interruption and generation handling.
 - **Shared infrastructure:** per-application bearer credentials, independent backend admission, bounded queues, cancellation and caller-owned response continuation.
 - **Pinned deployments:** model revisions and inference images are fixed; model downloads are separate from offline serving.
@@ -86,6 +86,7 @@ client = OpenAI(
 with client.responses.stream(
     model="llm-default",
     input="Say hello in one sentence.",
+    max_output_tokens=512,
     extra_body={"chat_template_kwargs": {"enable_thinking": False}},
 ) as stream:
     for event in stream:
@@ -116,7 +117,7 @@ evaluations/              Shared fixtures and retained real-device evidence
 
 See [development](docs/development.md) for dependency-isolated tests and local service entrypoints, and [tools](tools/README.md) for real-device qualification commands.
 
-The recorded workstation checks cover 8K Omni multi-turn recall, Responses streaming and continuation, about 22K tokens of LLM history, and 25 fps talking-portrait co-residency under light background traffic. The configured 262K LLM window has not been fully quality-qualified; decoded media does not establish physical speaker/microphone playback. Detailed evidence and remaining limits belong in the [workstation guide](docs/deployment/workstation.md), not in the setup procedure.
+Recorded checks cover 8K Omni recall, Responses continuation, about 22K tokens of LLM history, and four simultaneous shorter generations with a 25 fps neural portrait. The portrait-priority profile yields GPU time and measures about 3.4 tokens/s per request with four 256-token outputs. The 262K window has not been fully quality-qualified; decoded media does not establish physical speaker/microphone playback. See the [workstation guide](docs/deployment/workstation.md) for evidence and limits.
 
 ## Documentation
 

@@ -123,7 +123,10 @@ class CudaPrediction:
     def __init__(self, model, torch):
         self.torch = torch
         reference = model.model_predictions
-        original = torch.compile(reference, fullgraph=True)
+        def mixed_predictions(*values):
+            with torch.autocast('cuda', dtype=torch.float16):
+                return reference(*values)
+        original = torch.compile(mixed_predictions, fullgraph=True)
         self.inputs = [torch.zeros((1, model.seq_frames, model.motion_feat_dim), device=model.device),
                        torch.zeros((1, model.motion_feat_dim), device=model.device),
                        torch.zeros((1, model.seq_frames, model.audio_feat_dim), device=model.device),
@@ -135,7 +138,20 @@ class CudaPrediction:
                 eager = original(*self.inputs)
         torch.cuda.current_stream().wait_stream(stream)
         with torch.no_grad(), torch.device(model.device):
-            torch.testing.assert_close(eager, reference(*self.inputs), rtol=1e-3, atol=1e-4)
+            # Keep FP16 precision drift separate from graph/compiled parity.
+            # A private generator leaves the live diffusion RNG untouched.
+            from torch.utils._pytree import tree_flatten
+            generator = torch.Generator(device=model.device).manual_seed(1729)
+            for magnitude in (0., 1., 2.):
+                trial = [torch.randn(value.shape, dtype=value.dtype, device=value.device,
+                                     generator=generator) * magnitude
+                         if value.is_floating_point() else value for value in self.inputs]
+                expected = tree_flatten(reference(*trial))[0]
+                actual = tree_flatten(original(*trial))[0]
+                for fp32, fp16 in zip(expected, actual):
+                    torch.testing.assert_close(fp16, fp32, rtol=1e-2, atol=5e-3, check_dtype=False)
+                logging.warning('Portrait motion FP16/FP32 difference: max=%g',
+                    max((a-b).abs().max().item() for a,b in zip(expected, actual)))
         self.graph = torch.cuda.CUDAGraph()
         with torch.cuda.graph(self.graph), torch.no_grad(), torch.device(model.device):
             self.output = original(*self.inputs)

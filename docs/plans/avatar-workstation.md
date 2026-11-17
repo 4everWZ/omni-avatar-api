@@ -18,7 +18,7 @@ Omni、后台 LLM 和 Avatar 全部部署在当前双 3090 工作站；不将 Av
 4. 网关使用显式服务前缀与独立准入：`/v1` 的 `omni-default`；`/llm/v1` 的 `llm-default`。后台推理饱和不得阻塞实时助手，不做自动选模型或隐式 Agent 编排。
 5. 多轮验收以客户端提交的历史和原生会话行为为依据；显式验证窗口边界及超限错误。后台 LLM 的原生配置上限为 262144，完整窗口的资源与正确性仍须实测，不能仅凭模型卡标记通过。
 6. 按用户要求在约半小时内完成预检与约 20 分钟一路原生双工、Avatar、后台 LLM 混合功能检查；记录调用强度、首包、音画、可用的资源采样和释放，不要求两小时负载。验证浏览器麦克风／屏幕交互及可信访问入口。
-7. 按逻辑提交 Git，凭据和运行资产不入库，不推送。
+7. 按逻辑提交 Git，凭据和运行资产不入库，按用户授权合并并同步仓库与工作站。
 
 ## 阶段二：Ava 数字人
 
@@ -42,4 +42,6 @@ Omni、后台 LLM 和 Avatar 全部部署在当前双 3090 工作站；不将 Av
 
 Omni 7,928-token／20 消息的多轮早期事实检索及超限 400 已通过；相关 API 适配回归 3 项通过。后台 LLM 的官方 Python SDK 3.35.1 typed streaming、续接和查询也通过。[8K](../../evaluations/results/omni-8k-multi-turn-workstation.json) · [Responses SDK](../../evaluations/results/responses-sdk-workstation.json)。
 
-外部任务按 Swarm／orchestrator 思路组织，当前优先交付推理 provider。保持模型与显存配置；补充 LLM 独立排队／总期限配置，并验证两个调用方分支的历史隔离与并发 SSE 提交。编排、工具执行、共享记忆与工作区由应用项目持有，具体框架集成尚未开展。
+外部任务按 Swarm／orchestrator 思路组织，当前优先交付推理 provider。保留单请求 262144，4 路较短请求实际同时生成，按总 token 预算控制长短混跑；四路满窗口需额外资源，不能用异步排队冒充并行。用户确认优先保证四路与 25 fps，暂不设每路最低输出速度。
+
+四路与 25 fps 共驻已通过：保留既有 8bit 权重与 9 GiB 浮点 KV，Ditto 运动预测使用有数值漂移检查的 FP16、十步采样；LLM 每批后让出 250 ms。90 秒真实神经帧 2,266，最大采样时间线偏差 61 ms，四路输出重叠 74.4 秒，每路约 3.4 tokens/s；取消恢复通过。[共驻证据](../../evaluations/results/portrait-four-way-workstation.json)。引擎指标确认 4 序列，28.5K 加三路短请求、预算拒绝／剩余预算混跑／取消释放通过；Responses 工具、续接、SSE、多轮及原有 8K 边界复验通过。[预算](../../evaluations/results/llm-four-way-workstation.json) · [兼容性](../../evaluations/results/responses-budget-compatibility.json)。完整 262K 质量、长期满载与实物播放仍按前述边界另行验收。编排、工具执行、共享记忆与工作区由应用项目持有，具体框架集成尚未开展。

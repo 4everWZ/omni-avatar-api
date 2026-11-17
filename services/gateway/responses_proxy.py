@@ -8,6 +8,8 @@ import re
 import secrets
 
 from aiohttp import ClientError, web
+from .admission import BudgetExceeded
+from .token_budget import reservation
 
 
 def error(status, code, message):
@@ -101,7 +103,9 @@ class ResponsesProxy:
         lease = AsyncExitStack()
         try:
             if creating:
-                await lease.enter_async_context(self.gateway.admission.hold('chat'))
+                async with asyncio.timeout(self.gateway.config.request_timeout):
+                    budget = await reservation(self.gateway, 'responses', payload)
+                await lease.enter_async_context(self.gateway.admission.hold('chat', **budget))
             async with asyncio.timeout(self.gateway.config.request_timeout):
                 async with self.gateway.engine.request(request.method, path,
                         json=payload if creating else None,
@@ -127,6 +131,8 @@ class ResponsesProxy:
                         self.track_background(payload['request_id'], lease)
                         lease = None
                     return web.Response(status=upstream.status, body=body, headers={'Content-Type': content_type})
+        except BudgetExceeded as exc:
+            return error(400, 'request_budget_exceeded', str(exc))
         except (TimeoutError, ClientError, ValueError):
             if outgoing is not None and outgoing.prepared:
                 if request.transport:

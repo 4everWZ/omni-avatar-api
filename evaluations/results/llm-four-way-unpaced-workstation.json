@@ -1,0 +1,4829 @@
+{
+  "state": "passed",
+  "checks": [
+    {
+      "single_request_window": 262144
+    },
+    {
+      "four_short_requests": {
+        "requests": [
+          {
+            "index": 0,
+            "first_delta_seconds": 0.10363167710602283,
+            "last_delta_seconds": 5.170174841070548,
+            "terminal_seconds": 5.170632425928488,
+            "delta_events": 256,
+            "usage": {
+              "input_tokens": 29,
+              "input_tokens_details": {
+                "cached_tokens": 0,
+                "cache_write_tokens": 0,
+                "input_tokens_per_turn": [],
+                "cached_tokens_per_turn": []
+              },
+              "output_tokens": 256,
+              "output_tokens_details": {
+                "reasoning_tokens": 0,
+                "tool_output_tokens": 0,
+                "output_tokens_per_turn": [],
+                "tool_output_tokens_per_turn": []
+              },
+              "total_tokens": 285
+            },
+            "output_excerpt": "1\n2\n3\n4\n5\n6\n7\n8\n9\n10\n11\n12\n13\n14\n15\n16\n17\n18\n19\n20\n21\n22\n23\n24\n25\n26\n27\n28\n29\n30\n31\n32\n33\n34\n35\n"
+          },
+          {
+            "index": 1,
+            "first_delta_seconds": 0.1257858299650252,
+            "last_delta_seconds": 5.1720250570215285,
+            "terminal_seconds": 5.172335196984932,
+            "delta_events": 256,
+            "usage": {
+              "input_tokens": 29,
+              "input_tokens_details": {
+                "cached_tokens": 0,
+                "cache_write_tokens": 0,
+                "input_tokens_per_turn": [],
+                "cached_tokens_per_turn": []
+              },
+              "output_tokens": 256,
+              "output_tokens_details": {
+                "reasoning_tokens": 0,
+                "tool_output_tokens": 0,
+                "output_tokens_per_turn": [],
+                "tool_output_tokens_per_turn": []
+              },
+              "total_tokens": 285
+            },
+            "output_excerpt": "```text\n1\n2\n3\n4\n5\n6\n7\n8\n9\n10\n11\n12\n13\n14\n15\n16\n17\n18\n19\n20\n21\n22\n23\n24\n25\n26\n27\n28\n29\n30\n31\n32\n3"
+          },
+          {
+            "index": 2,
+            "first_delta_seconds": 0.12609399505890906,
+            "last_delta_seconds": 5.17243649601005,
+            "terminal_seconds": 5.172798712039366,
+            "delta_events": 256,
+            "usage": {
+              "input_tokens": 29,
+              "input_tokens_details": {
+                "cached_tokens": 0,
+                "cache_write_tokens": 0,
+                "input_tokens_per_turn": [],
+                "cached_tokens_per_turn": []
+              },
+              "output_tokens": 256,
+              "output_tokens_details": {
+                "reasoning_tokens": 0,
+                "tool_output_tokens": 0,
+                "output_tokens_per_turn": [],
+                "tool_output_tokens_per_turn": []
+              },
+              "total_tokens": 285
+            },
+            "output_excerpt": "```text\n1\n2\n3\n4\n5\n6\n7\n8\n9\n10\n11\n12\n13\n14\n15\n16\n17\n18\n19\n20\n21\n22\n23\n24\n25\n26\n27\n28\n29\n30\n31\n32\n3"
+          },
+          {
+            "index": 3,
+            "first_delta_seconds": 0.12629558192566037,
+            "last_delta_seconds": 5.172995379893109,
+            "terminal_seconds": 5.173172150040045,
+            "delta_events": 256,
+            "usage": {
+              "input_tokens": 29,
+              "input_tokens_details": {
+                "cached_tokens": 0,
+                "cache_write_tokens": 0,
+                "input_tokens_per_turn": [],
+                "cached_tokens_per_turn": []
+              },
+              "output_tokens": 256,
+              "output_tokens_details": {
+                "reasoning_tokens": 0,
+                "tool_output_tokens": 0,
+                "output_tokens_per_turn": [],
+                "tool_output_tokens_per_turn": []
+              },
+              "total_tokens": 285
+            },
+            "output_excerpt": "1\n2\n3\n4\n5\n6\n7\n8\n9\n10\n11\n12\n13\n14\n15\n16\n17\n18\n19\n20\n21\n22\n23\n24\n25\n26\n27\n28\n29\n30\n31\n32\n33\n34\n35\n"
+          }
+        ],
+        "four_output_intervals_overlap_seconds": 5.043879259144887
+      }
+    },
+    {
+      "long_short_mix": {
+        "requests": [
+          {
+            "index": 0,
+            "first_delta_seconds": 9.150256878929213,
+            "last_delta_seconds": 14.175824803998694,
+            "terminal_seconds": 14.176247664028779,
+            "delta_events": 256,
+            "usage": {
+              "input_tokens": 28528,
+              "input_tokens_details": {
+                "cached_tokens": 0,
+                "cache_write_tokens": 0,
+                "input_tokens_per_turn": [],
+                "cached_tokens_per_turn": []
+              },
+              "output_tokens": 256,
+              "output_tokens_details": {
+                "reasoning_tokens": 0,
+                "tool_output_tokens": 0,
+                "output_tokens_per_turn": [],
+                "tool_output_tokens_per_turn": []
+              },
+              "total_tokens": 28784
+            },
+            "output_excerpt": "1\n2\n3\n4\n5\n6\n7\n8\n9\n10\n11\n12\n13\n14\n15\n16\n17\n18\n19\n20\n21\n22\n23\n24\n25\n26\n27\n28\n29\n30\n31\n32\n33\n34\n35\n"
+          },
+          {
+            "index": 1,
+            "first_delta_seconds": 0.28882203507237136,
+            "last_delta_seconds": 13.925110154086724,
+            "terminal_seconds": 13.925735322060063,
+            "delta_events": 256,
+            "usage": {
+              "input_tokens": 28,
+              "input_tokens_details": {
+                "cached_tokens": 0,
+                "cache_write_tokens": 0,
+                "input_tokens_per_turn": [],
+                "cached_tokens_per_turn": []
+              },
+              "output_tokens": 256,
+              "output_tokens_details": {
+                "reasoning_tokens": 0,
+                "tool_output_tokens": 0,
+                "output_tokens_per_turn": [],
+                "tool_output_tokens_per_turn": []
+              },
+              "total_tokens": 284
+            },
+            "output_excerpt": "1\n2\n3\n4\n5\n6\n7\n8\n9\n10\n11\n12\n13\n14\n15\n16\n17\n18\n19\n20\n21\n22\n23\n24\n25\n26\n27\n28\n29\n30\n31\n32\n33\n34\n35\n"
+          },
+          {
+            "index": 2,
+            "first_delta_seconds": 0.8868003669194877,
+            "last_delta_seconds": 13.944272364024073,
+            "terminal_seconds": 13.944666710915044,
+            "delta_events": 256,
+            "usage": {
+              "input_tokens": 28,
+              "input_tokens_details": {
+                "cached_tokens": 0,
+                "cache_write_tokens": 0,
+                "input_tokens_per_turn": [],
+                "cached_tokens_per_turn": []
+              },
+              "output_tokens": 256,
+              "output_tokens_details": {
+                "reasoning_tokens": 0,
+                "tool_output_tokens": 0,
+                "output_tokens_per_turn": [],
+                "tool_output_tokens_per_turn": []
+              },
+              "total_tokens": 284
+            },
+            "output_excerpt": "1\n2\n3\n4\n5\n6\n7\n8\n9\n10\n11\n12\n13\n14\n15\n16\n17\n18\n19\n20\n21\n22\n23\n24\n25\n26\n27\n28\n29\n30\n31\n32\n33\n34\n35\n"
+          },
+          {
+            "index": 3,
+            "first_delta_seconds": 0.8868616810068488,
+            "last_delta_seconds": 13.944734577089548,
+            "terminal_seconds": 13.945062540005893,
+            "delta_events": 256,
+            "usage": {
+              "input_tokens": 28,
+              "input_tokens_details": {
+                "cached_tokens": 0,
+                "cache_write_tokens": 0,
+                "input_tokens_per_turn": [],
+                "cached_tokens_per_turn": []
+              },
+              "output_tokens": 256,
+              "output_tokens_details": {
+                "reasoning_tokens": 0,
+                "tool_output_tokens": 0,
+                "output_tokens_per_turn": [],
+                "tool_output_tokens_per_turn": []
+              },
+              "total_tokens": 284
+            },
+            "output_excerpt": "1\n2\n3\n4\n5\n6\n7\n8\n9\n10\n11\n12\n13\n14\n15\n16\n17\n18\n19\n20\n21\n22\n23\n24\n25\n26\n27\n28\n29\n30\n31\n32\n33\n34\n35\n"
+          }
+        ],
+        "four_output_intervals_overlap_seconds": 4.774853275157511
+      }
+    },
+    {
+      "owned_continuation": true,
+      "usage": {
+        "input_tokens": 57,
+        "input_tokens_details": {
+          "cached_tokens": 0,
+          "cache_write_tokens": 0,
+          "input_tokens_per_turn": [],
+          "cached_tokens_per_turn": []
+        },
+        "output_tokens": 7,
+        "output_tokens_details": {
+          "reasoning_tokens": 0,
+          "tool_output_tokens": 0,
+          "output_tokens_per_turn": [],
+          "tool_output_tokens_per_turn": []
+        },
+        "total_tokens": 64
+      }
+    },
+    {
+      "token_pressure_returns_429_with_free_sequence_slots": true,
+      "short_chat_shares_remaining_budget": true,
+      "cancel_releases_tokens": true
+    }
+  ],
+  "samples": [
+    {
+      "time": 1197169.806765622,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 0,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 0,
+        "available_tokens": 262144,
+        "scheduling": "fifo"
+      },
+      "engine_running": 0.0
+    },
+    {
+      "time": 1197169.912557875,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 1140,
+        "available_tokens": 261004,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197170.01744156,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 1140,
+        "available_tokens": 261004,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197170.12284165,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 1140,
+        "available_tokens": 261004,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197170.227246451,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 1140,
+        "available_tokens": 261004,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197170.332135787,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 1140,
+        "available_tokens": 261004,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197170.4370178,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 1140,
+        "available_tokens": 261004,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197170.541029346,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 1140,
+        "available_tokens": 261004,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197170.645597893,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 1140,
+        "available_tokens": 261004,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197170.751147793,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 1140,
+        "available_tokens": 261004,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197170.8557757,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 1140,
+        "available_tokens": 261004,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197170.96205423,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 1140,
+        "available_tokens": 261004,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197171.066656138,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 1140,
+        "available_tokens": 261004,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197171.171743774,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 1140,
+        "available_tokens": 261004,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197171.277369304,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 1140,
+        "available_tokens": 261004,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197171.381269361,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 1140,
+        "available_tokens": 261004,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197171.485739463,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 1140,
+        "available_tokens": 261004,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197171.590336031,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 1140,
+        "available_tokens": 261004,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197171.696765593,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 1140,
+        "available_tokens": 261004,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197171.80162398,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 1140,
+        "available_tokens": 261004,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197171.905843503,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 1140,
+        "available_tokens": 261004,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197172.010641436,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 1140,
+        "available_tokens": 261004,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197172.115180175,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 1140,
+        "available_tokens": 261004,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197172.219432499,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 1140,
+        "available_tokens": 261004,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197172.323574106,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 1140,
+        "available_tokens": 261004,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197172.428286149,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 1140,
+        "available_tokens": 261004,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197172.533111974,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 1140,
+        "available_tokens": 261004,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197172.63707088,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 1140,
+        "available_tokens": 261004,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197172.741655766,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 1140,
+        "available_tokens": 261004,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197172.846659824,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 1140,
+        "available_tokens": 261004,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197172.951371094,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 1140,
+        "available_tokens": 261004,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197173.056334806,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 1140,
+        "available_tokens": 261004,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197173.160916985,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 1140,
+        "available_tokens": 261004,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197173.266179024,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 1140,
+        "available_tokens": 261004,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197173.370071374,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 1140,
+        "available_tokens": 261004,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197173.474215445,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 1140,
+        "available_tokens": 261004,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197173.579102173,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 1140,
+        "available_tokens": 261004,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197173.683959336,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 1140,
+        "available_tokens": 261004,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197173.788905755,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 1140,
+        "available_tokens": 261004,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197173.893304391,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 1140,
+        "available_tokens": 261004,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197173.997179108,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 1140,
+        "available_tokens": 261004,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197174.101210297,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 1140,
+        "available_tokens": 261004,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197174.205913391,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 1140,
+        "available_tokens": 261004,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197174.310272091,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 1140,
+        "available_tokens": 261004,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197174.414946441,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 1140,
+        "available_tokens": 261004,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197174.519643875,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 1140,
+        "available_tokens": 261004,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197174.624356456,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 1140,
+        "available_tokens": 261004,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197174.730412387,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 1140,
+        "available_tokens": 261004,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197174.834500542,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 1140,
+        "available_tokens": 261004,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197174.939411804,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 1140,
+        "available_tokens": 261004,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197175.0441163,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 29636,
+        "available_tokens": 232508,
+        "scheduling": "fifo"
+      },
+      "engine_running": 0.0
+    },
+    {
+      "time": 1197175.148792492,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 29636,
+        "available_tokens": 232508,
+        "scheduling": "fifo"
+      },
+      "engine_running": 0.0
+    },
+    {
+      "time": 1197175.252979962,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 29636,
+        "available_tokens": 232508,
+        "scheduling": "fifo"
+      },
+      "engine_running": 0.0
+    },
+    {
+      "time": 1197175.357069318,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 29636,
+        "available_tokens": 232508,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197175.461389225,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 29636,
+        "available_tokens": 232508,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197175.565540007,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 29636,
+        "available_tokens": 232508,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197175.669607803,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 29636,
+        "available_tokens": 232508,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197175.773520039,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 29636,
+        "available_tokens": 232508,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197175.878847307,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 29636,
+        "available_tokens": 232508,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197175.982660627,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 29636,
+        "available_tokens": 232508,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197176.086652881,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 29636,
+        "available_tokens": 232508,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197176.190649573,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 29636,
+        "available_tokens": 232508,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197176.294754227,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 29636,
+        "available_tokens": 232508,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197176.398814498,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 29636,
+        "available_tokens": 232508,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197176.502945992,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 29636,
+        "available_tokens": 232508,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197176.607161593,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 29636,
+        "available_tokens": 232508,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197176.711175027,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 29636,
+        "available_tokens": 232508,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197176.814939305,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 29636,
+        "available_tokens": 232508,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197176.918999125,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 29636,
+        "available_tokens": 232508,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197177.023114398,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 29636,
+        "available_tokens": 232508,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197177.127733882,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 29636,
+        "available_tokens": 232508,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197177.231908285,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 29636,
+        "available_tokens": 232508,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197177.336053995,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 29636,
+        "available_tokens": 232508,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197177.439848048,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 29636,
+        "available_tokens": 232508,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197177.543818841,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 29636,
+        "available_tokens": 232508,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197177.647909638,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 29636,
+        "available_tokens": 232508,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197177.753346399,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 29636,
+        "available_tokens": 232508,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197177.857957939,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 29636,
+        "available_tokens": 232508,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197177.962148531,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 29636,
+        "available_tokens": 232508,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197178.067096789,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 29636,
+        "available_tokens": 232508,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197178.171751558,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 29636,
+        "available_tokens": 232508,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197178.276125613,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 29636,
+        "available_tokens": 232508,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197178.381831576,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 29636,
+        "available_tokens": 232508,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197178.485991712,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 29636,
+        "available_tokens": 232508,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197178.590366168,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 29636,
+        "available_tokens": 232508,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197178.694735263,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 29636,
+        "available_tokens": 232508,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197178.799010013,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 29636,
+        "available_tokens": 232508,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197178.903991412,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 29636,
+        "available_tokens": 232508,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197179.009675593,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 29636,
+        "available_tokens": 232508,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197179.114290006,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 29636,
+        "available_tokens": 232508,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197179.218627762,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 29636,
+        "available_tokens": 232508,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197179.32263414,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 29636,
+        "available_tokens": 232508,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197179.426784656,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 29636,
+        "available_tokens": 232508,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197179.531648575,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 29636,
+        "available_tokens": 232508,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197179.636291892,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 29636,
+        "available_tokens": 232508,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197179.740162085,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 29636,
+        "available_tokens": 232508,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197179.844475205,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 29636,
+        "available_tokens": 232508,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197179.949046086,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 29636,
+        "available_tokens": 232508,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197180.053468339,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 29636,
+        "available_tokens": 232508,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197180.157523016,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 29636,
+        "available_tokens": 232508,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197180.261703918,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 29636,
+        "available_tokens": 232508,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197180.366057473,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 29636,
+        "available_tokens": 232508,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197180.470140061,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 29636,
+        "available_tokens": 232508,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197180.574393779,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 29636,
+        "available_tokens": 232508,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197180.678590431,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 29636,
+        "available_tokens": 232508,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197180.782857364,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 29636,
+        "available_tokens": 232508,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197180.887355178,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 29636,
+        "available_tokens": 232508,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197180.992376899,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 29636,
+        "available_tokens": 232508,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197181.097259822,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 29636,
+        "available_tokens": 232508,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197181.201663689,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 29636,
+        "available_tokens": 232508,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197181.306661817,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 29636,
+        "available_tokens": 232508,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197181.411308719,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 29636,
+        "available_tokens": 232508,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197181.515351862,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 29636,
+        "available_tokens": 232508,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197181.61988421,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 29636,
+        "available_tokens": 232508,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197181.724134952,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 29636,
+        "available_tokens": 232508,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197181.828101032,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 29636,
+        "available_tokens": 232508,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197181.932314834,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 29636,
+        "available_tokens": 232508,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197182.036493329,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 29636,
+        "available_tokens": 232508,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197182.140453297,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 29636,
+        "available_tokens": 232508,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197182.244626633,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 29636,
+        "available_tokens": 232508,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197182.349980374,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 29636,
+        "available_tokens": 232508,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197182.454125828,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 29636,
+        "available_tokens": 232508,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197182.558349417,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 29636,
+        "available_tokens": 232508,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197182.662380658,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 29636,
+        "available_tokens": 232508,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197182.766229999,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 29636,
+        "available_tokens": 232508,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197182.870573553,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 29636,
+        "available_tokens": 232508,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197182.974952211,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 29636,
+        "available_tokens": 232508,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197183.080036147,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 29636,
+        "available_tokens": 232508,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197183.18418714,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 29636,
+        "available_tokens": 232508,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197183.288522438,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 29636,
+        "available_tokens": 232508,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197183.392981817,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 29636,
+        "available_tokens": 232508,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197183.497164099,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 29636,
+        "available_tokens": 232508,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197183.601071888,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 29636,
+        "available_tokens": 232508,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197183.705137903,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 29636,
+        "available_tokens": 232508,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197183.809379064,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 29636,
+        "available_tokens": 232508,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197183.913722366,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 29636,
+        "available_tokens": 232508,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197184.01838792,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 29636,
+        "available_tokens": 232508,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197184.122427023,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 29636,
+        "available_tokens": 232508,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197184.227562344,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 29636,
+        "available_tokens": 232508,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197184.332581658,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 29636,
+        "available_tokens": 232508,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197184.439387138,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 29636,
+        "available_tokens": 232508,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197184.543838121,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 29636,
+        "available_tokens": 232508,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197184.647855423,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 29636,
+        "available_tokens": 232508,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197184.75227642,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 29636,
+        "available_tokens": 232508,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197184.857549377,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 29636,
+        "available_tokens": 232508,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197184.961959933,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 29636,
+        "available_tokens": 232508,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197185.06603897,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 29636,
+        "available_tokens": 232508,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197185.170766288,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 29636,
+        "available_tokens": 232508,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197185.275398879,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 29636,
+        "available_tokens": 232508,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197185.379526436,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 29636,
+        "available_tokens": 232508,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197185.484350685,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 29636,
+        "available_tokens": 232508,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197185.589634552,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 29636,
+        "available_tokens": 232508,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197185.694358884,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 29636,
+        "available_tokens": 232508,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197185.798913209,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 29636,
+        "available_tokens": 232508,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197185.903895562,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 29636,
+        "available_tokens": 232508,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197186.009546283,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 29636,
+        "available_tokens": 232508,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197186.114130042,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 29636,
+        "available_tokens": 232508,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197186.218476477,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 29636,
+        "available_tokens": 232508,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197186.32247906,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 29636,
+        "available_tokens": 232508,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197186.426574196,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 29636,
+        "available_tokens": 232508,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197186.530681805,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 29636,
+        "available_tokens": 232508,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197186.635105515,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 29636,
+        "available_tokens": 232508,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197186.741429093,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 29636,
+        "available_tokens": 232508,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197186.84635443,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 29636,
+        "available_tokens": 232508,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197186.951220194,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 29636,
+        "available_tokens": 232508,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197187.05681004,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 29636,
+        "available_tokens": 232508,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197187.161468297,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 29636,
+        "available_tokens": 232508,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197187.265819089,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 29636,
+        "available_tokens": 232508,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197187.370054045,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 29636,
+        "available_tokens": 232508,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197187.475823718,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 29636,
+        "available_tokens": 232508,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197187.580540263,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 29636,
+        "available_tokens": 232508,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197187.685350925,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 29636,
+        "available_tokens": 232508,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197187.789559852,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 29636,
+        "available_tokens": 232508,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197187.894883241,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 29636,
+        "available_tokens": 232508,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197187.998941535,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 29636,
+        "available_tokens": 232508,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197188.103504864,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 29636,
+        "available_tokens": 232508,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197188.208005615,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 29636,
+        "available_tokens": 232508,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197188.313333852,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 29636,
+        "available_tokens": 232508,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197188.418412513,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 29636,
+        "available_tokens": 232508,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197188.522696199,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 29636,
+        "available_tokens": 232508,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197188.627396333,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 29636,
+        "available_tokens": 232508,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197188.731318313,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 29636,
+        "available_tokens": 232508,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197188.837321451,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 4,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 29636,
+        "available_tokens": 232508,
+        "scheduling": "fifo"
+      },
+      "engine_running": 4.0
+    },
+    {
+      "time": 1197188.942070355,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 1,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 28784,
+        "available_tokens": 233360,
+        "scheduling": "fifo"
+      },
+      "engine_running": 1.0
+    },
+    {
+      "time": 1197189.046674809,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 1,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 28784,
+        "available_tokens": 233360,
+        "scheduling": "fifo"
+      },
+      "engine_running": 1.0
+    },
+    {
+      "time": 1197189.151269855,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 1,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 28784,
+        "available_tokens": 233360,
+        "scheduling": "fifo"
+      },
+      "engine_running": 1.0
+    },
+    {
+      "time": 1197189.255803337,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 1,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 57,
+        "available_tokens": 262087,
+        "scheduling": "fifo"
+      },
+      "engine_running": 1.0
+    },
+    {
+      "time": 1197189.35996802,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 1,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 57,
+        "available_tokens": 262087,
+        "scheduling": "fifo"
+      },
+      "engine_running": 1.0
+    },
+    {
+      "time": 1197189.464640631,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 1,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 89,
+        "available_tokens": 262055,
+        "scheduling": "fifo"
+      },
+      "engine_running": 0.0
+    },
+    {
+      "time": 1197189.568807999,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 1,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 89,
+        "available_tokens": 262055,
+        "scheduling": "fifo"
+      },
+      "engine_running": 1.0
+    },
+    {
+      "time": 1197189.673370013,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 1,
+          "realtime": 0
+        },
+        "queued": 1,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 200020,
+        "available_tokens": 62124,
+        "scheduling": "fifo"
+      },
+      "engine_running": 0.0
+    },
+    {
+      "time": 1197189.778328719,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 1,
+          "realtime": 0
+        },
+        "queued": 1,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 200020,
+        "available_tokens": 62124,
+        "scheduling": "fifo"
+      },
+      "engine_running": 0.0
+    },
+    {
+      "time": 1197189.882786379,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 1,
+          "realtime": 0
+        },
+        "queued": 1,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 200020,
+        "available_tokens": 62124,
+        "scheduling": "fifo"
+      },
+      "engine_running": 0.0
+    },
+    {
+      "time": 1197189.987065494,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 1,
+          "realtime": 0
+        },
+        "queued": 1,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 200020,
+        "available_tokens": 62124,
+        "scheduling": "fifo"
+      },
+      "engine_running": 0.0
+    },
+    {
+      "time": 1197190.091814618,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 1,
+          "realtime": 0
+        },
+        "queued": 1,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 200020,
+        "available_tokens": 62124,
+        "scheduling": "fifo"
+      },
+      "engine_running": 0.0
+    },
+    {
+      "time": 1197190.19641884,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 1,
+          "realtime": 0
+        },
+        "queued": 1,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 200020,
+        "available_tokens": 62124,
+        "scheduling": "fifo"
+      },
+      "engine_running": 1.0
+    },
+    {
+      "time": 1197190.300592929,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 1,
+          "realtime": 0
+        },
+        "queued": 1,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 200020,
+        "available_tokens": 62124,
+        "scheduling": "fifo"
+      },
+      "engine_running": 1.0
+    },
+    {
+      "time": 1197190.404396086,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 1,
+          "realtime": 0
+        },
+        "queued": 1,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 200020,
+        "available_tokens": 62124,
+        "scheduling": "fifo"
+      },
+      "engine_running": 1.0
+    },
+    {
+      "time": 1197190.508617253,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 1,
+          "realtime": 0
+        },
+        "queued": 1,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 200020,
+        "available_tokens": 62124,
+        "scheduling": "fifo"
+      },
+      "engine_running": 1.0
+    },
+    {
+      "time": 1197190.612915264,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 1,
+          "realtime": 0
+        },
+        "queued": 1,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 200020,
+        "available_tokens": 62124,
+        "scheduling": "fifo"
+      },
+      "engine_running": 1.0
+    },
+    {
+      "time": 1197190.716969569,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 1,
+          "realtime": 0
+        },
+        "queued": 1,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 200020,
+        "available_tokens": 62124,
+        "scheduling": "fifo"
+      },
+      "engine_running": 1.0
+    },
+    {
+      "time": 1197190.821146354,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 1,
+          "realtime": 0
+        },
+        "queued": 1,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 200020,
+        "available_tokens": 62124,
+        "scheduling": "fifo"
+      },
+      "engine_running": 1.0
+    },
+    {
+      "time": 1197190.92539971,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 1,
+          "realtime": 0
+        },
+        "queued": 1,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 200020,
+        "available_tokens": 62124,
+        "scheduling": "fifo"
+      },
+      "engine_running": 1.0
+    },
+    {
+      "time": 1197191.02971405,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 1,
+          "realtime": 0
+        },
+        "queued": 1,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 200020,
+        "available_tokens": 62124,
+        "scheduling": "fifo"
+      },
+      "engine_running": 1.0
+    },
+    {
+      "time": 1197191.133982364,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 1,
+          "realtime": 0
+        },
+        "queued": 1,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 200020,
+        "available_tokens": 62124,
+        "scheduling": "fifo"
+      },
+      "engine_running": 1.0
+    },
+    {
+      "time": 1197191.238060504,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 1,
+          "realtime": 0
+        },
+        "queued": 1,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 200020,
+        "available_tokens": 62124,
+        "scheduling": "fifo"
+      },
+      "engine_running": 1.0
+    },
+    {
+      "time": 1197191.34210492,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 1,
+          "realtime": 0
+        },
+        "queued": 1,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 200020,
+        "available_tokens": 62124,
+        "scheduling": "fifo"
+      },
+      "engine_running": 1.0
+    },
+    {
+      "time": 1197191.446282204,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 1,
+          "realtime": 0
+        },
+        "queued": 1,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 200020,
+        "available_tokens": 62124,
+        "scheduling": "fifo"
+      },
+      "engine_running": 1.0
+    },
+    {
+      "time": 1197191.550120976,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 1,
+          "realtime": 0
+        },
+        "queued": 1,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 200020,
+        "available_tokens": 62124,
+        "scheduling": "fifo"
+      },
+      "engine_running": 1.0
+    },
+    {
+      "time": 1197191.654664905,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 1,
+          "realtime": 0
+        },
+        "queued": 1,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 200020,
+        "available_tokens": 62124,
+        "scheduling": "fifo"
+      },
+      "engine_running": 1.0
+    },
+    {
+      "time": 1197191.758587473,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 1,
+          "realtime": 0
+        },
+        "queued": 1,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 200020,
+        "available_tokens": 62124,
+        "scheduling": "fifo"
+      },
+      "engine_running": 1.0
+    },
+    {
+      "time": 1197191.862811174,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 1,
+          "realtime": 0
+        },
+        "queued": 1,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 200020,
+        "available_tokens": 62124,
+        "scheduling": "fifo"
+      },
+      "engine_running": 1.0
+    },
+    {
+      "time": 1197191.966728432,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 1,
+          "realtime": 0
+        },
+        "queued": 1,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 200020,
+        "available_tokens": 62124,
+        "scheduling": "fifo"
+      },
+      "engine_running": 1.0
+    },
+    {
+      "time": 1197192.070817861,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 1,
+          "realtime": 0
+        },
+        "queued": 1,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 200020,
+        "available_tokens": 62124,
+        "scheduling": "fifo"
+      },
+      "engine_running": 1.0
+    },
+    {
+      "time": 1197192.175013769,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 1,
+          "realtime": 0
+        },
+        "queued": 1,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 200020,
+        "available_tokens": 62124,
+        "scheduling": "fifo"
+      },
+      "engine_running": 1.0
+    },
+    {
+      "time": 1197192.279408749,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 1,
+          "realtime": 0
+        },
+        "queued": 1,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 200020,
+        "available_tokens": 62124,
+        "scheduling": "fifo"
+      },
+      "engine_running": 1.0
+    },
+    {
+      "time": 1197192.383182518,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 1,
+          "realtime": 0
+        },
+        "queued": 1,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 200020,
+        "available_tokens": 62124,
+        "scheduling": "fifo"
+      },
+      "engine_running": 1.0
+    },
+    {
+      "time": 1197192.486752447,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 1,
+          "realtime": 0
+        },
+        "queued": 1,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 200020,
+        "available_tokens": 62124,
+        "scheduling": "fifo"
+      },
+      "engine_running": 1.0
+    },
+    {
+      "time": 1197192.590377499,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 1,
+          "realtime": 0
+        },
+        "queued": 1,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 200020,
+        "available_tokens": 62124,
+        "scheduling": "fifo"
+      },
+      "engine_running": 1.0
+    },
+    {
+      "time": 1197192.694306809,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 1,
+          "realtime": 0
+        },
+        "queued": 1,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 200020,
+        "available_tokens": 62124,
+        "scheduling": "fifo"
+      },
+      "engine_running": 1.0
+    },
+    {
+      "time": 1197192.798539816,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 1,
+          "realtime": 0
+        },
+        "queued": 1,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 200020,
+        "available_tokens": 62124,
+        "scheduling": "fifo"
+      },
+      "engine_running": 1.0
+    },
+    {
+      "time": 1197192.902796116,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 1,
+          "realtime": 0
+        },
+        "queued": 1,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 200020,
+        "available_tokens": 62124,
+        "scheduling": "fifo"
+      },
+      "engine_running": 1.0
+    },
+    {
+      "time": 1197193.007356023,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 1,
+          "realtime": 0
+        },
+        "queued": 1,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 200020,
+        "available_tokens": 62124,
+        "scheduling": "fifo"
+      },
+      "engine_running": 1.0
+    },
+    {
+      "time": 1197193.111361695,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 1,
+          "realtime": 0
+        },
+        "queued": 1,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 200020,
+        "available_tokens": 62124,
+        "scheduling": "fifo"
+      },
+      "engine_running": 1.0
+    },
+    {
+      "time": 1197193.215593669,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 1,
+          "realtime": 0
+        },
+        "queued": 1,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 200020,
+        "available_tokens": 62124,
+        "scheduling": "fifo"
+      },
+      "engine_running": 1.0
+    },
+    {
+      "time": 1197193.320185375,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 1,
+          "realtime": 0
+        },
+        "queued": 1,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 200020,
+        "available_tokens": 62124,
+        "scheduling": "fifo"
+      },
+      "engine_running": 1.0
+    },
+    {
+      "time": 1197193.425112869,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 1,
+          "realtime": 0
+        },
+        "queued": 1,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 200020,
+        "available_tokens": 62124,
+        "scheduling": "fifo"
+      },
+      "engine_running": 1.0
+    },
+    {
+      "time": 1197193.528976806,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 1,
+          "realtime": 0
+        },
+        "queued": 1,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 200020,
+        "available_tokens": 62124,
+        "scheduling": "fifo"
+      },
+      "engine_running": 1.0
+    },
+    {
+      "time": 1197193.633187851,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 1,
+          "realtime": 0
+        },
+        "queued": 1,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 200020,
+        "available_tokens": 62124,
+        "scheduling": "fifo"
+      },
+      "engine_running": 1.0
+    },
+    {
+      "time": 1197193.737593299,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 1,
+          "realtime": 0
+        },
+        "queued": 1,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 200020,
+        "available_tokens": 62124,
+        "scheduling": "fifo"
+      },
+      "engine_running": 1.0
+    },
+    {
+      "time": 1197193.841763338,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 1,
+          "realtime": 0
+        },
+        "queued": 1,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 200020,
+        "available_tokens": 62124,
+        "scheduling": "fifo"
+      },
+      "engine_running": 1.0
+    },
+    {
+      "time": 1197193.945993728,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 1,
+          "realtime": 0
+        },
+        "queued": 1,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 200020,
+        "available_tokens": 62124,
+        "scheduling": "fifo"
+      },
+      "engine_running": 1.0
+    },
+    {
+      "time": 1197194.050145402,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 1,
+          "realtime": 0
+        },
+        "queued": 1,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 200020,
+        "available_tokens": 62124,
+        "scheduling": "fifo"
+      },
+      "engine_running": 1.0
+    },
+    {
+      "time": 1197194.154539868,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 1,
+          "realtime": 0
+        },
+        "queued": 1,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 200020,
+        "available_tokens": 62124,
+        "scheduling": "fifo"
+      },
+      "engine_running": 1.0
+    },
+    {
+      "time": 1197194.258483684,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 1,
+          "realtime": 0
+        },
+        "queued": 1,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 200020,
+        "available_tokens": 62124,
+        "scheduling": "fifo"
+      },
+      "engine_running": 1.0
+    },
+    {
+      "time": 1197194.362554676,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 1,
+          "realtime": 0
+        },
+        "queued": 1,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 200020,
+        "available_tokens": 62124,
+        "scheduling": "fifo"
+      },
+      "engine_running": 1.0
+    },
+    {
+      "time": 1197194.467329724,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 1,
+          "realtime": 0
+        },
+        "queued": 1,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 200020,
+        "available_tokens": 62124,
+        "scheduling": "fifo"
+      },
+      "engine_running": 1.0
+    },
+    {
+      "time": 1197194.571668326,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 1,
+          "realtime": 0
+        },
+        "queued": 1,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 200020,
+        "available_tokens": 62124,
+        "scheduling": "fifo"
+      },
+      "engine_running": 1.0
+    },
+    {
+      "time": 1197194.677668162,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 2,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 200069,
+        "available_tokens": 62075,
+        "scheduling": "fifo"
+      },
+      "engine_running": 2.0
+    },
+    {
+      "time": 1197194.782862773,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 1,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 200020,
+        "available_tokens": 62124,
+        "scheduling": "fifo"
+      },
+      "engine_running": 0.0
+    },
+    {
+      "time": 1197194.887317311,
+      "admission": {
+        "mode": "batch",
+        "active": {
+          "chat": 1,
+          "realtime": 0
+        },
+        "queued": 0,
+        "batch_cap": 4,
+        "live_chat_cap": 4,
+        "live_realtime_reserve": 0,
+        "token_budget": 262144,
+        "reserved_tokens": 200020,
+        "available_tokens": 62124,
+        "scheduling": "fifo"
+      },
+      "engine_running": 0.0
+    }
+  ],
+  "engine_peak_running_sequences": 4.0
+}

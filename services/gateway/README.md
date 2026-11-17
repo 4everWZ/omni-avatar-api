@@ -52,7 +52,7 @@ With `deploy/compose/inference.yml`, use `/llm/v1` and `llm-default`. The primar
 ```python
 from openai import OpenAI
 client = OpenAI(base_url="http://localhost:18080/llm/v1", api_key="<application bearer>")
-with client.responses.stream(model="llm-default", input="你好") as stream:
+with client.responses.stream(model="llm-default", input="你好", max_output_tokens=512) as stream:
     for event in stream:
         if event.type == "response.output_text.delta":
             print(event.delta, end="", flush=True)
@@ -68,6 +68,12 @@ The deployed OpenAI Python SDK 3.35.1 also passed typed `responses.stream()`, `g
 
 Multiple worker conversations can share this provider through `/llm/v1` and `llm-default`. Keep each worker's input history or `previous_response_id` chain separate. Long-running controllers can use `store: false` and persist their own history; stored continuation is process-local and ephemeral. Responses/SSE, function-call output, caller-supplied tool results, JSON Schema, retrieval and cancellation remain inference operations; the caller owns worker scheduling, handoffs, memory, tools and workspace/Git actions.
 
-GPU admission remains one LLM request at a time. Other requests use the bounded queue and receive `429` with `Retry-After` when full or timed out. External controllers can bound provider concurrency while running their own tools in parallel. Optional `LLM_QUEUE_LIMIT`, `LLM_QUEUE_TIMEOUT` and `LLM_REQUEST_TIMEOUT` configure only this backend; unset/empty values inherit the parent gateway's values (normally 16 / 5 s / 1200 s). They do not allocate additional GPU slots or change the Omni lane. Current deployment retains these defaults.
+The text engine and gateway default to four generation sequences (`LLM_MAX_NUM_SEQS=4`), preserving the 262144-token per-request window. Active requests also share `LLM_TOKEN_BUDGET=262144`: reserve fully rendered input plus maximum output, including tools, instructions and stored continuation history. Chat choices consume separate sequence slots and conservative token reservations. A private engine endpoint uses the same renderer and output-limit calculation as generation. It is not published by the gateway.
+
+Set explicit `max_output_tokens` (Chat: `max_completion_tokens` / `max_tokens`) for shorter requests. Omitting it preserves the engine's default output limit and can reserve the entire remaining window, serializing requests. FIFO queueing prevents a stream of short requests from starving a long request. Capacity waits time out with `429` and `Retry-After`; an individually impossible reservation returns `400`. `/llm/api/mode` exposes reserved/available tokens and active sequences. Foreground, background, disconnect and cancellation use the same resource lease. Four short simultaneous generations are the qualification target; four full-window requests are outside this memory budget.
+
+Optional `LLM_QUEUE_LIMIT`, `LLM_QUEUE_TIMEOUT` and `LLM_REQUEST_TIMEOUT` configure only this backend; unset/empty values inherit the parent gateway's values (normally 16 / 5 s / 1200 s). Omni admission remains independent. Raising sequence or token limits requires renewed GPU and portrait co-residency qualification.
+
+The neural-portrait overlay sets `LLM_GPU_STEP_PAUSE_MS=250`: synchronous GPU batches yield compute after completion, while retaining up to four sequences per batch. This is engine scheduling, not delayed SSE delivery. The measured portrait-priority profile produces about 3.4 tokens/s per request for four simultaneous 256-token outputs. Deploying without the portrait overlay leaves this pause disabled by default. Token reservations protect memory; batch yielding separately protects the renderer's compute budget.
 
 Antigravity documents an [external OpenAI-compatible provider interface](https://antigravity.google/docs/sdk/local-models/#external-openai-compatible-servers); [Agent Orchestrator](https://github.com/OrchestratorInc/agent-orchestrator) manages agent clients as a separate layer. This service is validated as a provider, with two independently continued caller histories and concurrently submitted typed SSE requests. Specific orchestration clients have not been integrated here. [Provider fixture evidence](../../evaluations/results/orchestrator-provider-workstation.json).
