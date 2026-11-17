@@ -44,4 +44,4 @@ Omni 7,928-token／20 消息的多轮早期事实检索及超限 400 已通过�
 
 外部任务按 Swarm／orchestrator 思路组织，当前优先交付推理 provider。保留单请求 262144，4 路较短请求实际同时生成，按总 token 预算控制长短混跑；四路满窗口需额外资源，不能用异步排队冒充并行。用户确认优先保证四路与 25 fps，暂不设每路最低输出速度。
 
-四路与 25 fps 共驻已通过：保留既有 8bit 权重与 9 GiB 浮点 KV，Ditto 运动预测使用有数值漂移检查的 FP16、十步采样；LLM 每批后让出 250 ms。90 秒真实神经帧 2,266，最大采样时间线偏差 61 ms，四路输出重叠 74.4 秒，每路约 3.4 tokens/s；取消恢复通过。[共驻证据](../../evaluations/results/portrait-four-way-workstation.json)。长短混跑、token 预算释放与最终部署检查待收尾。编排、工具执行、共享记忆与工作区由应用项目持有，具体框架集成尚未开展。
+四路与 25 fps 共驻已通过：保留既有 8bit 权重与 9 GiB 浮点 KV，Ditto 运动预测使用有数值漂移检查的 FP16、十步采样；LLM 每批后让出 250 ms。90 秒真实神经帧 2,266，最大采样时间线偏差 61 ms，四路输出重叠 74.4 秒，每路约 3.4 tokens/s；取消恢复通过。[共驻证据](../../evaluations/results/portrait-four-way-workstation.json)。引擎指标确认 4 序列，28.5K 加三路短请求、预算拒绝／剩余预算混跑／取消释放通过；Responses 工具、续接、SSE、多轮及原有 8K 边界复验通过。[预算](../../evaluations/results/llm-four-way-workstation.json) · [兼容性](../../evaluations/results/responses-budget-compatibility.json)。完整 262K 质量、长期满载与实物播放仍按前述边界另行验收。编排、工具执行、共享记忆与工作区由应用项目持有，具体框架集成尚未开展。
