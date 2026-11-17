@@ -45,6 +45,14 @@ The optional Avatar overlay sets `OMNI_AVATAR_URL` and a separate `OMNI_AVATAR_I
 uv run --no-project --with-requirements services/gateway/requirements.txt python -B -m unittest discover -s services/gateway/tests -v
 ```
 
+## Thinking defaults
+
+Omni Chat and LLM Chat/Responses default thinking on before template counting and inference. Explicit template options or `reasoning.effort: "none"` remain caller-owned. No custom thinking-token budget or effort is imposed by default. The pinned adapters forward an optional `thinking_token_budget` (nonnegative, or `-1` for unlimited reasoning within the total output cap) to the sampler for Chat and Responses; it shares the total output cap rather than adding tokens. `include_reasoning: false` hides returned reasoning without disabling inference. Native Realtime retains the model's official duplex policy and has no separate official CoT budget knob. See [request fields and budget boundaries](../../docs/api.md#cot-默认与调用方预算).
+
+## Realtime window configuration
+
+Keep the pinned MiniCPM-o serving default: `basic`, high/low watermarks 8000/6000. The gateway forwards the caller's `session.update.session.extra_body` unchanged, including `sliding_window_mode`, basic watermarks and context retention limits. Connect with `duplex=1&autostart=0` before the initial update to configure a newly created session; window policy is immutable afterwards. No admin endpoint or global model reload is needed. `context` is an optional recent-unit window plus earlier model text, rather than a larger model window or durable memory. See the [wire example and mode boundaries](../../docs/api.md#omni-实时历史窗口).
+
 ## Long-context Responses backend
 
 With `deploy/compose/inference.yml`, use `/llm/v1` and `llm-default`. The primary endpoint is `POST /llm/v1/responses`; Chat Completions remains compatible. `/llm/healthz`, `/llm/v1/models` and `/llm/api/mode` describe only this backend. LLM capacity does not consume Omni admission. Text-backend configuration uses `LLM_ENGINE_URL`, `LLM_MODEL_ID`, `LLM_CHECKPOINT`, optional `LLM_ENGINE_TOKEN`, and LLM-only admission/deadline overrides; see the Compose overlay for pinned values.
@@ -74,6 +82,6 @@ Set explicit `max_output_tokens` (Chat: `max_completion_tokens` / `max_tokens`) 
 
 Optional `LLM_QUEUE_LIMIT`, `LLM_QUEUE_TIMEOUT` and `LLM_REQUEST_TIMEOUT` configure only this backend; unset/empty values inherit the parent gateway's values (normally 16 / 5 s / 1200 s). Omni admission remains independent. Raising sequence or token limits requires renewed GPU and portrait co-residency qualification.
 
-The neural-portrait overlay shares GPU 0 through CUDA MPS: the LLM has a 20% active-thread limit and below-normal client priority, with decode CUDA graphs for batches 1/2/4 and synchronous scheduling. There is no fixed batch sleep or delayed SSE delivery. W4A16 weights retain BF16 KV and FP32 SSM. Token reservations protect memory separately from compute sharing; see [current TPS and restart operations](../../docs/deployment/workstation.md#四路并发与计算预算).
+The neural-portrait overlay shares GPU 0 through CUDA MPS: the LLM has a 20% active-thread limit and below-normal client priority, with decode CUDA graphs for batches 1/2/4 and synchronous scheduling. The LLM also reads an expiring private render clock: below 240 ms of frame headroom, it yields up to 18 ms per dispatch and resumes early when frames catch up. Missing or stale feedback does not wait; SSE is forwarded immediately. W4A16 weights retain BF16 KV and FP32 SSM. Token reservations protect memory separately from compute sharing; see [current TPS and restart operations](../../docs/deployment/workstation.md#四路并发与计算预算).
 
 Antigravity documents an [external OpenAI-compatible provider interface](https://antigravity.google/docs/sdk/local-models/#external-openai-compatible-servers); [Agent Orchestrator](https://github.com/OrchestratorInc/agent-orchestrator) manages agent clients as a separate layer. This service is validated as a provider, with two independently continued caller histories and concurrently submitted typed SSE requests. Specific orchestration clients have not been integrated here. [Provider fixture evidence](../../evaluations/results/orchestrator-provider-workstation.json).

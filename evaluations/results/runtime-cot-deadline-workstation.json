@@ -1,0 +1,43 @@
+{
+  "state": "passed",
+  "scope": "deployed_defaults_and_inactive_deadline_recovery",
+  "services": {
+    "gpu-mps": "healthy",
+    "llm-engine": "healthy",
+    "omni-engine": "healthy",
+    "omni-gateway": "healthy",
+    "omni-avatar": "healthy",
+    "omni-portrait": "healthy"
+  },
+  "omni": {
+    "default_total_output_tokens": 2048,
+    "default_window": {
+      "sliding_window_mode": "basic",
+      "basic_window_high_tokens": 8000,
+      "basic_window_low_tokens": 6000,
+      "context_previous_max_tokens": 500,
+      "context_max_units": 24
+    }
+  },
+  "llm_gpu": {
+    "mps_active_thread_percentage": 20,
+    "visible_sm_count": 16,
+    "max_active_yield_ms": 18,
+    "minimum_frame_headroom_ms": 240,
+    "clock_ttl_ms": 500,
+    "inactive_renderer_does_not_sleep": true
+  },
+  "default_omni_request": {
+    "no_explicit_thinking_or_output_budget": true,
+    "reasoning_characters": 2116,
+    "answer": "\n\n1776",
+    "usage": {
+      "prompt_tokens": 27,
+      "total_tokens": 835,
+      "completion_tokens": 808,
+      "prompt_tokens_details": null,
+      "completion_tokens_details": null
+    }
+  },
+  "llm_window": 262144
+}

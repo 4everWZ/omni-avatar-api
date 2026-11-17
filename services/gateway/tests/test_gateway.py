@@ -208,6 +208,21 @@ class GatewayTest(unittest.IsolatedAsyncioTestCase):
         async with await self.chat() as response:
             self.assertEqual(response.status, 200)
 
+    async def test_realtime_window_options_pass_through_at_client_creation(self):
+        for extra in ({'sliding_window_mode': 'basic', 'basic_window_high_tokens': 8000,
+                       'basic_window_low_tokens': 6000},
+                      {'sliding_window_mode': 'context', 'context_max_units': 24,
+                       'context_previous_max_tokens': 500}):
+            async with self.client.ws_connect(
+                '/v1/realtime?duplex=1&autostart=0', headers=SERVICE_AUTH,
+            ) as socket:
+                await socket.receive_json()
+                self.assertEqual(self.realtime_query, {'duplex': '1', 'autostart': '0'})
+                await socket.send_json({'type': 'session.update', 'session': {
+                    'model': 'omni-default', 'extra_body': extra}})
+                forwarded = await socket.receive_json()
+                self.assertEqual(forwarded['session'], {'model': self.model, 'extra_body': extra})
+
     async def test_stream_disconnect_cancels_upstream_and_releases_lane(self):
         response = await self.chat(stream=True)
         self.assertIn(b"first", await response.content.readline())

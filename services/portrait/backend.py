@@ -1,6 +1,7 @@
 """Pinned Ditto adapter. Model execution stays outside the media event loop."""
 import importlib
 import io
+import json
 import logging
 import os
 import pickle
@@ -262,6 +263,7 @@ class PortraitRun:
         self.fences = [(0, 0)]
         self.segments = []
         self.origin = 0
+        self.clock = Path(os.environ['OMNI_GPU_RENDER_CLOCK']) if os.environ.get('OMNI_GPU_RENDER_CLOCK') else None
         self.frame_index = 0
         self.base_time = 0
         self.failure = None
@@ -310,6 +312,10 @@ class PortraitRun:
         output = io.BytesIO()
         Image.fromarray(rgb).save(output, 'JPEG', quality=85)
         self.emit(timestamp, generation, output.getvalue())
+        if self.clock and self.origin:
+            temporary = self.clock.with_suffix('.new')
+            temporary.write_text(json.dumps({'updated': time.monotonic(), 'deadline': self.origin + timestamp}))
+            temporary.replace(self.clock)
         if self.frame_index >= 15 and hasattr(self, 'buffer_ready'):
             self.buffer_ready.set()
 
@@ -379,3 +385,5 @@ class PortraitRun:
         self.thread.join(timeout=15)
         if self.thread.is_alive():
             raise RuntimeError('Portrait timeline failed to stop')
+        if self.clock:
+            self.clock.unlink(missing_ok=True)

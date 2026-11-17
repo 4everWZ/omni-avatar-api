@@ -21,7 +21,7 @@ stages:
     gpu_memory_utilization: 0.50
     enforce_eager: true
     default_sampling_params:
-      max_tokens: 4096
+      max_tokens: 2048
   - stage_id: 1
     devices: "0"
     max_num_seqs: 2

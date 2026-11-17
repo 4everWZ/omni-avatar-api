@@ -21,6 +21,8 @@ async def stream_requests(http, gateway, token, inputs, request_options=None):
     async def one(index, text):
         first, last, terminal, deltas = None, None, None, 0
         output = []
+        channels = {'content': 0, 'reasoning': 0}
+        first_content = first_reasoning = None
         usage = None
         async with http.post(gateway + '/llm/v1/responses',
                 headers={'Authorization': 'Bearer ' + token}, json={
@@ -32,19 +34,28 @@ async def stream_requests(http, gateway, token, inputs, request_options=None):
                 if not line.startswith(b'data: '):
                     continue
                 event = json.loads(line[6:])
-                if event['type'] == 'response.output_text.delta':
+                is_content = event['type'] == 'response.output_text.delta'
+                is_reasoning = 'reasoning' in event['type'] and event['type'].endswith('.delta')
+                if (is_content or is_reasoning) and isinstance(event.get('delta'), str):
                     now = monotonic() - origin
                     first = now if first is None else first
                     last = now
                     deltas += 1
-                    output.append(event['delta'])
-                elif event['type'] == 'response.completed':
+                    channel = 'content' if is_content else 'reasoning'
+                    channels[channel] += 1
+                    if is_content:
+                        first_content = now if first_content is None else first_content
+                        output.append(event['delta'])
+                    else:
+                        first_reasoning = now if first_reasoning is None else first_reasoning
+                elif event['type'] in ('response.completed', 'response.incomplete'):
                     terminal = monotonic() - origin
                     usage = event['response'].get('usage')
         assert first is not None and last > first and terminal and deltas > 2
         tokens = usage['output_tokens']
         return {'index': index, 'first_delta_seconds': first, 'last_delta_seconds': last,
-                'terminal_seconds': terminal, 'delta_events': deltas, 'usage': usage,
+                'terminal_seconds': terminal, 'delta_events': deltas, 'channel_events': channels,
+                'first_content_seconds': first_content, 'first_reasoning_seconds': first_reasoning, 'usage': usage,
                 'end_to_end_output_tps': tokens / terminal,
                 'output_interval_tps': (tokens - 1) / (last - first),
                 'output_excerpt': ''.join(output)[:96]}
@@ -56,11 +67,11 @@ async def stream_requests(http, gateway, token, inputs, request_options=None):
                 / max(item['terminal_seconds'] for item in results)}
 
 
-async def stream_group(http, gateway, token, inputs=None):
+async def stream_group(http, gateway, token, inputs=None, request_options=None):
     """Require all four output intervals to overlap, not just HTTP submission."""
     inputs = inputs or [SHORT_PROMPT] * 4
     assert len(inputs) == 4
-    result = await stream_requests(http, gateway, token, inputs)
+    result = await stream_requests(http, gateway, token, inputs, request_options=request_options)
     result['four_output_intervals_overlap_seconds'] = result['output_intervals_overlap_seconds']
     return result
 

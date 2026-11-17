@@ -13,9 +13,60 @@
 | `POST /v1/chat/prompt_tokens` | 文本按同一聊天模板计量，供需要精确上下文预算的客户端使用。 |
 | `GET /v1/realtime?duplex=1` | Realtime WebSocket。以 `session.created` 报告的能力确定输入模态、切片、字幕、打断、恢复和播放确认。 |
 
-Omni 已验证 20 条消息、7,928 个输入 tokens 的多轮历史检索；超限输入返回 400，调用方可先计量再选择保留的历史与记忆。计量接口允许计算超出窗口的文本，用于压缩预算。[8K 边界证据](../evaluations/results/omni-8k-multi-turn-workstation.json)。
+Omni 的边界夹具显式关闭 CoT，已验证 20 条消息、7,928 个输入 tokens 的多轮历史检索；超限输入返回 400，调用方可先计量再选择保留的历史与记忆。计量接口允许计算超出窗口的文本，用于压缩预算。[8K 边界证据](../evaluations/results/omni-8k-multi-turn-workstation.json)。
 
 Bearer 鉴权、排队、取消、超时和管理接口由[网关规范](../services/gateway/README.md)维护。原生模型服务的协议和 Avatar 能力独立发布，调用应用根据各自会话实际协商。
+
+## CoT 默认与调用方预算
+
+Omni Chat、后台 LLM Chat／Responses 默认 `chat_template_kwargs.enable_thinking=true`。网关在模板计量与推理前应用相同默认值，保留调用方显式覆盖。开启 CoT 不强制每条简单问题都输出思考段，模型仍可直接回答。
+
+服务默认不设置额外 `thinking_token_budget`，不新增思考长度、effort 或采样参数上限；沿用固定上游和模型／部署的默认预算。Omni Chat 总生成默认值跟随固定官方部署配置，为 2048，LLM 使用其上游默认，均受各自上下文与准入预算约束。[固定版官方部署](https://github.com/vllm-project/vllm-omni/blob/v0.32.0/vllm_omni/deploy/minicpmo_4_5.yaml)。调用方应显式设置合适的总输出上限，以便短请求共享预算并发；思考与正文都占用这份输出额度。
+
+| 字段 | 外部用法 |
+| --- | --- |
+| `chat_template_kwargs.enable_thinking` | 布尔值；显式 `false` 可关闭，省略默认开启。适用于 Chat 与 Responses。 |
+| `thinking_token_budget` | 本地扩展，非负整数限制思考阶段，`-1` 按上游定义为不限思考预算（仍受总输出与上下文上限约束）；省略为上游默认。Chat 和 Responses 均转交同一采样器，不增加总输出额度。 |
+| Chat `max_tokens`；LLM Chat 也接受 `max_completion_tokens` | 限制思考＋正文总输出。Omni Chat 使用 `max_tokens`。 |
+| Responses `max_output_tokens` | 限制思考＋正文总输出；同样参与共享 token 准入。 |
+| Responses `reasoning.effort`／Chat `reasoning_effort` | 透传上游模板能力；`none` 在未显式指定模板开关时关闭思考。其他 effort 不等同严格 token 配额。 |
+| Responses `include_reasoning=false` | 只隐藏返回的思考内容，仍生成并计入 tokens，不等于关闭 CoT。 |
+
+例如调用方可提交 `{"model":"llm-default","input":"计算 37×48","stream":true,"max_output_tokens":1024,"thinking_token_budget":256}`；这是该请求的显式预算，不是服务默认。SDK 通过 `extra_body` 发送本地扩展字段。思考预算按模型标记阶段计量，不限制正文解释长度；总长度与格式分别由总输出额度和结构化约束控制。保留的 Responses 历史、工具结果与思考／正文共同受上下文约束；服务不把思考预算当作额外窗口或额外显存。
+
+原生 Realtime 双工使用模型官方原生监听／说话策略，没有独立官方 CoT 开关或思考 token 预算接口。上述参数用于 Chat／Responses，不向原生双工发送不支持的参数，也不将语音分块预算当作 CoT 预算。
+
+## Omni 实时历史窗口
+
+默认沿用固定 vLLM-Omni 0.32 的 `basic`：高水位 8000、低水位 6000。网关不覆盖上游窗口策略；省略窗口字段即采用这个官方服务默认值。Chat 的 8192-token 上限与 Realtime 历史保留策略是两个配置，模式切换不会扩大模型窗口。
+
+外部调用方需要调整时，先连接 `ws://100.119.17.6:8000/v1/realtime?duplex=1&autostart=0`，再发送首条 `session.update`。`autostart=0` 让窗口参数在创建会话时生效，避免服务提前按默认值创建会话。沿用应用 Bearer；浏览器仍可通过已有 ticket 认证。示例：
+
+```json
+{
+  "type": "session.update",
+  "session": {
+    "model": "omni-default",
+    "modalities": ["audio", "text"],
+    "input_audio_format": "pcm16",
+    "output_audio_format": "pcm16",
+    "playback_commit_policy": "ack_only",
+    "extra_body": {
+      "sliding_window_mode": "basic",
+      "basic_window_high_tokens": 8000,
+      "basic_window_low_tokens": 6000
+    }
+  }
+}
+```
+
+| 模式 | 保留方式 | 使用边界 |
+| --- | --- | --- |
+| `basic`（默认） | 达到高水位后按完整输入单元移除最早历史，目标降至低水位；保留 system／参考音频前缀。 | 保留近期原始输入及回复，适合当前约 8K 实时助手＋外部记忆。 |
+| `context`（调用方可选） | 默认保留 24 个近期输入单元，另带上至多 500 tokens 的较早模型生成文本，并重建保留窗口。 | 不是更大的窗口，也不是旧用户输入的转写、摘要或永久记忆；多模态历史重建可能增加延迟。 |
+| `off`（调用方可选） | 不主动滑动移除历史。 | 仍受当前 8192 上限约束，不适合无限期通话。 |
+
+如需试用 `context`，将 `extra_body` 替换为 `{"sliding_window_mode":"context","context_max_units":24,"context_previous_max_tokens":500}`。`unit` 是输入单元，不能当作 token 数或完整对话轮次；单位数量限制也不能代替 token 预算。窗口配置在会话创建后固定，调整策略需新建会话。维持 `0 < low < high`，并按当前模型窗口留出输入及生成余量；参数透传不会绕过上游校验或扩大显存容量。`context` 不作为当前默认或已完成质量验收的替代方案。[固定版官方说明](https://github.com/vllm-project/vllm-omni/blob/v0.32.0/docs/serving/realtime_duplex_api.md#open-a-session)。
 
 ## 后台 Responses
 
@@ -33,7 +84,7 @@ LLM 单请求上限保留 262144 tokens，引擎和网关默认允许 4 个生�
 
 `LLM_MAX_NUM_SEQS` 同时配置引擎和网关（默认 4）；`LLM_TOKEN_BUDGET` 是全局活跃预算，不改变模型窗口。`LLM_QUEUE_LIMIT`、`LLM_QUEUE_TIMEOUT`、`LLM_REQUEST_TIMEOUT` 可独立设置后台排队和总期限，默认继承现有 16／5 秒／1200 秒；Omni 的实时通道保持独立。提高并发或预算必须重新验证显存和头像共驻表现。
 
-启用神经头像覆盖时，GPU 0 的 LLM 与 Ditto 通过 CUDA MPS 共驻；LLM 活跃线程上限默认 20%，并启用批次 1／2／4 的解码 CUDA Graph、关闭异步调度。没有固定批次等待或 SSE 限速。计算资源上限与 token 显存预算分别生效；当前吞吐和重启流程见[工作站部署](deployment/workstation.md#四路并发与计算预算)。
+启用神经头像覆盖时，GPU 0 的 LLM 与 Ditto 通过 CUDA MPS 共驻；LLM 活跃线程上限默认 20%，并启用批次 1／2／4 的解码 CUDA Graph、关闭异步调度。旧固定 250 ms 空档已移除；当前在渲染余量低于 240 ms 时，单次派发前按实际帧进度主动让出最多 18 ms，无有效头像反馈则不等待，SSE 即时转发。计算资源上限与 token 显存预算分别生效；当前吞吐和重启流程见[工作站部署](deployment/workstation.md#四路并发与计算预算)。
 
 当前验收范围是 provider API，具体 Antigravity／agent-orchestrator 客户端接入留在应用项目。[provider 约定](../services/gateway/README.md#external-orchestration-clients)。
 

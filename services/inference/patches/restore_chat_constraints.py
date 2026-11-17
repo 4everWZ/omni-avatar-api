@@ -16,6 +16,8 @@ anchor = """                setattr(params, field_name, value)
 replacement = """                setattr(params, field_name, value)
 
         # Use vLLM's protocol conversion for response_format and structured_outputs.
+        if "thinking_token_budget" in request.model_fields_set:
+            params.thinking_token_budget = request.thinking_token_budget
         if (constraints := request.extract_structured_outputs()) is not None:
             params.structured_outputs = constraints
         elif (

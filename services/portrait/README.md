@@ -23,3 +23,5 @@ uv run --no-project --with aiohttp --with pillow python -B -m unittest discover 
 ```
 
 For real dual-GPU co-residency, use [tools/qualification/portrait.py](../../tools/qualification/portrait.py) with the Avatar dependencies and a clear single-face PNG reference. It creates a retained prepared avatar, binds native Omni speech, consumes actual WHEP media and calls the background Responses backend. Test captures are diagnostic images; frame delivery is not proof of physical speaker playback or subjective lip-sync quality.
+
+The render timeline additionally publishes an atomic, expiring deadline clock in the private MPS control volume (`OMNI_GPU_RENDER_CLOCK`). It contains only monotonic frame timing. The text engine cooperates when remaining headroom is below 240 ms, yielding at most 18 ms per dispatch and resuming early once frames catch up. Closing the render run removes its clock; an abandoned clock expires after 500 ms. Resolution, ten-step sampling and the 1.2-second audio input lead are unchanged. [Current mixed-load evidence](../../evaluations/results/omni-throughput-final-workstation.json).

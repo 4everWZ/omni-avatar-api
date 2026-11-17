@@ -22,7 +22,7 @@ uv run --no-project --with-requirements services/gateway/requirements.txt python
 uv run --no-project --with-requirements services/avatar/requirements.txt python -B -m unittest discover -s services/avatar/tests -v
 uv run --no-project --with-requirements services/avatar/requirements.txt python -B -m unittest discover -s tests/integration -v
 uv run --no-project --with aiohttp --with pillow python -B -m unittest discover -s services/portrait/tests -v
-python -B -m unittest services.inference.tests.test_model services.inference.tests.test_chat_validation services.inference.tests.test_llm_admission services.inference.tests.test_patch_minicpmo_awq_stages tests.tooling.test_compose -v
+python -B -m unittest services.inference.tests.test_model services.inference.tests.test_chat_validation services.inference.tests.test_llm_admission services.inference.tests.test_gpu_deadline services.inference.tests.test_reasoning_budget services.inference.tests.test_patch_minicpmo_awq_stages tests.tooling.test_compose -v
 ```
 
 INT4 layout/reference tests additionally need PyTorch. Use the pinned inference environment rather than installing GPU libraries into the host's default Python:
@@ -56,7 +56,7 @@ uv run --no-project --with-requirements services/avatar/requirements.txt \
   --seconds 120 --report tmp/portrait-check.json
 ```
 
-For single/four-request TPS with an active 25 fps portrait, run `python -m tools.qualification.throughput --env .env --reference /path/to/portrait.png --seconds 90 --report tmp/throughput-check.json` in the same isolated environment. See [tools](../tools/README.md) for qualification scope and diagnostics. Run only checks relevant to the change. Source/import/deployment refactors need contract, path and image checks; they do not require repeating long GPU benchmarks when model behavior is unchanged.
+For single/four-request TPS with an active 25 fps portrait, run `python -m tools.qualification.throughput --env .env --reference /path/to/portrait.png --seconds 90 --report tmp/throughput-check.json` in the same isolated environment. Foreground Omni text TPS and full mixed-load checks use `python -m tools.qualification.omni_throughput --avatar-id <id> --seconds 90 --sliding-window-mode basic --report tmp/omni-throughput.json`. See [tools](../tools/README.md) for qualification scope and diagnostics. Run only checks relevant to the change. Source/import/deployment refactors need contract, path and image checks; they do not require repeating long GPU benchmarks when model behavior is unchanged.
 
 ## Contributions
 

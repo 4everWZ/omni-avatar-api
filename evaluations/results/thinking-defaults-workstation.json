@@ -1,0 +1,194 @@
+{
+  "state": "passed",
+  "scope": "default_chat_responses_thinking_and_explicit_budgets",
+  "started_utc": "2026-11-17T17:00:37.425423+00:00",
+  "checks": [
+    {
+      "name": "omni_chat_default_thinking",
+      "path": "/v1/chat/completions",
+      "options": {},
+      "reasoning_characters": 2116,
+      "final_answer": "1776",
+      "usage": {
+        "prompt_tokens": 27,
+        "total_tokens": 835,
+        "completion_tokens": 808
+      }
+    },
+    {
+      "name": "llm_chat_default_thinking",
+      "path": "/llm/v1/chat/completions",
+      "options": {},
+      "reasoning_characters": 1081,
+      "final_answer": "1776",
+      "usage": {
+        "prompt_tokens": 29,
+        "total_tokens": 540,
+        "completion_tokens": 511,
+        "completion_tokens_details": {
+          "reasoning_tokens": 504
+        }
+      }
+    },
+    {
+      "name": "responses_default_thinking",
+      "path": "/llm/v1/responses",
+      "options": {},
+      "reasoning_characters": 1081,
+      "final_answer": "1776",
+      "usage": {
+        "input_tokens": 29,
+        "input_tokens_details": {
+          "cached_tokens": 0,
+          "cache_write_tokens": 0,
+          "input_tokens_per_turn": [],
+          "cached_tokens_per_turn": []
+        },
+        "output_tokens": 511,
+        "output_tokens_details": {
+          "reasoning_tokens": 504,
+          "tool_output_tokens": 0,
+          "output_tokens_per_turn": [],
+          "tool_output_tokens_per_turn": []
+        },
+        "total_tokens": 540
+      }
+    },
+    {
+      "name": "omni_chat_explicit_disable",
+      "path": "/v1/chat/completions",
+      "options": {
+        "chat_template_kwargs": {
+          "enable_thinking": false
+        }
+      },
+      "reasoning_characters": 0,
+      "final_answer": "1776",
+      "usage": {
+        "prompt_tokens": 31,
+        "total_tokens": 36,
+        "completion_tokens": 5
+      }
+    },
+    {
+      "name": "llm_chat_explicit_disable",
+      "path": "/llm/v1/chat/completions",
+      "options": {
+        "chat_template_kwargs": {
+          "enable_thinking": false
+        }
+      },
+      "reasoning_characters": 0,
+      "final_answer": "1776",
+      "usage": {
+        "prompt_tokens": 31,
+        "total_tokens": 36,
+        "completion_tokens": 5,
+        "completion_tokens_details": {
+          "reasoning_tokens": 0
+        }
+      }
+    },
+    {
+      "name": "responses_effort_none_disables_thinking",
+      "path": "/llm/v1/responses",
+      "options": {
+        "reasoning": {
+          "effort": "none"
+        }
+      },
+      "reasoning_characters": 0,
+      "final_answer": "1776",
+      "usage": {
+        "input_tokens": 31,
+        "input_tokens_details": {
+          "cached_tokens": 0,
+          "cache_write_tokens": 0,
+          "input_tokens_per_turn": [],
+          "cached_tokens_per_turn": []
+        },
+        "output_tokens": 5,
+        "output_tokens_details": {
+          "reasoning_tokens": 0,
+          "tool_output_tokens": 0,
+          "output_tokens_per_turn": [],
+          "tool_output_tokens_per_turn": []
+        },
+        "total_tokens": 36
+      }
+    },
+    {
+      "name": "explicit_thinking_budget_/v1/chat/completions",
+      "path": "/v1/chat/completions",
+      "options": {
+        "thinking_token_budget": 16
+      },
+      "reasoning_characters": 59,
+      "final_answer": "-check: 2 + 3. Yes, 2 plus 1 is 3, plus another 2 is 5. Yep, that's correct. No units or anything else involved. The answer should just be 5. I think that's it. No complicated steps needed here. Just a simple addition problem. Alright, confident with that.",
+      "usage": {
+        "prompt_tokens": 20,
+        "total_tokens": 221,
+        "completion_tokens": 201
+      }
+    },
+    {
+      "name": "negative_budget_rejected",
+      "path": "/v1/chat/completions",
+      "status": 400
+    },
+    {
+      "name": "explicit_thinking_budget_/llm/v1/chat/completions",
+      "path": "/llm/v1/chat/completions",
+      "options": {
+        "thinking_token_budget": 16
+      },
+      "reasoning_characters": 55,
+      "final_answer": "s:** The user explicitly requested \"Return only the final integer.\"\n4.  **Formulate Output:** The output should be just the number \"5\".\n5.  **Final Verification:** Does \"5\" satisfy the constraint of being only the final integer? Yes.\n\nPlan: Output \"5\".\n\n\n5",
+      "usage": {
+        "prompt_tokens": 22,
+        "total_tokens": 144,
+        "completion_tokens": 122,
+        "completion_tokens_details": {
+          "reasoning_tokens": 15
+        }
+      }
+    },
+    {
+      "name": "negative_budget_rejected",
+      "path": "/llm/v1/chat/completions",
+      "status": 400
+    },
+    {
+      "name": "explicit_thinking_budget_/llm/v1/responses",
+      "path": "/llm/v1/responses",
+      "options": {
+        "thinking_token_budget": 16
+      },
+      "reasoning_characters": 55,
+      "final_answer": "s:** The user explicitly requested \"Return only the final integer.\"\n4.  **Formulate Output:** The output should be just the number \"5\".\n5.  **Final Verification:** Does \"5\" satisfy the constraint of being only the final integer? Yes.\n\nPlan: Output \"5\".\n\n\n5",
+      "usage": {
+        "input_tokens": 22,
+        "input_tokens_details": {
+          "cached_tokens": 0,
+          "cache_write_tokens": 0,
+          "input_tokens_per_turn": [],
+          "cached_tokens_per_turn": []
+        },
+        "output_tokens": 122,
+        "output_tokens_details": {
+          "reasoning_tokens": 15,
+          "tool_output_tokens": 0,
+          "output_tokens_per_turn": [],
+          "tool_output_tokens_per_turn": []
+        },
+        "total_tokens": 144
+      }
+    },
+    {
+      "name": "negative_budget_rejected",
+      "path": "/llm/v1/responses",
+      "status": 400
+    }
+  ],
+  "finished_utc": "2026-11-17T17:01:20.578724+00:00"
+}

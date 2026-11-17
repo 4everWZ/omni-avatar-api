@@ -10,6 +10,7 @@ import secrets
 from aiohttp import ClientError, web
 from .admission import BudgetExceeded
 from .token_budget import reservation
+from .thinking import apply_thinking_default
 
 
 def error(status, code, message):
@@ -91,6 +92,7 @@ class ResponsesProxy:
             nonce = secrets.token_hex(16)
             payload['request_id'] = 'resp_' + nonce + '_' + self.signature(owner, nonce)
             payload['model'] = self.gateway.config.model
+            apply_thinking_default(payload)
         else:
             response_id = request.match_info['response_id']
             if not self.owns(owner, response_id):

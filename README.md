@@ -111,7 +111,7 @@ docs/                     Architecture, API, development and deployment guides
 evaluations/              Shared fixtures and retained real-device evidence
 ```
 
-`data/`, `runtime/`, `tmp/` and `.env` are local, ignored artifacts. Service dependencies are isolated by image; services communicate through HTTP/WebSocket/Unix-socket contracts rather than importing each other's implementation.
+`data/`, `runtime/`, `tmp/` and `.env` are local, ignored artifacts. Service dependencies are isolated by image; services communicate through HTTP/WebSocket/Unix-socket contracts and a private GPU deadline signal rather than importing each other's implementation.
 
 ## Development and validation
 
@@ -119,16 +119,23 @@ See [development](docs/development.md) for dependency-isolated tests and local s
 
 Recorded checks cover 8K Omni recall, Responses continuation, about 22K tokens of LLM history, and four simultaneous shorter generations with a 25 fps neural portrait.
 
-Current LLM throughput uses W4A16 weights, CUDA MPS (LLM active-thread limit 20%) and decode CUDA graphs, with no fixed batch sleep. Short requests have 29 input tokens and 256 output tokens, temperature 0 and thinking disabled:
+Omni Chat and LLM Chat/Responses now default to CoT, with upstream thinking-budget defaults. Native duplex retains the official model policy. Realtime defaults to `basic` (8000/6000); applications can override window policy at session creation and text reasoning budgets per request. See the [API](docs/api.md#cot-默认与调用方预算).
 
-| Concurrent requests | Portrait activity | Per-request output TPS | Aggregate output TPS |
-| --- | --- | --- | --- |
-| 1 | Resident, idle | 47.18 | 47.18 |
-| 4 | Resident, idle | 37.12–37.27 | 148.47 |
-| 1 | Active native speech and 25 fps neural portrait | 22.92–23.90 | 22.92–23.90 |
-| 4 | Active native speech and 25 fps neural portrait | 18.68–19.42 | 74.73–77.34 |
+Current dual-3090 measurements use CoT, at most 256 generated tokens per request and temperature 0. Rendered inputs are 25 tokens for Omni and 27 for the LLM. TPS includes reasoning and answer tokens, prefill and waiting.
 
-TPS includes prefill and waiting, measured from the group's request start to completion. Idle single-request decode throughput alone is 47.75 TPS. The portrait produced 2,269 real neural frames in the 90-second check, with a maximum sampled timeline lag of 79 ms. See the [workstation guide](docs/deployment/workstation.md#四路并发与计算预算) for calculations, raw records and MPS restart instructions. These short-prompt measurements do not establish full 262K quality or sustained-load throughput; physical speaker/microphone playback remains a manual check.
+| Service | Generating requests | Other active work | Per-request total TPS | Aggregate TPS |
+| --- | --- | --- | --- | --- |
+| Omni Chat | 1 | Idle | 65.54 | 65.54 |
+| Omni Chat | 1 | Native voice + portrait + four LLM requests | 32.00–36.55 | 32.00–36.55 |
+| LLM | 1 | Idle | 47.25 | 47.25 |
+| LLM | 4 | Idle | 37.12–37.26 | 148.48 |
+| LLM | 1 | Native voice + portrait | 18.33–23.53 | 18.33–23.53 |
+| LLM | 4 | Native voice + portrait | 15.37–19.12 | 61.46–76.11 |
+| LLM | 4 | Native voice + portrait + one Omni Chat request | 13.49–16.66 | 53.97–66.32 |
+
+The full mixed-load check produced 2,263 real neural frames in 90 seconds at 25 fps, with a maximum sampled timeline lag of 84 ms. CUDA MPS and actual frame-deadline feedback share GPU 0, without the old fixed 250 ms batch sleep. Ordinary Omni Chat retains single-request admission: two simultaneous short submissions queue and aggregate 65.13 TPS, rather than decode in parallel.
+
+The 256-token fixture can finish its budget during reasoning; these are total generation rates, not answer-only speed or completed-answer latency. Separate checks cover completed CoT answers, budgets, JSON Schema and tool continuation. See the [workstation guide](docs/deployment/workstation.md#四路并发与计算预算) for formulas, raw records and limits. Full 262K quality and physical speaker/microphone playback still need their respective checks.
 
 ## Documentation
 
