@@ -1,7 +1,7 @@
 # Append after workstation + avatar: two GPU-isolated inference APIs, same host.
 x-llm: &llm
-  LLM_MODEL_ID: axteam/Qwen3.5-9B-AWQ-8bit
-  LLM_CHECKPOINT: b1c949034d7716055133dcc05c1f085beb2b83fb
+  LLM_MODEL_ID: axteam/Qwen3.5-9B-AWQ-4bit
+  LLM_CHECKPOINT: 5577b5b71e6f06b9f6a1f3743ef6ba6dc4ecd2df
 
 services:
   omni-engine:

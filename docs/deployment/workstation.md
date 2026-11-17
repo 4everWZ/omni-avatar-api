@@ -21,7 +21,7 @@ python tools/compose.py -- up -d
 | 入口 | 责任 |
 | --- | --- |
 | `/v1`，`omni-default` | 语音／视觉助手、普通和流式 Chat、原生 Realtime；Chat 窗口 8192，Realtime 默认 basic 水位 8000／6000。 |
-| `/llm/v1`，`llm-default` | 以 Responses HTTP／增量 SSE 为主的长上下文推理，兼容 Chat；结构化回复与工具调用输出。固定 9B 8bit，配置窗口 262144，已验证 22,753-token 多轮续接。 |
+| `/llm/v1`，`llm-default` | 以 Responses HTTP／增量 SSE 为主的长上下文推理，兼容 Chat；结构化回复与工具调用输出。固定 9B W4A16，配置窗口 262144，已验证 22,753-token 多轮续接。 |
 | `/healthz`、`/llm/healthz` | 分别报告两个后端的身份、根目录校验、就绪和独立准入；一个后端异常不代替另一个的健康结论。 |
 | `/v1/avatar/*` | 同宿主 Ava 渲染、音频源绑定、WHEP、字幕、代次和会话生命周期。 |
 
@@ -31,13 +31,38 @@ GPU 设备通过容器设备请求隔离；每个容器只见自己的物理卡�
 
 ## 四路并发与计算预算
 
-当前保留 9B 8bit 权重、9 GiB 浮点 KV、FP32 SSM 和原卡位：GPU 0 为 LLM 与 Ditto，GPU 1 为完整 Omni。`LLM_MAX_NUM_SEQS=4` 同时控制引擎和网关；活跃请求共享 `LLM_TOKEN_BUDGET=262144`，按完整输入加最大输出预留，见 [API](../api.md)。长短请求按 FIFO 等待，不能把异步排队视为四路生成。
+当前使用 `axteam/Qwen3.5-9B-AWQ-4bit@5577b5b71e6f06b9f6a1f3743ef6ba6dc4ecd2df`，实际格式为 compressed-tensors W4A16、非对称 group 32。保留 9 GiB BF16 KV、FP32 SSM 和原卡位：GPU 0 为 LLM 与 Ditto，GPU 1 为完整 Omni。`LLM_MAX_NUM_SEQS=4` 同时控制引擎和网关；活跃请求共享 `LLM_TOKEN_BUDGET=262144`，按完整输入加最大输出预留，见 [API](../api.md)。长短请求按 FIFO 等待，不能把异步排队视为四路生成。
 
-神经头像覆盖默认 `LLM_GPU_STEP_PAUSE_MS=250`，在实际 GPU 批次结束后让出执行空档，保持四序列同批生成并即时转发 SSE；没有神经头像覆盖时默认关闭。该配置按用户优先级保障四路与 25 fps，非吞吐最大化配置。四路各 256 输出 tokens 时，单路约 3.4 tokens/s，输出区间重叠 74.4 秒。降低让出时间须重验头像时间线；提高 token 预算须重验显存，两者不能相互替代。
+神经头像覆盖通过独立 `gpu-mps` 服务启用 GPU 0 的 CUDA MPS。LLM 使用 `LLM_MPS_ACTIVE_THREAD_PERCENTAGE=20`、较低客户端优先级；Ditto 使用正常优先级。20% 是线程资源上限，并非独占 20% 执行时间；实机 LLM 可见 16 个 SM。LLM 启用 `FULL_DECODE_ONLY` CUDA Graph，捕获批次 1、2、4，并关闭异步调度。已移除 Core 固定等待补丁及 `LLM_GPU_STEP_PAUSE_MS`，SSE 即时转发实际生成。调整 MPS 上限需要重验头像时间线；token 预算保护显存，两者分别生效。
 
-Ditto 运动预测改用 FP16，并保留十步采样、RNG、分辨率和原参考图接口。图重放严格比较编译前向，另用固定输入验证 FP32 到 FP16 的数值漂移。90 秒共驻检查产生 2,266 张真实神经帧，接收 2,305 视频／4,606 音频帧及 57 个原生语音块；最大采样时间线偏差 61 ms，原生取消和恢复通过。[四路与头像](../../evaluations/results/portrait-four-way-workstation.json)。这不保证四个满窗口同时推理，也不替代完整 262K 质量验收或长期满载 SLA。
+当前端到端输出 TPS 如下：29-token 短提示，每路 256 输出 tokens，温度 0、关闭 thinking、关闭前缀缓存；先预热 32 tokens，头像服务始终共驻。通话状态的两轮结果保留为范围。
 
-同一配置的引擎指标采到 4 个同时运行序列；28,528-token 输入与三路短请求混跑通过。单请求 token 预留超过剩余预算时，即使序列槽未满也返回排队超时 429；剩余预算可接短 Chat，取消后预留归零。[并发与预算](../../evaluations/results/llm-four-way-workstation.json)。新增渲染计量路径下，Responses 续接、JSON Schema、function 往返、增量 SSE、22K 多轮历史与 Omni 8K 边界复验通过。[兼容性](../../evaluations/results/responses-budget-compatibility.json)。
+| 并发请求数 | 头像状态 | 每路 TPS（输出 tokens/s） | 总 TPS（输出 tokens/s） |
+| --- | --- | --- | --- |
+| 1 | 服务共驻、空闲；无原生语音会话 | 47.18 | 47.18 |
+| 4 | 服务共驻、空闲；无原生语音会话 | 37.12–37.27 | 148.47 |
+| 1 | 原生语音与神经头像 25 fps 通话中 | 22.92–23.90 | 22.92–23.90 |
+| 4 | 原生语音与神经头像 25 fps 通话中 | 18.68–19.42 | 74.73–77.34 |
+
+口径：每路 TPS = `usage.output_tokens` ÷ 从本组请求发起到该路 `response.completed` 的秒数；总 TPS = 本组全部输出 tokens ÷ 最晚完成时间，包含预填充及传输等待，不用 SSE 事件数代替 token 数。生成区间另按 `(输出 tokens - 1) / (末增量时间 - 首增量时间)` 计算，空闲单路为 47.75 TPS。原始报告保留两种口径及首包时间；不将短输入吞吐外推到长上下文或持续满载。[吞吐与共驻](../../evaluations/results/throughput-mps-workstation.json)。工具默认的单路 45 TPS／通话四路每路 15 TPS 是防退化检查线，不代表用户确认了长期 SLA。
+
+Ditto 运动预测维持有数值漂移检查的 FP16、十步采样、RNG、分辨率及原参考图接口。90 秒生成 2,269 张真实神经帧，接收 2,306 视频／4,610 音频帧及 36 个原生语音块；检查期最大采样时间线偏差 79 ms，原生取消和恢复通过。报告末尾取消恢复期间的样本独立于检查期偏差统计。这不保证四个满窗口同时推理，也不替代完整 262K 质量验收或长期满载 SLA。
+
+同一配置的引擎指标采到 4 个同时运行序列；28,528-token 输入与三路短请求混跑、四个 worker 独立保存与并行续接通过。超出剩余 token 预算时，即使序列槽未满也排队超时 429；剩余预算可接短 Chat，取消后预留归零。[并发与预算](../../evaluations/results/llm-mps-concurrency-workstation.json)。更换 4bit 权重后，Responses 续接、JSON Schema、function 往返、增量 SSE、22,753-token 多轮检索与 Omni 8K 边界均复验通过。[兼容性](../../evaluations/results/responses-mps-compatibility.json)。旧 250 ms 等待方案的约 3.4 TPS 已被用户否决；原报告仅保留为撤回方案的历史基线，不是当前交付性能。[原单路基线](../../evaluations/results/single-request-tps-sleep-baseline.json)。
+
+### MPS 生命周期
+
+仅工作站神经头像覆盖启用 MPS；不启动宿主级守护进程，不修改宿主 compute mode。`gpu-mps` 使用镜像内的 NVIDIA 控制程序，以多用户模式运行、无网络；LLM 与 Ditto 共享该服务的 PID／IPC 命名空间及控制 socket 卷。两个客户端均依赖控制服务健康。GPU 1 的 Omni 不加入 MPS。参见 [NVIDIA MPS 文档](https://docs.nvidia.com/deploy/mps/latest/appendix-environment-variables.html)。
+
+控制服务需要重建时，先停客户端，再依次恢复，避免客户端持有已失效的命名空间：
+
+```sh
+python tools/compose.py --portrait --vpn -- stop llm-engine omni-portrait
+python tools/compose.py --portrait --vpn -- up -d --wait --no-deps --force-recreate gpu-mps
+python tools/compose.py --portrait --vpn -- up -d --wait llm-engine omni-portrait omni-gateway
+```
+
+凭据保持不变，准备好的 avatar_id 保存在卷中；引擎 RAM 内的 Responses 历史在重启后失效，调用方应保存业务历史。实机重建 MPS 与客户端后，复用已准备形象的 30 秒四路／25 fps、音画时间线及取消恢复检查通过。[重启复用](../../evaluations/results/mps-lifecycle-workstation.json) · [无固定等待及实际 MPS 资源检查](../../evaluations/results/mps-runtime-workstation.json)。
 
 ## Avatar 与访问
 

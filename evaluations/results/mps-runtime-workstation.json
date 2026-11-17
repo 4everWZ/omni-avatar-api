@@ -1,0 +1,1 @@
+{"fixed_pause_hook_present": false, "active_thread_percentage": 20, "visible_sm_count": 16, "gpu": "NVIDIA GeForce RTX 3090", "torch": "2.13.0+cu130", "mps_pipe_directory": "/run/omni-mps"}

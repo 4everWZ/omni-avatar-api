@@ -56,7 +56,7 @@ uv run --no-project --with-requirements services/avatar/requirements.txt \
   --seconds 120 --report tmp/portrait-check.json
 ```
 
-See [tools](../tools/README.md) for qualification scope and diagnostics. Run only checks relevant to the change. Source/import/deployment refactors need contract, path and image checks; they do not require repeating long GPU benchmarks when model behavior is unchanged.
+For single/four-request TPS with an active 25 fps portrait, run `python -m tools.qualification.throughput --env .env --reference /path/to/portrait.png --seconds 90 --report tmp/throughput-check.json` in the same isolated environment. See [tools](../tools/README.md) for qualification scope and diagnostics. Run only checks relevant to the change. Source/import/deployment refactors need contract, path and image checks; they do not require repeating long GPU benchmarks when model behavior is unchanged.
 
 ## Contributions
 

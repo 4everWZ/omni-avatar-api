@@ -1,0 +1,427 @@
+{
+  "started_utc": "2026-11-17T15:37:09.432915+00:00",
+  "metrics_collector_host": "belal-PC",
+  "scope": "mps_controller_recreation_and_prepared_avatar_reuse",
+  "requested_seconds": 30,
+  "state": "passed",
+  "checks": [
+    {
+      "name": "single_gpu_omni_vision_color_correct"
+    },
+    {
+      "name": "owned_avatar_created"
+    },
+    {
+      "name": "four_simultaneous_responses_while_neural_avatar_active",
+      "requests": [
+        {
+          "index": 0,
+          "first_delta_seconds": 0.13836042792536318,
+          "last_delta_seconds": 12.847137791104615,
+          "terminal_seconds": 12.865082713076845,
+          "delta_events": 256,
+          "usage": {
+            "input_tokens": 29,
+            "input_tokens_details": {
+              "cached_tokens": 0,
+              "cache_write_tokens": 0,
+              "input_tokens_per_turn": [],
+              "cached_tokens_per_turn": []
+            },
+            "output_tokens": 256,
+            "output_tokens_details": {
+              "reasoning_tokens": 0,
+              "tool_output_tokens": 0,
+              "output_tokens_per_turn": [],
+              "tool_output_tokens_per_turn": []
+            },
+            "total_tokens": 285
+          },
+          "end_to_end_output_tps": 19.898822705569252,
+          "output_interval_tps": 20.064872702767115,
+          "output_excerpt": "1\n2\n3\n4\n5\n6\n7\n8\n9\n10\n11\n12\n13\n14\n15\n16\n17\n18\n19\n20\n21\n22\n23\n24\n25\n26\n27\n28\n29\n30\n31\n32\n33\n34\n35\n"
+        },
+        {
+          "index": 1,
+          "first_delta_seconds": 0.26714611193165183,
+          "last_delta_seconds": 12.902135905111209,
+          "terminal_seconds": 12.90220748912543,
+          "delta_events": 256,
+          "usage": {
+            "input_tokens": 29,
+            "input_tokens_details": {
+              "cached_tokens": 0,
+              "cache_write_tokens": 0,
+              "input_tokens_per_turn": [],
+              "cached_tokens_per_turn": []
+            },
+            "output_tokens": 256,
+            "output_tokens_details": {
+              "reasoning_tokens": 0,
+              "tool_output_tokens": 0,
+              "output_tokens_per_turn": [],
+              "tool_output_tokens_per_turn": []
+            },
+            "total_tokens": 285
+          },
+          "end_to_end_output_tps": 19.841565888300003,
+          "output_interval_tps": 20.182050335936996,
+          "output_excerpt": "1\n2\n3\n4\n5\n6\n7\n8\n9\n10\n11\n12\n13\n14\n15\n16\n17\n18\n19\n20\n21\n22\n23\n24\n25\n26\n27\n28\n29\n30\n31\n32\n33\n34\n35\n"
+        },
+        {
+          "index": 2,
+          "first_delta_seconds": 0.2671161249745637,
+          "last_delta_seconds": 12.903970981948078,
+          "terminal_seconds": 12.904026455944404,
+          "delta_events": 256,
+          "usage": {
+            "input_tokens": 29,
+            "input_tokens_details": {
+              "cached_tokens": 0,
+              "cache_write_tokens": 0,
+              "input_tokens_per_turn": [],
+              "cached_tokens_per_turn": []
+            },
+            "output_tokens": 256,
+            "output_tokens_details": {
+              "reasoning_tokens": 0,
+              "tool_output_tokens": 0,
+              "output_tokens_per_turn": [],
+              "tool_output_tokens_per_turn": []
+            },
+            "total_tokens": 285
+          },
+          "end_to_end_output_tps": 19.83876899772399,
+          "output_interval_tps": 20.179071682482842,
+          "output_excerpt": "1\n2\n3\n4\n5\n6\n7\n8\n9\n10\n11\n12\n13\n14\n15\n16\n17\n18\n19\n20\n21\n22\n23\n24\n25\n26\n27\n28\n29\n30\n31\n32\n33\n34\n35\n"
+        },
+        {
+          "index": 3,
+          "first_delta_seconds": 0.26707626110874116,
+          "last_delta_seconds": 12.90412393794395,
+          "terminal_seconds": 12.904173321090639,
+          "delta_events": 256,
+          "usage": {
+            "input_tokens": 29,
+            "input_tokens_details": {
+              "cached_tokens": 0,
+              "cache_write_tokens": 0,
+              "input_tokens_per_turn": [],
+              "cached_tokens_per_turn": []
+            },
+            "output_tokens": 256,
+            "output_tokens_details": {
+              "reasoning_tokens": 0,
+              "tool_output_tokens": 0,
+              "output_tokens_per_turn": [],
+              "tool_output_tokens_per_turn": []
+            },
+            "total_tokens": 285
+          },
+          "end_to_end_output_tps": 19.83854320846671,
+          "output_interval_tps": 20.178763784157976,
+          "output_excerpt": "1\n2\n3\n4\n5\n6\n7\n8\n9\n10\n11\n12\n13\n14\n15\n16\n17\n18\n19\n20\n21\n22\n23\n24\n25\n26\n27\n28\n29\n30\n31\n32\n33\n34\n35\n"
+        }
+      ],
+      "concurrency": 4,
+      "output_intervals_overlap_seconds": 12.579991679172963,
+      "aggregate_end_to_end_output_tps": 79.35417283386684,
+      "four_output_intervals_overlap_seconds": 12.579991679172963
+    },
+    {
+      "name": "continuous_media",
+      "elapsed_seconds": 30.114369252929464,
+      "frames": {
+        "audio": 1609,
+        "video": 806,
+        "audible": 570
+      },
+      "native_audio_chunks": 19,
+      "playback_evidence": "decoded_and_consumed_not_physical_output"
+    },
+    {
+      "name": "real_neural_frame_throughput",
+      "generated_frames": 765,
+      "last_generated_ms": 30560,
+      "displayed_frame_ms": 30240
+    },
+    {
+      "name": "video_matches_audio_timeline",
+      "max_sampled_lag_ms": 49,
+      "audio_input_lead_ms": 1200
+    },
+    {
+      "name": "native_cancel_fences_old_frames_and_rendering_recovers",
+      "generation": 1
+    },
+    {
+      "name": "idempotent_release"
+    }
+  ],
+  "samples": [
+    {
+      "elapsed_seconds": 0.0,
+      "frames": {
+        "audio": 0,
+        "video": 0,
+        "audible": 0
+      },
+      "native_audio_chunks": 0,
+      "host_kib": {
+        "MemAvailable": 40959572,
+        "SwapFree": 31747484
+      }
+    },
+    {
+      "elapsed_seconds": 30.11,
+      "frames": {
+        "audio": 1506,
+        "video": 754,
+        "audible": 565
+      },
+      "native_audio_chunks": 19,
+      "host_kib": {
+        "MemAvailable": 40918784,
+        "SwapFree": 31747484
+      }
+    }
+  ],
+  "avatar_id": "portrait_333890863ba840fb9ab6992ab3112ed3",
+  "load_started_utc": "2026-11-17T15:37:14.391335+00:00",
+  "speech_question_transcript": " Two plus three equals five. I'm a large language model developed by Alibaba's Tongyi Lab, named Q uant um Ultra. I can answer questions, write stories, create text, and more. How can I help you today? Two plus three equals five. I",
+  "renderer_samples": [
+    {
+      "generated_frames": 15,
+      "last_generated_ms": 560,
+      "displayed_frame_ms": 120,
+      "timeline_ms": 145,
+      "video_lag_ms": 25
+    },
+    {
+      "generated_frames": 40,
+      "last_generated_ms": 1560,
+      "displayed_frame_ms": 1120,
+      "timeline_ms": 1150,
+      "video_lag_ms": 30
+    },
+    {
+      "generated_frames": 64,
+      "last_generated_ms": 2520,
+      "displayed_frame_ms": 2120,
+      "timeline_ms": 2153,
+      "video_lag_ms": 33
+    },
+    {
+      "generated_frames": 89,
+      "last_generated_ms": 3520,
+      "displayed_frame_ms": 3120,
+      "timeline_ms": 3154,
+      "video_lag_ms": 34
+    },
+    {
+      "generated_frames": 115,
+      "last_generated_ms": 4560,
+      "displayed_frame_ms": 4120,
+      "timeline_ms": 4156,
+      "video_lag_ms": 36
+    },
+    {
+      "generated_frames": 140,
+      "last_generated_ms": 5560,
+      "displayed_frame_ms": 5120,
+      "timeline_ms": 5158,
+      "video_lag_ms": 38
+    },
+    {
+      "generated_frames": 164,
+      "last_generated_ms": 6520,
+      "displayed_frame_ms": 6120,
+      "timeline_ms": 6160,
+      "video_lag_ms": 40
+    },
+    {
+      "generated_frames": 189,
+      "last_generated_ms": 7520,
+      "displayed_frame_ms": 7120,
+      "timeline_ms": 7162,
+      "video_lag_ms": 42
+    },
+    {
+      "generated_frames": 211,
+      "last_generated_ms": 8400,
+      "displayed_frame_ms": 8120,
+      "timeline_ms": 8165,
+      "video_lag_ms": 45
+    },
+    {
+      "generated_frames": 237,
+      "last_generated_ms": 9440,
+      "displayed_frame_ms": 9120,
+      "timeline_ms": 9168,
+      "video_lag_ms": 48
+    },
+    {
+      "generated_frames": 263,
+      "last_generated_ms": 10480,
+      "displayed_frame_ms": 10120,
+      "timeline_ms": 10169,
+      "video_lag_ms": 49
+    },
+    {
+      "generated_frames": 288,
+      "last_generated_ms": 11480,
+      "displayed_frame_ms": 11160,
+      "timeline_ms": 11172,
+      "video_lag_ms": 12
+    },
+    {
+      "generated_frames": 314,
+      "last_generated_ms": 12520,
+      "displayed_frame_ms": 12160,
+      "timeline_ms": 12174,
+      "video_lag_ms": 14
+    },
+    {
+      "generated_frames": 339,
+      "last_generated_ms": 13520,
+      "displayed_frame_ms": 13160,
+      "timeline_ms": 13176,
+      "video_lag_ms": 16
+    },
+    {
+      "generated_frames": 365,
+      "last_generated_ms": 14560,
+      "displayed_frame_ms": 14160,
+      "timeline_ms": 14178,
+      "video_lag_ms": 18
+    },
+    {
+      "generated_frames": 389,
+      "last_generated_ms": 15520,
+      "displayed_frame_ms": 15160,
+      "timeline_ms": 15179,
+      "video_lag_ms": 19
+    },
+    {
+      "generated_frames": 415,
+      "last_generated_ms": 16560,
+      "displayed_frame_ms": 16160,
+      "timeline_ms": 16181,
+      "video_lag_ms": 21
+    },
+    {
+      "generated_frames": 439,
+      "last_generated_ms": 17520,
+      "displayed_frame_ms": 17160,
+      "timeline_ms": 17183,
+      "video_lag_ms": 23
+    },
+    {
+      "generated_frames": 467,
+      "last_generated_ms": 18640,
+      "displayed_frame_ms": 18160,
+      "timeline_ms": 18185,
+      "video_lag_ms": 25
+    },
+    {
+      "generated_frames": 490,
+      "last_generated_ms": 19560,
+      "displayed_frame_ms": 19160,
+      "timeline_ms": 19187,
+      "video_lag_ms": 27
+    },
+    {
+      "generated_frames": 516,
+      "last_generated_ms": 20600,
+      "displayed_frame_ms": 20160,
+      "timeline_ms": 20191,
+      "video_lag_ms": 31
+    },
+    {
+      "generated_frames": 540,
+      "last_generated_ms": 21560,
+      "displayed_frame_ms": 21160,
+      "timeline_ms": 21192,
+      "video_lag_ms": 32
+    },
+    {
+      "generated_frames": 565,
+      "last_generated_ms": 22560,
+      "displayed_frame_ms": 22160,
+      "timeline_ms": 22194,
+      "video_lag_ms": 34
+    },
+    {
+      "generated_frames": 590,
+      "last_generated_ms": 23560,
+      "displayed_frame_ms": 23160,
+      "timeline_ms": 23196,
+      "video_lag_ms": 36
+    },
+    {
+      "generated_frames": 617,
+      "last_generated_ms": 24640,
+      "displayed_frame_ms": 24160,
+      "timeline_ms": 24198,
+      "video_lag_ms": 38
+    },
+    {
+      "generated_frames": 642,
+      "last_generated_ms": 25640,
+      "displayed_frame_ms": 25160,
+      "timeline_ms": 25207,
+      "video_lag_ms": 47
+    },
+    {
+      "generated_frames": 667,
+      "last_generated_ms": 26640,
+      "displayed_frame_ms": 26200,
+      "timeline_ms": 26217,
+      "video_lag_ms": 17
+    },
+    {
+      "generated_frames": 692,
+      "last_generated_ms": 27640,
+      "displayed_frame_ms": 27200,
+      "timeline_ms": 27222,
+      "video_lag_ms": 22
+    },
+    {
+      "generated_frames": 715,
+      "last_generated_ms": 28560,
+      "displayed_frame_ms": 28200,
+      "timeline_ms": 28227,
+      "video_lag_ms": 27
+    },
+    {
+      "generated_frames": 741,
+      "last_generated_ms": 29600,
+      "displayed_frame_ms": 29200,
+      "timeline_ms": 29231,
+      "video_lag_ms": 31
+    },
+    {
+      "generated_frames": 764,
+      "last_generated_ms": 30520,
+      "displayed_frame_ms": 30200,
+      "timeline_ms": 30234,
+      "video_lag_ms": 34
+    },
+    {
+      "generated_frames": 770,
+      "last_generated_ms": 31560,
+      "displayed_frame_ms": 30269,
+      "timeline_ms": 31238,
+      "video_lag_ms": 969
+    },
+    {
+      "generated_frames": 799,
+      "last_generated_ms": 32720,
+      "displayed_frame_ms": 32200,
+      "timeline_ms": 32243,
+      "video_lag_ms": 43
+    }
+  ],
+  "ordinary_calls": 1,
+  "finished_utc": "2026-11-17T15:37:46.573501+00:00"
+}

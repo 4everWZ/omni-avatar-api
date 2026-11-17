@@ -32,4 +32,6 @@ python -m tools.qualification.concurrency --env .env --report tmp/llm-concurrenc
 
 `tools.qualification.concurrency` 验证四路 Responses 的输出区间实际重叠、约 28K 输入加三路短请求混跑、续接、token 压力导致的 429、剩余预算允许短 Chat 及取消释放。可用 `--engine-metrics http://<引擎私网地址>:8000/metrics` 同时采样 `vllm:num_requests_running` 并要求达到 4；不对外发布该端点。报告保留输入／输出计量、首增量与结束时间、准入和运行序列采样，不把异步提交数当成同时生成数。
 
-`tools.qualification.portrait --reference <PNG> --seconds 90 --concurrent-llm 4` 在原生语音／神经头像播放期间执行四路各 256-token SSE，并要求完整输出区间重叠、真实神经帧达到 25 fps、采样时间线偏差小于 160 ms、取消后恢复。LLM 数字与输出夹具使用温度 0，保持判定内容不变；服务仍保留调用方的采样选择。启用头像时的 GPU 批次空档会降低单路 token 速度，报告记录实际首增量和结束时间。
+`tools.qualification.portrait --reference <PNG> --seconds 90 --concurrent-llm 4` 在原生语音／神经头像播放期间执行四路各 256-token SSE，并要求完整输出区间重叠、真实神经帧达到 25 fps、采样时间线偏差小于 160 ms、取消后恢复。LLM 数字与输出夹具使用温度 0，保持判定内容不变；服务仍保留调用方的采样选择。当前通过 CUDA MPS 与解码 CUDA Graph 分配 GPU 算力，无固定批次等待；报告记录实际首增量和结束时间。
+
+`tools.qualification.throughput --reference <PNG> --seconds 90 --report tmp/throughput.json` 在同一配置测量空闲单路／四路和原生语音、25 fps 头像通话中的单路／四路。短提示 29 tokens，每路输出 256 tokens，温度 0、关闭 thinking；按引擎 usage 记录端到端 TPS、生成区间 TPS、总吞吐和四路输出重叠。预热 32 tokens 后检查单路端到端至少 45 TPS、通话四路每路至少 15 TPS，作为防退化检查线；这不是长上下文或长期 SLA。头像沿用真实神经帧、时间线及取消恢复判定。并发工具另验证四个 worker 的独立历史续接及总 token 预算，不提供 Agent 编排。

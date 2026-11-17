@@ -2,11 +2,10 @@ import json
 import os
 from pathlib import Path
 import tempfile
-from types import SimpleNamespace
 import unittest
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 from services.inference.llm import serve
-from services.inference.patches.patch_llm_admission import patch_core_source
+from services.inference.patches.patch_llm_admission import patch_api_source
 
 
 class InferenceAdmissionTests(unittest.TestCase):
@@ -18,35 +17,29 @@ class InferenceAdmissionTests(unittest.TestCase):
             (root / 'model.safetensors.index.json').write_text(json.dumps({'weight_map': {}}))
             with patch.dict(os.environ, extra, clear=True), patch('os.execvp') as execute:
                 serve('model', 'pin', root)
-                return execute.call_args.args[1]
+                command = execute.call_args.args[1]
+                command[command.index('--model') + 1] = '<checkpoint>'
+                return command
 
     def test_shared_gpu_preserves_context_and_real_batching(self):
-        command = self.launch({'LLM_GPU_STEP_PAUSE_MS': '40'})
+        command = self.launch({})
         for flag, value in [('--max-model-len', '262144'), ('--max-num-seqs', '4'),
                             ('--kv-cache-memory-bytes', '9663676416')]:
             self.assertEqual(command[command.index(flag) + 1], value)
         self.assertIn('--no-async-scheduling', command)
-        self.assertNotIn('--no-async-scheduling', self.launch({}))
+        self.assertNotIn('--enforce-eager', command)
+        config = json.loads(command[command.index('--compilation-config') + 1])
+        self.assertEqual(config['cudagraph_mode'], 'FULL_DECODE_ONLY')
+        self.assertEqual(config['cudagraph_capture_sizes'], [1, 2, 4])
 
-    def test_invalid_gpu_pause_rejected(self):
-        for value in ('nan', 'inf', '-1'):
-            with self.subTest(value=value), self.assertRaises(ValueError):
-                self.launch({'LLM_GPU_STEP_PAUSE_MS': value})
+    def test_withdrawn_pause_setting_cannot_reenable_throttling(self):
+        self.assertEqual(self.launch({}), self.launch({'LLM_GPU_STEP_PAUSE_MS': '250'}))
 
-    def test_compute_yield_only_after_executed_batch(self):
-        source = ('class Core:\n'
-                  '    def step(self, scheduler_output):\n'
-                  '        engine_core_outputs = {}\n'
-                  '        return engine_core_outputs, scheduler_output.total_num_scheduled_tokens > 0\n')
-        clock = SimpleNamespace(sleep=Mock())
-        namespace = {'os': os, 'time': clock}
-        exec(patch_core_source(source), namespace)
-        core = namespace['Core']()
-        with patch.dict(os.environ, {'LLM_GPU_STEP_PAUSE_MS': '40'}):
-            core.step(SimpleNamespace(total_num_scheduled_tokens=4))
-            clock.sleep.assert_called_once_with(.04)
-            clock.sleep.reset_mock()
-            core.step(SimpleNamespace(total_num_scheduled_tokens=0))
-            clock.sleep.assert_not_called()
+    def test_router_hook_fails_closed_on_version_drift_or_reapplication(self):
+        source = 'def attach_router(app: FastAPI):\n    app.include_router(router)\n'
+        patched = patch_api_source(source)
+        self.assertIn('app.include_router(admission_router)', patched)
         with self.assertRaises(RuntimeError):
-            patch_core_source(patch_core_source(source))
+            patch_api_source(patched)
+        with self.assertRaises(RuntimeError):
+            patch_api_source('def attach_router(app):\n    pass\n')

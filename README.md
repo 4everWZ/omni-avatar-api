@@ -117,7 +117,18 @@ evaluations/              Shared fixtures and retained real-device evidence
 
 See [development](docs/development.md) for dependency-isolated tests and local service entrypoints, and [tools](tools/README.md) for real-device qualification commands.
 
-Recorded checks cover 8K Omni recall, Responses continuation, about 22K tokens of LLM history, and four simultaneous shorter generations with a 25 fps neural portrait. The portrait-priority profile yields GPU time and measures about 3.4 tokens/s per request with four 256-token outputs. The 262K window has not been fully quality-qualified; decoded media does not establish physical speaker/microphone playback. See the [workstation guide](docs/deployment/workstation.md) for evidence and limits.
+Recorded checks cover 8K Omni recall, Responses continuation, about 22K tokens of LLM history, and four simultaneous shorter generations with a 25 fps neural portrait.
+
+Current LLM throughput uses W4A16 weights, CUDA MPS (LLM active-thread limit 20%) and decode CUDA graphs, with no fixed batch sleep. Short requests have 29 input tokens and 256 output tokens, temperature 0 and thinking disabled:
+
+| Concurrent requests | Portrait activity | Per-request output TPS | Aggregate output TPS |
+| --- | --- | --- | --- |
+| 1 | Resident, idle | 47.18 | 47.18 |
+| 4 | Resident, idle | 37.12–37.27 | 148.47 |
+| 1 | Active native speech and 25 fps neural portrait | 22.92–23.90 | 22.92–23.90 |
+| 4 | Active native speech and 25 fps neural portrait | 18.68–19.42 | 74.73–77.34 |
+
+TPS includes prefill and waiting, measured from the group's request start to completion. Idle single-request decode throughput alone is 47.75 TPS. The portrait produced 2,269 real neural frames in the 90-second check, with a maximum sampled timeline lag of 79 ms. See the [workstation guide](docs/deployment/workstation.md#四路并发与计算预算) for calculations, raw records and MPS restart instructions. These short-prompt measurements do not establish full 262K quality or sustained-load throughput; physical speaker/microphone playback remains a manual check.
 
 ## Documentation
 
