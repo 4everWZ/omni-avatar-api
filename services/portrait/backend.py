@@ -195,11 +195,22 @@ class CudaFrame:
         self.warp.dense_motion_network.hourglass.register_forward_hook(
             lambda module, inputs, output: output.contiguous())
         self.eager_warp, self.eager_decoder = self.warp, self.decoder
-        self.warp = torch.compile(self.warp, fullgraph=True)
-        self.decoder = torch.compile(self.decoder, fullgraph=True)
+        self.trt_frame = None
+        frame_backend = os.environ.get('OMNI_PORTRAIT_FRAME_BACKEND', 'cuda-graph')
+        if frame_backend == 'tensorrt':
+            from .tensorrt_frame import TensorRTFrame
+            self.trt_frame = TensorRTFrame(self.warp, self.decoder, torch,
+                os.environ.get('OMNI_PORTRAIT_TRT_CACHE', '/cache/tensorrt'))
+        elif frame_backend == 'cuda-graph':
+            self.warp = torch.compile(self.warp, fullgraph=True)
+            self.decoder = torch.compile(self.decoder, fullgraph=True)
+        else:
+            raise ValueError('Unknown portrait frame backend: ' + frame_backend)
 
     def forward(self):
         torch = self.torch
+        if self.trt_frame is not None:
+            return self.trt_frame(self.feature, self.kp_source, self.kp_driving)
         with torch.device(self.device), torch.no_grad(), torch.autocast('cuda', dtype=torch.float16):
             feature = self.warp(self.feature, self.kp_source, self.kp_driving).float()
             return self.decoder(feature.contiguous(memory_format=torch.channels_last)).float()
@@ -208,14 +219,15 @@ class CudaFrame:
         torch = self.torch
         source = prepared['f_s_lst'][0]
         if self.graph is None:
-            self.feature = torch.from_numpy(source).to(self.device).contiguous(memory_format=torch.channels_last_3d)
+            layout = torch.contiguous_format if self.trt_frame is not None else torch.channels_last_3d
+            self.feature = torch.from_numpy(source).to(self.device).contiguous(memory_format=layout)
             self.kp_source = torch.from_numpy(prepared['x_s_info_lst'][0]['kp']).reshape(1, 21, 3).to(self.device)
             self.kp_driving = self.kp_source.clone()
             stream = torch.cuda.Stream()
             stream.wait_stream(torch.cuda.current_stream())
             with torch.cuda.stream(stream):
                 for _ in range(3):
-                    eager = self.forward()
+                    eager = self.forward().clone()
             torch.cuda.current_stream().wait_stream(stream)
             graph = torch.cuda.CUDAGraph()
             with torch.cuda.graph(graph):
@@ -235,7 +247,8 @@ class CudaFrame:
         # that difference separately; graph replay itself is checked above
         # against the compiled forward. Bitwise eager parity is not a contract.
         difference = (self.output - reference).abs()
-        logging.warning('Portrait compiled/eager FP16 difference: max=%g mean=%g',
+        logging.warning('Portrait %s/eager FP16 difference: max=%g mean=%g',
+                        'TensorRT' if self.trt_frame is not None else 'compiled',
                         difference.max().item(), difference.mean().item())
         self.source = source
         del reference, difference

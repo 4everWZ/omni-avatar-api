@@ -24,4 +24,31 @@ uv run --no-project --with aiohttp --with pillow python -B -m unittest discover 
 
 For real dual-GPU co-residency, use [tools/qualification/portrait.py](../../tools/qualification/portrait.py) with the Avatar dependencies and a clear single-face PNG reference. It creates a retained prepared avatar, binds native Omni speech, consumes actual WHEP media and calls the background Responses backend. Test captures support media diagnostics. Physical speaker playback and subjective lip-sync quality are covered by manual acceptance.
 
-The render timeline additionally publishes an atomic, expiring deadline clock in the private MPS control volume (`OMNI_GPU_RENDER_CLOCK`). It contains only monotonic frame timing. The text engine cooperates when remaining headroom is below 240 ms, yielding at most 18 ms per dispatch and resuming early once frames catch up. Closing the render run removes its clock; an abandoned clock expires after 500 ms. The renderer uses 640×720 output, ten-step sampling and a 1.2-second audio input lead. [Current mixed-load evidence](../../evaluations/results/omni-throughput-final-workstation.json).
+The render timeline additionally publishes an atomic, expiring deadline clock in the private MPS control volume (`OMNI_GPU_RENDER_CLOCK`). It contains only monotonic frame timing. The text engine cooperates when remaining headroom is below 240 ms, yielding at most 18 ms per dispatch and resuming early once frames catch up. Closing the render run removes its clock; an abandoned clock expires after 500 ms. The renderer uses 640×720 output, ten-step sampling and a 1.2-second audio input lead. [Current mixed-load evidence](../../evaluations/results/omni-throughput-tensorrt-workstation.json).
+
+## TensorRT frame backend
+
+`OMNI_PORTRAIT_FRAME_BACKEND` selects `cuda-graph` (portable deployment default) or `tensorrt`. The TensorRT backend combines warp and decoder in one target-built engine and captures its enqueue in the existing CUDA graph. Convolutions use FP16; keypoints and coordinate calculations use FP32. Motion prediction, ten diffusion steps, 640×720 delivery and the 1.2-second input lead follow the shared renderer configuration.
+
+Build the standard portrait image first, then select the independent TensorRT image:
+
+```sh
+export OMNI_PORTRAIT_IMAGE=omni-api-portrait:ditto-trt
+export OMNI_PORTRAIT_DOCKERFILE=Dockerfile.tensorrt
+export OMNI_PORTRAIT_FRAME_BACKEND=tensorrt
+python tools/compose.py --portrait -- build omni-portrait
+```
+
+`Dockerfile.tensorrt` pins TensorRT CUDA 13 `11.4.0.106` and ONNX Script `0.7.2` inside the portrait environment. TensorRT 11.2 introduced native rank-5 GridSample, which the warp model uses. [Operator support](https://docs.nvidia.com/deeplearning/tensorrt/latest/getting-started/release-notes-11/11.2.1.html).
+
+For a first engine build, drain GPU 0 work and reserve the card for compilation:
+
+```sh
+python tools/compose.py --portrait -- stop llm-engine omni-portrait
+python tools/compose.py --portrait -- run --rm --no-deps omni-portrait python -m portrait.tensorrt_frame
+python tools/compose.py --portrait -- up -d --wait llm-engine omni-portrait
+```
+
+Engines persist under `/cache/tensorrt`. Cache identity includes the pinned code/model, GPU model and capability, TensorRT/PyTorch versions and precision policy; startup validates the tensor contract and deserialization. Build and serve with the same image on the target GPU. NVIDIA's hardware compatibility mode expands supported GPU targets while runtime compatibility follows its own contract; this backend uses target-specific builds. [Engine compatibility](https://docs.nvidia.com/deeplearning/tensorrt/latest/inference-library/engine-compatibility.html).
+
+Use [portrait_frame](../../tools/qualification/portrait_frame.py) for isolated GPU latency and pixel drift on prepared features, then the existing throughput tools for real speech, 25 fps, four LLM generations and cancellation. Current measurements are maintained in the [workstation guide](../../docs/deployment/workstation.md#tensorrt-fp16-对照).

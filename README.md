@@ -58,6 +58,8 @@ python tools/compose.py --portrait -- --profile assets run --rm portrait-assets
 python tools/compose.py --portrait -- up -d --wait
 ```
 
+For the measured TensorRT FP16 profile, follow the [frame backend setup](services/portrait/README.md#tensorrt-frame-backend) after building the standard portrait image.
+
 The entrypoint anchors `.env`, build contexts and bind mounts to the repository root. Add `--vpn` to publish on `OMNI_GATEWAY_VPN_BIND`, or `--media` for optional MediaMTX transport. Alternative hardware/evaluation stacks use `--target`. See the [workstation guide](docs/deployment/workstation.md) for profile configuration and service updates.
 
 ## API
@@ -121,19 +123,19 @@ Recorded checks cover 8K Omni recall, Responses continuation, about 22K tokens o
 
 Omni Chat and LLM Chat/Responses default to CoT, with upstream thinking-budget defaults. Native duplex retains the official model policy. Realtime defaults to `basic` (8000/6000); applications can override window policy at session creation and text reasoning budgets per request. See the [API](docs/api.md#cot-默认与调用方预算).
 
-Current dual-3090 measurements use CoT, at most 256 generated tokens per request and temperature 0. Rendered inputs are 25 tokens for Omni and 27 for the LLM. TPS includes reasoning and answer tokens, prefill and waiting.
+Current dual-3090 measurements use the TensorRT FP16 frame backend and CoT, at most 256 generated tokens per request and temperature 0. Rendered inputs are 25 tokens for Omni and 27 for the LLM. TPS includes reasoning and answer tokens, prefill and waiting.
 
 | Service | Generating requests | Other active work | Per-request total TPS | Aggregate TPS |
 | --- | --- | --- | --- | --- |
-| Omni Chat | 1 | Idle | 65.54 | 65.54 |
-| Omni Chat | 1 | Native voice + portrait + four LLM requests | 32.00–36.55 | 32.00–36.55 |
-| LLM | 1 | Idle | 47.25 | 47.25 |
-| LLM | 4 | Idle | 37.12–37.26 | 148.48 |
-| LLM | 1 | Native voice + portrait | 18.33–23.53 | 18.33–23.53 |
-| LLM | 4 | Native voice + portrait | 15.37–19.12 | 61.46–76.11 |
-| LLM | 4 | Native voice + portrait + one Omni Chat request | 13.49–16.66 | 53.97–66.32 |
+| Omni Chat | 1 | Idle | 65.97 | 65.97 |
+| Omni Chat | 1 | Native voice + portrait + four LLM requests | 33.60–37.39 | 33.60–37.39 |
+| LLM | 1 | Idle | 46.69 | 46.69 |
+| LLM | 4 | Idle | 36.94–37.09 | 147.77 |
+| LLM | 1 | Native voice + portrait | 25.55–26.46 | 25.55–26.46 |
+| LLM | 4 | Native voice + portrait | 21.20–21.56 | 84.81–86.04 |
+| LLM | 4 | Native voice + portrait + one Omni Chat request | 19.47–21.47 | 77.89–85.33 |
 
-The full mixed-load check produced 2,263 real neural frames in 90 seconds at 25 fps, with a maximum sampled timeline lag of 84 ms. CUDA MPS and actual frame-deadline feedback allocate GPU 0 compute. Ordinary Omni Chat uses single-request admission and FIFO queueing: two simultaneous short submissions aggregate 65.13 TPS.
+The full mixed-load check produced 2,265 real neural frames in 90 seconds at 25 fps, with a maximum sampled timeline lag of 57 ms. CUDA MPS and actual frame-deadline feedback allocate GPU 0 compute. Ordinary Omni Chat uses single-request admission and FIFO queueing: two simultaneous short submissions aggregate 65.47 TPS.
 
 The 256-token fixture measures total generation throughput and can spend its budget on reasoning. Separate checks cover completed CoT answers, budgets, JSON Schema and tool continuation. See the [workstation guide](docs/deployment/workstation.md#四路并发与计算预算) for formulas, raw records and validation coverage. The [acceptance plan](docs/plans/avatar-workstation.md) tracks full 262K quality, sustained load and physical speaker/microphone playback.
 

@@ -1,0 +1,49 @@
+{
+  "gpu": "NVIDIA GeForce RTX 3090",
+  "torch": "2.13.0+cu130",
+  "code_revision": "c3e47eee2e626500017a0556b470d6d4182f85e8",
+  "model_revision": "e4a2f60328ee7c32af585ac4b3cce299e4c8e254",
+  "scope": "isolated warp+decoder GPU latency and output drift on one prepared identity",
+  "state": "completed",
+  "iterations": 100,
+  "backends": {
+    "cuda-graph": {
+      "mean_ms": 26.805778903961183,
+      "p50_ms": 26.768319129943848,
+      "p95_ms": 27.16249656677246,
+      "torch_allocated_bytes": 557578240,
+      "torch_reserved_bytes": 1201668096,
+      "device_free_bytes": 23387570176,
+      "device_total_bytes": 25298141184
+    },
+    "tensorrt": {
+      "mean_ms": 21.095345897674562,
+      "p50_ms": 21.108736038208008,
+      "p95_ms": 21.198848819732667,
+      "torch_allocated_bytes": 765958656,
+      "torch_reserved_bytes": 941621248,
+      "device_free_bytes": 23104454656,
+      "device_total_bytes": 25298141184
+    }
+  },
+  "comparisons": [
+    {
+      "case": 0,
+      "mae": 0.00047608427121303976,
+      "max_abs": 0.01171875,
+      "psnr_db": 63.05360594610744
+    },
+    {
+      "case": 1,
+      "mae": 0.0009634962189011276,
+      "max_abs": 0.128173828125,
+      "psnr_db": 48.730424574577185
+    },
+    {
+      "case": 2,
+      "mae": 0.0010690027847886086,
+      "max_abs": 0.09814453125,
+      "psnr_db": 50.356603969994005
+    }
+  ]
+}

@@ -149,6 +149,6 @@ Realtime 客户端仍使用原协议。客户端以 `?avatar=1` 选择 Avatar �
 
 神经会话创建时先完成实际渲染线程的预热再就绪；等待创建成功后再向绑定源发送需要形象播放的音频。输出 640×720、25 fps；音频播放预留 1200 ms 推理时间，`format.input_lead_ms` 明示。音画共用时间线，原生 Omni 音频仍独立输出。清空立即停播旧音频并丢弃旧代次视频，神经运动状态允许自然过渡。落后或停滞会发出 `avatar.failed`，调用方继续消费原生语音。会话 `renderer` 字段报告实际 `generated_frames`、最新生成及已显示帧时间，可用于检查是否真正达到实时生成速度。
 
-当前 CoT 全栈混跑覆盖 90 秒、四路 LLM 和额外一路 Omni Chat，生成 2,263 张真实神经帧、维持 25 fps，最大采样时间线偏差 84 ms；取消、恢复和重启复用通过。[混跑证据](../evaluations/results/omni-throughput-final-workstation.json) · [生命周期证据](../evaluations/results/portrait-lifecycle-workstation.json)。持续满载 QoS 和主观口型由后续验收计划维护。
+当前 CoT 全栈混跑覆盖 90 秒、四路 LLM 和额外一路 Omni Chat，生成 2,265 张真实神经帧、维持 25 fps，最大采样时间线偏差 57 ms；取消、恢复和重启复用通过。[混跑证据](../evaluations/results/omni-throughput-tensorrt-workstation.json) · [生命周期证据](../evaluations/results/portrait-lifecycle-workstation.json)。持续满载 QoS 和主观口型由后续验收计划维护。
 
 实现与实机验收进度见[当前计划](plans/avatar-workstation.md)；驱动、资产和资源生命周期见 [services/portrait/README.md](../services/portrait/README.md)。

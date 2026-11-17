@@ -56,3 +56,9 @@ python -m tools.diagnostics.minicpmo_text --checkpoint /models/<revision> --repo
 ```
 
 探针按层使用两张 GPU，运行于固定引擎镜像的 PyTorch、Transformers、Accelerate 与 safetensors 环境。运行前排空请求并停止占用 GPU 的引擎，挂载仓库与只读模型目录，结束后恢复 Compose 服务。
+
+## TensorRT 帧对照
+
+`tools.qualification.portrait_frame --prepared <本机准备特征.pkl> --report <可写报告路径>` 在挂载仓库的独立 TensorRT 头像镜像中运行。`--root` 指定固定 Ditto 资产根目录，`--iterations` 默认 100，`--backends` 默认依次比较 `cuda-graph tensorrt`。报告目录与 `/cache/tensorrt` 按运行 UID 配置读写权限。
+
+该工具使用同一真实准备特征和三组固定种子关键点，保存 CUDA Event 均值／p50／p95、像素 MAE／最大差异／PSNR，以及对照 PNG。`state=completed` 表示测量完成，画面质量按数值和人工检查判定。帧延迟测量时为 GPU 0 保留独立运行空间；共驻 TPS 由 `throughput` 与 `omni_throughput` 在恢复完整服务后测量。[构建与预编译](../services/portrait/README.md#tensorrt-frame-backend) · [当前对照数据](../docs/deployment/workstation.md#tensorrt-fp16-对照)。

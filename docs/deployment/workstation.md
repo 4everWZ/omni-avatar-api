@@ -16,6 +16,8 @@ python tools/compose.py --portrait -- --profile assets run --rm portrait-assets
 python tools/compose.py --portrait --vpn -- up -d --wait
 ```
 
+完成标准头像镜像与资产准备后，按下方 TensorRT 配置启用实测帧后端。
+
 首次配置与共享网络创建见[快速开始](../../README.zh-CN.md#快速开始)。模型使用精确快照和独立目录，服务离线加载。应用、管理和 Avatar 内部令牌在根目录 `.env` 中分别配置；凭据与模型资产由本地忽略目录持有。引擎使用 Docker 私网，Avatar／Portrait 控制使用私有 Unix socket。宿主发布回环及指定 VPN 地址的网关 8000 端口。
 
 ## API 与上下文
@@ -40,25 +42,25 @@ LLM 固定为 `axteam/Qwen3.5-9B-AWQ-4bit@5577b5b71e6f06b9f6a1f3743ef6ba6dc4ecd2
 
 GPU 0 使用项目内 `gpu-mps` 服务。LLM 活跃线程上限 20%、较低客户端优先级，实机可见 16 个 SM；Ditto 使用正常优先级。LLM 采用同步调度与 `FULL_DECODE_ONLY` CUDA Graph，捕获批次 1、2、4。MPS 分配计算资源，token 预算保护显存，两个机制分别生效。
 
-当前 CoT 开启，思考预算采用上游默认；温度 0，每路总输出上限 256 tokens，预热 32 tokens。固定短提示按模板实报输入为 Omni 25、LLM 27 tokens，前缀缓存关闭。以下统计端到端思考＋正文总生成 TPS；通话场景列出两轮测量范围。
+当前工作站启用 TensorRT FP16 warp＋decoder，CoT 开启，思考预算采用上游默认；温度 0，每路总输出上限 256 tokens，预热 32 tokens。固定短提示按模板实报输入为 Omni 25、LLM 27 tokens，前缀缓存关闭。以下统计端到端思考＋正文总生成 TPS；通话场景列出两轮测量范围。
 
 | 服务 | 生成请求数 | 其他负载 | 每路总生成 TPS | 合计 TPS |
 | --- | --- | --- | --- | --- |
-| Omni Chat | 1 | 空闲 | 65.54 | 65.54 |
-| Omni Chat | 1 | 原生语音＋头像＋四路 LLM | 32.00–36.55 | 32.00–36.55 |
-| LLM | 1 | 空闲 | 47.25 | 47.25 |
-| LLM | 4 | 空闲 | 37.12–37.26 | 148.48 |
-| LLM | 1 | 原生语音＋头像 | 18.33–23.53 | 18.33–23.53 |
-| LLM | 4 | 原生语音＋头像 | 15.37–19.12 | 61.46–76.11 |
-| LLM | 4 | 原生语音＋头像＋一路 Omni Chat | 13.49–16.66 | 53.97–66.32 |
+| Omni Chat | 1 | 空闲 | 65.97 | 65.97 |
+| Omni Chat | 1 | 原生语音＋头像＋四路 LLM | 33.60–37.39 | 33.60–37.39 |
+| LLM | 1 | 空闲 | 46.69 | 46.69 |
+| LLM | 4 | 空闲 | 36.94–37.09 | 147.77 |
+| LLM | 1 | 原生语音＋头像 | 25.55–26.46 | 25.55–26.46 |
+| LLM | 4 | 原生语音＋头像 | 21.20–21.56 | 84.81–86.04 |
+| LLM | 4 | 原生语音＋头像＋一路 Omni Chat | 19.47–21.47 | 77.89–85.33 |
 
-前台普通 Chat 使用单路准入和 FIFO 排队。两个同时提交的短请求每路为 65.45／32.56 TPS，合计 65.13 TPS，后者计入排队时间。后台四路以实际输出区间重叠验证同时生成。
+前台普通 Chat 使用单路准入和 FIFO 排队。两个同时提交的短请求每路为 65.34／32.74 TPS，合计 65.47 TPS，后者计入排队时间。后台四路以实际输出区间重叠验证同时生成。
 
 每路 TPS = `usage.completion_tokens`（Omni Chat）或 `usage.output_tokens`（Responses）÷ 从本组请求发起到该路完成的秒数；合计 TPS = 本组全部生成 tokens ÷ 最晚完成时间。计量包含思考、预填充、传输和准入／GPU 等待。原始记录另存 `(tokens - 1) / (末增量 - 首增量)` 的生成区间参考值，精度受流式分块与控制 tokens 影响。
 
-256-token 性能夹具覆盖总生成吞吐：Omni 本组额度用于思考阶段，报告分别记录思考与正文首增量。完整答案、预算与结构化正确性由独立功能夹具验证。[前台与全栈混跑](../../evaluations/results/omni-throughput-final-workstation.json) · [后台单路／四路](../../evaluations/results/llm-throughput-cot-workstation.json)。后台回归检查线为空闲单路至少 45 TPS、原生语音＋头像四路每路至少 15 TPS；额外 Omni Chat 的更重混跑单独报告。
+256-token 性能夹具覆盖总生成吞吐：Omni 本组额度用于思考阶段，报告分别记录思考与正文首增量。完整答案、预算与结构化正确性由独立功能夹具验证。[前台与全栈混跑](../../evaluations/results/omni-throughput-tensorrt-workstation.json) · [后台单路／四路](../../evaluations/results/throughput-tensorrt-workstation.json)。后台回归检查线为空闲单路至少 45 TPS、原生语音＋头像四路每路至少 15 TPS；额外 Omni Chat 的更重混跑单独报告。
 
-Ditto 使用 FP16、十步采样、640×720 和 1200 ms 音频输入预留。全栈 90 秒生成 2,263 张真实神经帧，最大检查期采样时间线偏差 84 ms；后台共驻的 90 秒生成 2,267 帧、偏差 99 ms。两组均通过 25 fps／160 ms 检查、原生取消恢复与幂等释放。
+Ditto 使用 FP16、十步采样、640×720 和 1200 ms 音频输入预留。全栈 90 秒生成 2,265 张真实神经帧，最大检查期采样时间线偏差 57 ms；后台共驻的 90 秒生成 2,267 帧、偏差 64 ms。两组均通过 25 fps／160 ms 检查、原生取消恢复与幂等释放。
 
 ### 渲染截止期反馈
 
@@ -84,7 +86,7 @@ python tools/compose.py --portrait --vpn -- up -d --wait --no-deps --force-recre
 python tools/compose.py --portrait --vpn -- up -d --wait llm-engine omni-portrait omni-gateway
 ```
 
-已准备 avatar_id 持久化于卷中。Responses 续接保存在引擎进程内，调用方持有可跨重启恢复的业务历史。重建后的形象复用、四路／25 fps、音画与取消恢复通过。[生命周期](../../evaluations/results/mps-lifecycle-workstation.json) · [当前部署与默认预算](../../evaluations/results/runtime-cot-deadline-workstation.json)。
+已准备 avatar_id 持久化于卷中。Responses 续接保存在引擎进程内，调用方持有可跨重启恢复的业务历史。重建后的形象复用、四路／25 fps、音画与取消恢复通过。[MPS 生命周期](../../evaluations/results/mps-lifecycle-workstation.json) · [推理预算与空闲释放](../../evaluations/results/runtime-cot-deadline-workstation.json)。
 
 常规更新以仓库根目录的统一入口构建并启动，项目名为 `tuber-omni-infra`；根目录 `.env`、`data/` 和 Docker named volumes 持有配置与资产。更新前排空请求，重建后由应用建立新会话。
 
@@ -114,9 +116,30 @@ ssh -N -L 18080:127.0.0.1:8000 research-2@100.119.17.6
 | Omni 上下文 | 显式关闭 CoT 的 20 条消息、7,928-token 早期事实检索；超限输入 400。 | [8K 边界](../../evaluations/results/omni-8k-multi-turn-workstation.json) |
 | 并发预算 | 四路实际生成、约 28.5K 与三路短请求混跑、独立 worker 历史及并行续接、预算拒绝与释放。 | [并发](../../evaluations/results/llm-mps-concurrency-workstation.json)、[兼容性](../../evaluations/results/responses-mps-compatibility.json) |
 | 默认 CoT | 默认完整答案、显式关闭、三个文本接口的 16-token 思考预算、非法值、JSON Schema、function 归属续接。工具结果由夹具回填。 | [默认与预算](../../evaluations/results/thinking-defaults-workstation.json)、[结构化与工具](../../evaluations/results/thinking-structured-workstation.json) |
-| 神经媒体 | 当前 CoT 全栈 90 秒混跑、25 fps、时间线、取消恢复及释放；重启复用。 | [混跑](../../evaluations/results/omni-throughput-final-workstation.json)、[生命周期](../../evaluations/results/portrait-lifecycle-workstation.json) |
+| 神经媒体 | 当前 CoT 全栈 90 秒混跑、25 fps、时间线、取消恢复及释放；重启复用。 | [混跑](../../evaluations/results/omni-throughput-tensorrt-workstation.json)、[生命周期](../../evaluations/results/portrait-lifecycle-workstation.json) |
 
 当前记录覆盖功能与短时性能。完整 262K 质量、默认 CoT 长历史、持续满载 QoS、实物播放及私网 HTTPS 按[后续计划](../plans/avatar-workstation.md)验收。资源读数以报告的采集位置、指标和采样周期为依据。
+
+## TensorRT FP16 对照
+
+工作站选择 `OMNI_PORTRAIT_FRAME_BACKEND=tensorrt`、`OMNI_PORTRAIT_IMAGE=omni-api-portrait:ditto-trt`、`OMNI_PORTRAIT_DOCKERFILE=Dockerfile.tensorrt`。标准部署默认 `cuda-graph`；外部部署通过这三个配置选择帧实现与独立镜像。[构建、预编译与启动](../../services/portrait/README.md#tensorrt-frame-backend)。
+
+TensorRT CUDA 13 固定为 11.4.0.106，目标为 RTX 3090 SM 8.6；引擎在目标卡构建，缓存到头像卷 `/cache/tensorrt`。warp 和 decoder 合并为一个引擎，卷积 FP16、关键点与坐标 FP32，使用同一十步采样、分辨率、1200 ms 音频预留、MPS 20% 和渲染截止期策略。
+
+| 同机同条件指标 | CUDA Graph | TensorRT |
+| --- | --- | --- |
+| warp＋decoder GPU 均值，100 次 | 26.81 ms | 21.10 ms |
+| warp＋decoder GPU p95 | 27.16 ms | 21.20 ms |
+| 通话＋头像期间 LLM 单路 | 21.37–24.65 TPS | 25.55–26.46 TPS |
+| 通话＋头像期间 LLM 四路合计，两轮 | 68.06／75.87 TPS | 86.04／84.81 TPS |
+
+独立帧均值减少 21.3%；两轮四路合计 TPS 的均值提高约 18.7%。空闲 LLM 在同轮对照中分别为 48.42／46.69 TPS，四路合计 153.26／147.77 TPS；头像收益体现于共享 GPU 的活动通话场景。端到端指标沿用上方公式与 CoT 256-token 夹具。
+
+像素对照使用同一 Ava 准备特征、静止及两组固定种子关键点扰动；三组 MAE 为 0.000476–0.001069，PSNR 48.73–63.05 dB，静态对照帧已目检。内存字段分别记录 PyTorch 分配和设备空闲采样；运行余量结合共驻记录观察。主观动态口型由后续人工验收覆盖。
+
+[独立帧与数值](../../evaluations/results/portrait-frame-tensorrt-workstation.json) · [CUDA Graph 同机对照](../../evaluations/results/throughput-cudagraph-reference-workstation.json) · [TensorRT 共驻](../../evaluations/results/throughput-tensorrt-workstation.json) · [TensorRT 全栈](../../evaluations/results/omni-throughput-tensorrt-workstation.json)。
+
+TensorRT 重启后加载目标卡缓存，复用已准备形象的 30 秒四路／25 fps、时间线、取消恢复与幂等释放通过。[重启复用](../../evaluations/results/portrait-tensorrt-restart-workstation.json) · [运行配置与引擎身份](../../evaluations/results/portrait-tensorrt-runtime-workstation.json)。
 
 ## 其他部署目标
 

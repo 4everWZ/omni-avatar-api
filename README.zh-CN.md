@@ -58,6 +58,8 @@ python tools/compose.py --portrait -- --profile assets run --rm portrait-assets
 python tools/compose.py --portrait -- up -d --wait
 ```
 
+实测 TensorRT FP16 配置在标准头像镜像构建后，按[帧后端说明](services/portrait/README.md#tensorrt-frame-backend)启用。
+
 统一入口以仓库根目录解析 `.env`、构建上下文和绑定目录。添加 `--vpn` 可发布到 `OMNI_GATEWAY_VPN_BIND`，添加 `--media` 可启用 MediaMTX。其他硬件／评估配置使用 `--target` 选择。配置与服务更新方式见[工作站指南](docs/deployment/workstation.md)。
 
 ## API
@@ -121,19 +123,19 @@ evaluations/              共享测试输入和保留的实机证据
 
 当前 Omni Chat 和后台 Chat／Responses 默认开启 CoT，思考预算沿用上游默认；原生双工保留官方模型策略。实时窗口默认 `basic`（8000／6000），外部应用可在创建会话时调整窗口与文本推理预算，见 [API](docs/api.md#cot-默认与调用方预算)。
 
-当前双 3090 实测如下。CoT 开启，每路最多生成 256 tokens，温度 0；输入按模板实报为 Omni 25／LLM 27 tokens。TPS 统计思考＋正文，包含预填充与等待。
+当前双 3090 实测使用 TensorRT FP16 帧后端。CoT 开启，每路最多生成 256 tokens，温度 0；输入按模板实报为 Omni 25／LLM 27 tokens。TPS 统计思考＋正文，包含预填充与等待。
 
 | 服务 | 生成请求数 | 其他负载 | 每路总生成 TPS | 合计 TPS |
 | --- | --- | --- | --- | --- |
-| Omni Chat | 1 | 空闲 | 65.54 | 65.54 |
-| Omni Chat | 1 | 原生语音＋头像＋四路 LLM | 32.00–36.55 | 32.00–36.55 |
-| LLM | 1 | 空闲 | 47.25 | 47.25 |
-| LLM | 4 | 空闲 | 37.12–37.26 | 148.48 |
-| LLM | 1 | 原生语音＋头像 | 18.33–23.53 | 18.33–23.53 |
-| LLM | 4 | 原生语音＋头像 | 15.37–19.12 | 61.46–76.11 |
-| LLM | 4 | 原生语音＋头像＋一路 Omni Chat | 13.49–16.66 | 53.97–66.32 |
+| Omni Chat | 1 | 空闲 | 65.97 | 65.97 |
+| Omni Chat | 1 | 原生语音＋头像＋四路 LLM | 33.60–37.39 | 33.60–37.39 |
+| LLM | 1 | 空闲 | 46.69 | 46.69 |
+| LLM | 4 | 空闲 | 36.94–37.09 | 147.77 |
+| LLM | 1 | 原生语音＋头像 | 25.55–26.46 | 25.55–26.46 |
+| LLM | 4 | 原生语音＋头像 | 21.20–21.56 | 84.81–86.04 |
+| LLM | 4 | 原生语音＋头像＋一路 Omni Chat | 19.47–21.47 | 77.89–85.33 |
 
-头像维持 25 fps：全栈混跑 90 秒生成 2,263 张真实神经帧，最大采样时间线偏差 84 ms。GPU 0 通过 CUDA MPS 和真实帧截止期反馈分配算力。前台普通 Chat 使用单路准入和 FIFO 排队，两个短请求同时提交时实测合计 65.13 TPS。
+头像维持 25 fps：全栈混跑 90 秒生成 2,265 张真实神经帧，最大采样时间线偏差 57 ms。GPU 0 通过 CUDA MPS 和真实帧截止期反馈分配算力。前台普通 Chat 使用单路准入和 FIFO 排队，两个短请求同时提交时实测合计 65.47 TPS。
 
 256-token 夹具覆盖思考＋正文总生成吞吐，额度可用于思考阶段；完整 CoT 答案、预算、JSON Schema 和工具续接由独立功能夹具验证。计算方式、原始数据和验证范围见[工作站指南](docs/deployment/workstation.md#四路并发与计算预算)。完整 262K 质量、持续负载与实物播放由[后续验收计划](docs/plans/avatar-workstation.md)跟进。
 

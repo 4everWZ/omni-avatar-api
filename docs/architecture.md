@@ -25,6 +25,8 @@ Gateway, Avatar and Portrait are Python packages with importable `app.py` factor
 
 `services/inference/configs/` contains model stage configuration. `patches/` contains version-checked upstream adapters and their helper. `docker/` contains CUDA/Jetson compatibility build variants; the primary inference Dockerfile stays at the service root. Container inference files are installed under `/opt/tuber-omni/`, with configuration and patch subdirectories.
 
+The portrait frame adapter selects CUDA Graph or TensorRT through deployment configuration. `services/portrait/tensorrt_frame.py` owns target-specific engine export, cache compatibility and CUDA tensor bindings; `backend.py` owns SDK integration and frame/session lifecycle. The independent TensorRT image contains its runtime dependencies. Both frame implementations share the audio timeline, motion sampler and public Avatar contract.
+
 ## Deployment and state
 
 `deploy/compose/` contains the base stack and composable hardware/service layers. `tools/compose.py` selects supported combinations and passes an explicit repository project directory and environment file to Docker Compose. The Compose project remains `tuber-omni-infra`, preserving existing named volumes.

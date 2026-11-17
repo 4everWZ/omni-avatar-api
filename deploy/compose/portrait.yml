@@ -60,7 +60,7 @@ services:
 
   portrait-assets:
     profiles: [assets]
-    image: omni-api-portrait:ditto
+    image: ${OMNI_PORTRAIT_IMAGE:-omni-api-portrait:ditto}
     user: '0:0'
     command: [python, -m, portrait.assets]
     volumes:
@@ -68,8 +68,10 @@ services:
     networks: [asset-download]
 
   omni-portrait:
-    build: ./services/portrait
-    image: omni-api-portrait:ditto
+    build:
+      context: ./services/portrait
+      dockerfile: ${OMNI_PORTRAIT_DOCKERFILE:-Dockerfile}
+    image: ${OMNI_PORTRAIT_IMAGE:-omni-api-portrait:ditto}
     pull_policy: never
     restart: unless-stopped
     init: true
@@ -92,6 +94,7 @@ services:
       CUDA_MPS_PIPE_DIRECTORY: /run/omni-mps
       CUDA_MPS_CLIENT_PRIORITY: '0'
       OMNI_GPU_RENDER_CLOCK: /run/omni-mps/render-clock.json
+      OMNI_PORTRAIT_FRAME_BACKEND: ${OMNI_PORTRAIT_FRAME_BACKEND:-cuda-graph}
     volumes:
       - ${OMNI_PORTRAIT_MODELS:-./data/portrait}:/portrait:ro
       - portrait-data:/data
