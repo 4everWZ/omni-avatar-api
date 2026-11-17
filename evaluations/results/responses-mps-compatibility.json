@@ -1,0 +1,59 @@
+{
+  "started_utc": "2026-11-17T15:30:51.755934+00:00",
+  "metrics_collector_host": "belal-PC",
+  "scope": "responses_model4_mps_decode_graph_compatibility",
+  "requested_seconds": 0,
+  "state": "passed",
+  "checks": [
+    {
+      "name": "backend_identity",
+      "backend": "omni",
+      "checkpoint": "927faefa0bce96e557945e106f3b3d8b4d39f4b2",
+      "window": 8192
+    },
+    {
+      "name": "backend_identity",
+      "backend": "/llm",
+      "checkpoint": "5577b5b71e6f06b9f6a1f3743ef6ba6dc4ecd2df",
+      "window": 262144
+    },
+    {
+      "name": "omni_multi_turn_history"
+    },
+    {
+      "name": "single_gpu_omni_vision_color_correct"
+    },
+    {
+      "name": "omni_near_full_multi_turn_recall",
+      "input_tokens": 7928,
+      "messages": 20
+    },
+    {
+      "name": "omni_over_window_rejected",
+      "input_tokens": 9975,
+      "status": 400
+    },
+    {
+      "name": "responses_owned_continuation"
+    },
+    {
+      "name": "responses_json_schema"
+    },
+    {
+      "name": "responses_function_call_roundtrip",
+      "execution": "literal_test_fixture_only"
+    },
+    {
+      "name": "responses_incremental_stream",
+      "delta_events": 230,
+      "first_delta_seconds": 0.05238897306844592,
+      "total_seconds": 4.884888282045722
+    },
+    {
+      "name": "responses_long_multi_turn_history",
+      "input_tokens": 22753,
+      "output": "蓝鲸 5738"
+    }
+  ],
+  "samples": []
+}

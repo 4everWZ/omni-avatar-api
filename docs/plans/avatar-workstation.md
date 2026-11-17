@@ -12,7 +12,7 @@ Omni、后台 LLM 和 Avatar 全部部署在当前双 3090 工作站；不将 Av
 
 ## 阶段一：推理服务与 2D Ava
 
-1. GPU 0：固定 Qwen3.5-9B 8bit 权重候选，以 Responses HTTP／增量 SSE 为主接口，兼容 Chat，提供 JSON Schema、工具调用输出及 Chat token 计量。核实引擎兼容、实际窗口、多轮历史正确性、排队与取消。候选为 `axteam/Qwen3.5-9B-AWQ-8bit@b1c949034d7716055133dcc05c1f085beb2b83fb`，实际格式是 compressed-tensors W8A16，不根据仓库名称假定为 AWQ 内核。
+1. GPU 0：固定 Qwen3.5-9B W4A16，以 Responses HTTP／增量 SSE 为主接口，兼容 Chat，提供 JSON Schema、工具调用输出及 Chat token 计量。当前快照为 `axteam/Qwen3.5-9B-AWQ-4bit@5577b5b71e6f06b9f6a1f3743ef6ba6dc4ecd2df`，实际格式 compressed-tensors W4A16；原 8bit 候选保留为历史对照。
 2. GPU 1：MiniCPM-o 三阶段共驻，Chat 总窗口 8192，Realtime 原生 basic 历史水位 8000／6000，验证多轮保留、窗口滑动、语音、视觉、静默、插话和恢复。
 3. 同一宿主的独立 Avatar 服务继续用 Ava 2D 素材、CPU 渲染和 WHEP 输出。验证原生音频绑定、字幕、同步、打断、隔离、释放和渲染故障降级。
 4. 网关使用显式服务前缀与独立准入：`/v1` 的 `omni-default`；`/llm/v1` 的 `llm-default`。后台推理饱和不得阻塞实时助手，不做自动选模型或隐式 Agent 编排。
@@ -42,6 +42,10 @@ Omni、后台 LLM 和 Avatar 全部部署在当前双 3090 工作站；不将 Av
 
 Omni 7,928-token／20 消息的多轮早期事实检索及超限 400 已通过；相关 API 适配回归 3 项通过。后台 LLM 的官方 Python SDK 3.35.1 typed streaming、续接和查询也通过。[8K](../../evaluations/results/omni-8k-multi-turn-workstation.json) · [Responses SDK](../../evaluations/results/responses-sdk-workstation.json)。
 
-外部任务按 Swarm／orchestrator 思路组织，当前优先交付推理 provider。保留单请求 262144，4 路较短请求实际同时生成，按总 token 预算控制长短混跑；四路满窗口需额外资源，不能用异步排队冒充并行。用户确认优先保证四路与 25 fps，暂不设每路最低输出速度。
+外部任务按 Swarm／orchestrator 思路组织，当前优先交付推理 provider。保留单请求 262144、4 路较短请求真实同时生成、总 token 预算及 25 fps。用户已否决约 3.4 TPS 的固定等待方案，要求优化恢复原约 50 TPS 的单路速度；此前“不设最低速度”不再作为交付依据。
 
-四路与 25 fps 共驻已通过：保留既有 8bit 权重与 9 GiB 浮点 KV，Ditto 运动预测使用有数值漂移检查的 FP16、十步采样；LLM 每批后让出 250 ms。90 秒真实神经帧 2,266，最大采样时间线偏差 61 ms，四路输出重叠 74.4 秒，每路约 3.4 tokens/s；取消恢复通过。[共驻证据](../../evaluations/results/portrait-four-way-workstation.json)。引擎指标确认 4 序列，28.5K 加三路短请求、预算拒绝／剩余预算混跑／取消释放通过；Responses 工具、续接、SSE、多轮及原有 8K 边界复验通过。[预算](../../evaluations/results/llm-four-way-workstation.json) · [兼容性](../../evaluations/results/responses-budget-compatibility.json)。完整 262K 质量、长期满载与实物播放仍按前述边界另行验收。编排、工具执行、共享记忆与工作区由应用项目持有，具体框架集成尚未开展。
+已移除固定等待，采用 W4A16、CUDA MPS 20% 活跃线程上限及解码 CUDA Graph，保留 9 GiB BF16 KV 与 FP32 SSM。空闲单路端到端 47.18 TPS（生成区间 47.75），空闲四路每路 37.12–37.27、合计 148.47；通话单路 22.92–23.90，通话四路每路 18.68–19.42、合计 74.73–77.34。90 秒真实神经帧 2,269、最大检查期采样偏差 79 ms、取消恢复通过。[吞吐与共驻](../../evaluations/results/throughput-mps-workstation.json)。旧 250 ms／3.4 TPS 报告仅作撤回方案的历史记录。
+
+新配置复验引擎四序列、28.5K 与三路短请求混跑、四个 worker 独立保存及并行续接、预算拒绝与取消释放；Responses 工具、JSON Schema、SSE、22,753-token 多轮检索及 Omni 8K 边界通过。[并发预算](../../evaluations/results/llm-mps-concurrency-workstation.json) · [兼容性](../../evaluations/results/responses-mps-compatibility.json)。完整 262K 质量、长期满载与实物播放仍按前述边界另行验收。编排、工具执行、共享记忆与工作区由应用项目持有，具体框架集成尚未开展。
+
+MPS 控制服务及客户端重建后，已准备形象复用、30 秒四路／25 fps、音画时间线与取消恢复通过。[重启证据](../../evaluations/results/mps-lifecycle-workstation.json)。

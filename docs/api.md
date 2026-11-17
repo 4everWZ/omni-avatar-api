@@ -27,13 +27,13 @@ Bearer 鉴权、排队、取消、超时和管理接口由[网关规范](../serv
 
 外部编排器统一使用后台 `base_url=http://100.119.17.6:8000/llm/v1`、模型 `llm-default` 和应用 Bearer，优先调用 Responses；Chat 保留兼容。每个逻辑 worker 单独持有历史或 `previous_response_id` 分支；任务、交接、工具执行、共享记忆和工作区操作由应用项目负责。
 
-LLM 单请求上限保留 262144 tokens，引擎和网关默认允许 4 个生成序列；短请求四路并发是验收目标，不承诺四路满窗口。所有活跃 Chat／Responses 共用 `LLM_TOKEN_BUDGET=262144`：每次准入预留完整模板输入（含 instructions、tools 和已保存续接历史）加最大输出，Chat 多候选分别计入序列和预算。计量来自同一引擎渲染器，不用字符数估算。模型权重保持 8bit，KV 和 SSM 状态维持现有精度。
+LLM 单请求上限保留 262144 tokens，引擎和网关默认允许 4 个生成序列；短请求四路并发是验收目标，不承诺四路满窗口。所有活跃 Chat／Responses 共用 `LLM_TOKEN_BUDGET=262144`：每次准入预留完整模板输入（含 instructions、tools 和已保存续接历史）加最大输出，Chat 多候选分别计入序列和预算。计量来自同一引擎渲染器，不用字符数估算。模型使用 W4A16 权重，保留 9 GiB BF16 KV 和 FP32 SSM。
 
 调用方应显式设置 `max_output_tokens`（Chat 为 `max_completion_tokens`／`max_tokens`），以释放短请求并发空间；省略时保留引擎默认输出上限，可能按整个剩余窗口预留并串行运行。长短请求按 FIFO 等待可用序列与 token；达到队列上限或等待超时返回 429 和 Retry-After，单请求预算本身不可容纳返回 400。`/llm/api/mode` 报告 `reserved_tokens`、`available_tokens`、`token_budget`、活跃序列和排队数。后台及断流保留规则同上，结束或取消后释放预算。
 
 `LLM_MAX_NUM_SEQS` 同时配置引擎和网关（默认 4）；`LLM_TOKEN_BUDGET` 是全局活跃预算，不改变模型窗口。`LLM_QUEUE_LIMIT`、`LLM_QUEUE_TIMEOUT`、`LLM_REQUEST_TIMEOUT` 可独立设置后台排队和总期限，默认继承现有 16／5 秒／1200 秒；Omni 的实时通道保持独立。提高并发或预算必须重新验证显存和头像共驻表现。
 
-启用神经头像覆盖时，`LLM_GPU_STEP_PAUSE_MS=250` 让每个真实 GPU 批次完成后再让出执行时间，并关闭 LLM 异步批次重叠；同一批次仍可生成四个序列，SSE 按实际生成即时转发。此配置优先保证 25 fps，实测四路各输出 256 tokens 时约 3.4 tokens/s/路。未启用神经头像覆盖时默认不让出该时间。该计算配额与 token 显存预算分别生效；当前保留 8bit 权重、浮点 KV 和 FP32 SSM。
+启用神经头像覆盖时，GPU 0 的 LLM 与 Ditto 通过 CUDA MPS 共驻；LLM 活跃线程上限默认 20%，并启用批次 1／2／4 的解码 CUDA Graph、关闭异步调度。没有固定批次等待或 SSE 限速。计算资源上限与 token 显存预算分别生效；当前吞吐和重启流程见[工作站部署](deployment/workstation.md#四路并发与计算预算)。
 
 当前验收范围是 provider API，具体 Antigravity／agent-orchestrator 客户端接入留在应用项目。[provider 约定](../services/gateway/README.md#external-orchestration-clients)。
 
