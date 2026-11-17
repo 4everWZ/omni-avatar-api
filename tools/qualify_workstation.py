@@ -212,7 +212,7 @@ class Qualification:
                         source = {'type': 'realtime', 'session_id': message['source_session_id']}
             self.tasks.append(asyncio.create_task(self.receive_voice()))
         self.avatar = await self.json('POST', '/v1/avatar/sessions', expected=201,
-                                      json={'avatar_id': 'ava', 'source': source})
+                                      json={'avatar_id': getattr(self, 'avatar_id', 'ava'), 'source': source})
         await self.request('GET', '/v1/avatar/sessions/' + self.avatar['id'], other=True, expected=404)
         await self.request('DELETE', '/v1/avatar/sessions/' + self.avatar['id'], other=True, expected=404)
         self.events = await self.socket(self.avatar['events_url'])

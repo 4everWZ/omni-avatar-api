@@ -18,6 +18,21 @@ PCM = base64.b64encode(struct.pack('<24000h', *([6000] * 24000))).decode()
 
 
 class AvatarTest(unittest.IsolatedAsyncioTestCase):
+    async def test_render_failure_releases_async_worker(self):
+        released = asyncio.Event()
+        class Driver:
+            capabilities = {}
+            def close(self):
+                async def release():
+                    await asyncio.sleep(0)
+                    released.set()
+                return asyncio.create_task(release())
+        session = Session('owner', 'portrait', None, Driver())
+        await session.fail('renderer_failed')
+        self.assertEqual(session.state, 'failed')
+        self.assertTrue(released.is_set())
+        self.assertTrue(session.recent_events[-1]['voice_continues'])
+
     async def asyncSetUp(self):
         self.app = create_app('internal')
         runner = web.AppRunner(self.app, access_log=None, handler_cancellation=True)

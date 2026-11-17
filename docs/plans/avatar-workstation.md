@@ -24,7 +24,11 @@ Omni、后台 LLM 和 Avatar 全部部署在当前双 3090 工作站；不将 Av
 
 2D API 功能检查通过后开展。用户已确认先做参考图驱动的会议式说话头像，不强制 3D。沿用 Ava、会话、音频源绑定和 WHEP 契约；参考图上传 → 异步准备任务 → avatar_id → 会话 → 流式音画。预留驱动扩展，以后可接真正的 3D 多视角形象。
 
-当前评估固定版 Ditto PyTorch：已在 GPU 0 与后台 LLM 共驻加载并生成 Ava 画面，额外显存约 1.4 GiB，初测约 14 fps，尚未通过实时性能。下一步定位处理瓶颈，验证合适的单人参考图与延迟，再实现带归属隔离、任务状态、取消和资源释放的在线接口。不得用重复静态帧宣称神经头像实时生成成功。
+在线 API 与私有神经驱动已交付：上传 PNG／JPEG、异步准备与取消、归属隔离、持久化 avatar_id、音频／Realtime 绑定及 WHEP。准备与通话共用单个 GPU 配额，渲染失败释放工作线程并保留原生语音。
+
+用户要求至少 25 fps。固定 Ditto 经编译、CUDA Graph、分块预热和初始视频缓冲优化后，120 秒实际生成 3,012 张神经帧，最大音画时间线采样偏差 58 ms；同时原生语音和 4 次后台 Responses 请求通过。维持 25 fps、1200 ms 音频输入预留，未改动两个推理服务的窗口或量化配置。准备／归属／取消测试 3 项、Avatar 回归 14 项及网关回归 15 项通过。重启复用、原生取消后的代次隔离与恢复通过。[功能证据](../../evaluations/results/portrait-functional-workstation.json) · [生命周期](../../evaluations/results/portrait-lifecycle-workstation.json)。
+
+后续需人工确认真实麦克风／扬声器与主观口型观感；完整 262144 窗口质量、持续满载 QoS 未包含在当前功能通过结论内。私网 HTTPS 需要 tailnet 管理员启用 Serve；当前浏览器可使用 localhost SSH 隧道。
 
 ## 当前进度
 
@@ -32,5 +36,5 @@ Omni、后台 LLM 和 Avatar 全部部署在当前双 3090 工作站；不将 Av
 - 原两卡 Omni、Ava 2D 独立 60 秒与原生双工／Avatar 120 秒轻量混合检查通过，但不替代新分工的共驻验收。[Ava](../../evaluations/results/avatar-2d-workstation.json) · [旧配置短混合](../../evaluations/results/native-avatar-workstation.json)。
 - 分卡引擎已部署；Responses 流式、归属续接、结构化、工具调用输出、取消和独立准入通过。22,753-token 多轮续接检索正确，不能据此声称完整 262144 窗口质量通过。
 - 约 20 分钟原生双工／Ava 2D 共驻通过：60,003 音频帧、30,003 视频帧、342 原生音频块和 40 次后台 Responses 请求。调用方隔离及幂等释放通过。[功能证据](../../evaluations/results/inference-functional-workstation.json) · [断流与取消](../../evaluations/results/responses-stream-lifecycle.json)。
-- 浏览器实物麦克风／屏幕完整交互、可信 HTTPS 和会议式神经头像仍待验收。功能报告未采到 GPU 数据，不将 CLI 零散读数称为负载峰值。
+- 浏览器实物麦克风／屏幕完整交互与可信 HTTPS 仍待人工或管理员配置。功能报告未采到 GPU 数据，不将 CLI 零散读数称为负载峰值。
 - 旧 Omni 近 40K 的失败和精度对照保留为模型边界证据，不再是实时助手的新验收门槛。[INT4](../../evaluations/results/omni-workstation-int4.json) · [BF16](../../evaluations/results/omni-workstation-bf16.json) · [INT8 KV](../../evaluations/results/omni-workstation-int8-kv.json) · [直接文本骨干](../../evaluations/results/omni-workstation-text-reference.json)。

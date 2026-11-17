@@ -1,9 +1,12 @@
 """Responses + multi-turn Omni + Ava functional qualification, without an Agent."""
 import argparse
 import asyncio
+import base64
+import io
 import json
 from pathlib import Path
 from time import monotonic
+from PIL import Image
 
 from qualify_workstation import Qualification
 from long_context import inventory_document
@@ -31,6 +34,20 @@ class InferenceQualification(Qualification):
             'max_output_tokens': 32, 'chat_template_kwargs': {'enable_thinking': False}})
         assert output_text(reply).strip() == '5'
 
+    async def vision_check(self):
+        encoded = io.BytesIO()
+        Image.new('RGB', (192, 192), 'red').save(encoded, 'PNG')
+        reply = await self.json('POST', '/v1/chat/completions', json={
+            'model': 'omni-default', 'max_tokens': 64,
+            'chat_template_kwargs': {'enable_thinking': False},
+            'messages': [{'role': 'user', 'content': [
+                {'type': 'text', 'text': '这张纯色图片是什么颜色？只回答颜色。'},
+                {'type': 'image_url', 'image_url': {'url': 'data:image/png;base64,' +
+                                                  base64.b64encode(encoded.getvalue()).decode()}}]}]})
+        answer = reply['choices'][0]['message']['content'].lower()
+        assert '红' in answer or 'red' in answer
+        self.check('single_gpu_omni_vision_color_correct')
+
     async def chat_checks(self):
         for prefix, window in [('', 8192), ('/llm', 262144)]:
             health = await self.json('GET', prefix + '/healthz')
@@ -48,6 +65,7 @@ class InferenceQualification(Qualification):
             'chat_template_kwargs': {'enable_thinking': False}})
         assert '5738' in reply['choices'][0]['message']['content']
         self.check('omni_multi_turn_history')
+        await self.vision_check()
 
         first = await self.responses('记住项目代号是蓝鲸5738。只回答收到。')
         for method, path, options in [

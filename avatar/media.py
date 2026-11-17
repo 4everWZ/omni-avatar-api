@@ -1,5 +1,6 @@
 """WHEP media tracks share one session clock and presentation timeline."""
 import asyncio
+import logging
 from fractions import Fraction
 from time import monotonic
 
@@ -33,8 +34,8 @@ class TimelineTrack(MediaStreamTrack):
                 image = self.session.renderer.render(timestamp - self.session.origin, self.session.rms(position))
                 frame = VideoFrame.from_image(image)
             except Exception:
-                self.session.state, self.session.failure = 'failed', 'renderer_failed'
-                self.session.emit('avatar.failed', reason='renderer_failed', voice_continues=True)
+                logging.exception('Avatar renderer failed')
+                await self.session.fail('renderer_failed')
                 self.stop()
                 raise MediaStreamError
             frame.pts, frame.time_base = self.index * 3600, Fraction(1, 90000)

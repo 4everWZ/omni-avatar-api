@@ -88,7 +88,7 @@ class AvatarProxy:
 
     async def handle(self, request):
         # Do not let URL normalization turn a public proxy path into /internal/*.
-        if not re.fullmatch(r'/v1/avatar/sessions(?:/[A-Za-z0-9_-]+(?:/(?:audio|events|whep)(?:/[A-Za-z0-9_-]+)?)?)?', request.path):
+        if not re.fullmatch(r'/v1/avatar/(?:sessions(?:/[A-Za-z0-9_-]+(?:/(?:audio|events|whep)(?:/[A-Za-z0-9_-]+)?)?)?|(?:assets|generations)(?:/[a-f0-9]{32})?|avatars/portrait_[a-f0-9]{32}(?:/preview)?)', request.path):
             raise web.HTTPNotFound()
         if not self.base_url or not self.token:
             return web.json_response({'error': {'code': 'avatar_unavailable'}}, status=503)

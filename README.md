@@ -12,8 +12,10 @@
 
 ## 共享 API
 
-`/v1` 的 `omni-default` 提供约 8K 多轮近期窗口的 Chat 和 Realtime；`/llm/v1/responses` 的 `llm-default` 提供后台长上下文推理与增量 SSE。两者独立准入，应用持有外部记忆并执行工具调用。独立 Avatar 服务提供 Ava 2D 会话、WHEP 音画及浏览器页。数字人阶段采用参考图驱动的会议式说话头像，不强制 3D，沿用可插拔渲染接口。[网关接口及配置](gateway/README.md) · [Avatar 会话](docs/api.md#avatar-会话与音画) · [推进计划](docs/plans/avatar-workstation.md)
+`/v1` 的 `omni-default` 提供约 8K 多轮近期窗口的 Chat 和 Realtime；`/llm/v1/responses` 的 `llm-default` 提供后台长上下文推理与增量 SSE。两者独立准入，应用持有外部记忆并执行工具调用。独立 Avatar 服务提供 Ava 2D 会话、WHEP 音画及浏览器页。会议式说话头像通过可选 `infra-portrait.compose.yml` 提供参考图上传、异步准备及 Ditto 神经渲染，不强制 3D，沿用可插拔接口。[网关接口及配置](gateway/README.md) · [Avatar 会话](docs/api.md#avatar-会话与音画) · [推进计划](docs/plans/avatar-workstation.md)
 
 ## 部署状态
 
-分卡推理已部署。Responses 流式输出、归属隔离、续接、22,753-token 多轮历史、结构化回复、工具调用输出及取消通过；原生双工与 Ava 2D 连续运行约 20 分钟，期间完成 40 次后台 LLM 请求。按用户要求以约半小时功能检查替代两小时负载。LLM 配置窗口 262144，完整窗口的质量尚未验证；浏览器实物播放与会议式神经头像仍待验收。[工作站准入](docs/workstation.md#实机准入) · [功能证据](evaluations/results/inference-functional-workstation.json) · [断流生命周期](evaluations/results/responses-stream-lifecycle.json)
+分卡推理已部署。Responses 流式输出、归属隔离、续接、22,753-token 多轮历史、结构化回复、工具调用输出及取消通过；原生双工与 Ava 2D 连续运行约 20 分钟，期间完成 40 次后台 LLM 请求。按用户要求以约半小时功能检查替代两小时负载。LLM 配置窗口 262144，完整窗口的质量尚未验证；会议式神经头像已通过 25 fps、同步与打断恢复检查；浏览器实物播放仍需人工确认。[工作站准入](docs/workstation.md#实机准入) · [功能证据](evaluations/results/inference-functional-workstation.json) · [断流生命周期](evaluations/results/responses-stream-lifecycle.json)
+
+会议式 Ava：120 秒共驻期间实际生成 3,012 张神经帧，最大音画时间线采样偏差 58 ms，音频预留 1200 ms。[头像功能](evaluations/results/portrait-functional-workstation.json) · [重启与取消恢复](evaluations/results/portrait-lifecycle-workstation.json) · [实测画面](evaluations/results/ava-talking-portrait.png)

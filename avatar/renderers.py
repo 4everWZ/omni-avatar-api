@@ -1,7 +1,7 @@
-"""Rendering boundary: future neural drivers implement the same lifecycle."""
+"""Rendering boundary shared by sprite and remote neural drivers."""
 import math
 from pathlib import Path
-from typing import Protocol
+from typing import Awaitable, Protocol
 
 from PIL import Image
 
@@ -11,7 +11,7 @@ class Renderer(Protocol):
     def push_audio(self, pcm: bytes, sample_rate: int, start_sample: int, generation: int) -> None: ...
     def render(self, timestamp: float, rms: float) -> Image.Image: ...
     def clear(self, generation: int) -> None: ...
-    def close(self) -> None: ...
+    def close(self) -> Awaitable[None] | None: ...
 
 
 class SpriteRenderer:

@@ -43,11 +43,13 @@ class Session:
         base = f'/v1/avatar/sessions/{self.id}'
         return {'id': self.id, 'avatar_id': self.avatar_id, 'source_session_id': self.source,
                 'state': self.state, 'failure': self.failure, 'generation': self.generation,
+                'timeline_ms': self.now_sample() * 1000 // RATE,
                 'format': {'transport': 'whep', 'video': '640x720', 'fps': 25,
                            'audio': 'opus', 'input': 'pcm16', 'sample_rate_hz': RATE,
                            **self.renderer.capabilities},
                 'media_url': base + '/whep', 'events_url': base + '/events',
-                'audio_url': base + '/audio', 'playback': self.last_ack}
+                'audio_url': base + '/audio', 'playback': self.last_ack,
+                'renderer': self.renderer.status() if hasattr(self.renderer, 'status') else {}}
 
     def emit(self, kind, **fields):
         event = {'type': kind, 'session_id': self.id, 'generation': self.generation,
@@ -101,7 +103,8 @@ class Session:
         now = self.now_sample()
         while self.segments and self.segments[0][0] + len(self.segments[0][1]) // 2 < now - RATE:
             self.segments.popleft()
-        start = max(self.end_sample, now + RATE // 10)
+        lead = self.renderer.capabilities.get('input_lead_ms', 100)
+        start = max(self.end_sample, now + round(RATE * lead / 1000))
         if start + len(pcm) // 2 - now > RATE * MAX_AUDIO_SECONDS:
             raise ValueError('Audio exceeds thirty-second playback buffer')
         self.renderer.push_audio(pcm, RATE, start, self.generation)
@@ -167,4 +170,16 @@ class Session:
         self.emit('avatar.closed')
         await asyncio.gather(*(pc.close() for pc in tuple(self.peers.values())), return_exceptions=True)
         self.peers.clear()
-        self.renderer.close()
+        pending = self.renderer.close()
+        if pending is not None:
+            await pending
+
+    async def fail(self, reason):
+        if self.state != 'active':
+            return
+        self.state, self.failure = 'failed', reason
+        self.segments.clear()
+        self.emit('avatar.failed', reason=reason, voice_continues=True)
+        pending = self.renderer.close()
+        if pending is not None:
+            await pending

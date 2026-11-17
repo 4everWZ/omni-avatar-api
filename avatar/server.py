@@ -7,12 +7,13 @@ import secrets
 from pathlib import Path
 from time import monotonic
 
-from aiohttp import WSMsgType, web
+from aiohttp import ClientSession, ClientTimeout, UnixConnector, WSMsgType, web
 from aiortc import RTCConfiguration, RTCPeerConnection, RTCSessionDescription
 
 from media import TimelineTrack
 from renderers import DRIVERS
 from sessions import Session
+from portrait import PortraitClient
 
 ROOT = Path(__file__).parent
 
@@ -30,6 +31,8 @@ class AvatarService:
         self.registry = registry
         self.capacity, self.idle_timeout = capacity, idle_timeout
         self.sessions, self.sources = {}, {}
+        self.portrait = None
+        self.creating = 0
 
     @web.middleware
     async def authenticate(self, request, handler):
@@ -58,7 +61,8 @@ class AvatarService:
         if not isinstance(body, dict):
             raise ValueError('Expected an object')
         avatar_id = body.get('avatar_id')
-        if avatar_id not in self.registry:
+        neural = isinstance(avatar_id, str) and re.fullmatch(r'portrait_[a-f0-9]{32}', avatar_id)
+        if avatar_id not in self.registry and not neural:
             raise ValueError('Unknown avatar_id')
         source = body.get('source')
         if not isinstance(source, dict) or source.get('type') not in ('realtime', 'audio'):
@@ -66,10 +70,19 @@ class AvatarService:
         source_id = source.get('session_id') if source['type'] == 'realtime' else None
         if source['type'] == 'realtime' and self.sources.get(source_id, {}).get('owner') != request['owner']:
             raise web.HTTPNotFound(reason='Realtime source not available for this caller')
-        if sum(s.state != 'closed' for s in self.sessions.values()) >= self.capacity:
+        if sum(s.state != 'closed' for s in self.sessions.values()) + self.creating >= self.capacity:
             raise web.HTTPTooManyRequests(reason='Avatar capacity reached')
-        registered = self.registry[avatar_id]
-        renderer = DRIVERS[registered['driver']](Path(registered['root']))
+        if neural:
+            if self.portrait is None:
+                raise web.HTTPServiceUnavailable(reason='Portrait worker is not configured')
+            self.creating += 1
+            try:
+                renderer = await self.portrait.renderer(request['owner'], avatar_id)
+            finally:
+                self.creating -= 1
+        else:
+            registered = self.registry[avatar_id]
+            renderer = DRIVERS[registered['driver']](Path(registered['root']))
         source_state = self.sources.get(source_id, {})
         session = Session(request['owner'], avatar_id, source_id, renderer,
                           epoch=source_state.get('epoch', -1), response_id=source_state.get('response_id'))
@@ -174,8 +187,7 @@ class AvatarService:
                         try:
                             session.ingest(envelope['event'], envelope.get('direction', 'upstream'))
                         except (ValueError, TypeError, AttributeError):
-                            session.state, session.failure = 'failed', 'source_audio_invalid'
-                            session.emit('avatar.failed', reason=session.failure, voice_continues=True)
+                            await session.fail('source_audio_invalid')
         finally:
             self.sources.pop(source_id, None)
             await asyncio.gather(*(s.close() for s in self.sessions.values() if s.source == source_id))
@@ -228,6 +240,10 @@ class AvatarService:
             raise
 
     async def lifecycle(self, app):
+        client = None
+        if path := os.environ.get('OMNI_PORTRAIT_SOCKET'):
+            client = ClientSession(connector=UnixConnector(path=path), timeout=ClientTimeout(total=40))
+            self.portrait = PortraitClient(client, self.token)
         async def reap():
             while True:
                 await asyncio.sleep(15)
@@ -242,11 +258,18 @@ class AvatarService:
         await asyncio.gather(task, return_exceptions=True)
         await asyncio.gather(*(item['socket'].close() for item in tuple(self.sources.values())))
         await asyncio.gather(*(s.close() for s in tuple(self.sessions.values())))
+        if client:
+            await client.close()
+
+    async def portrait_api(self, request):
+        if self.portrait is None:
+            raise web.HTTPServiceUnavailable(reason='Portrait worker is not configured')
+        return await self.portrait.forward(request)
 
 
 def create_app(token=None, **options):
     service = AvatarService(token or os.environ.get('OMNI_AVATAR_INTERNAL_TOKEN'), **options)
-    app = web.Application(client_max_size=1024 * 1024, middlewares=[service.authenticate])
+    app = web.Application(client_max_size=6 * 1024 * 1024, middlewares=[service.authenticate])
     app['service'] = service
     app.cleanup_ctx.append(service.lifecycle)
     async def livez(request):
@@ -254,6 +277,13 @@ def create_app(token=None, **options):
     app.add_routes([
         web.get('/livez', livez),
         web.get('/internal/sources/{id}', service.source),
+        web.post('/v1/avatar/assets', service.portrait_api),
+        web.delete('/v1/avatar/assets/{id}', service.portrait_api),
+        web.post('/v1/avatar/generations', service.portrait_api),
+        web.get('/v1/avatar/generations/{id}', service.portrait_api),
+        web.delete('/v1/avatar/generations/{id}', service.portrait_api),
+        web.get('/v1/avatar/avatars/{id}', service.portrait_api),
+        web.get('/v1/avatar/avatars/{id}/preview', service.portrait_api),
         web.post('/v1/avatar/sessions', service.create),
         web.get('/v1/avatar/sessions/{id}', service.detail),
         web.delete('/v1/avatar/sessions/{id}', service.detail),
