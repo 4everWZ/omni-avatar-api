@@ -39,6 +39,7 @@ services:
       <<: *llm
       HF_HUB_OFFLINE: '1'
       TRANSFORMERS_OFFLINE: '1'
+      VLLM_ENABLE_RESPONSES_API_STORE: '1'
     volumes:
       - ${OMNI_MODEL_DATA:-./data/models}:/models:ro
     networks: [engine-private]
