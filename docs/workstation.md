@@ -51,4 +51,6 @@ docker compose -f infra-compose.yml -f infra-workstation.compose.yml -f infra-av
 
 用户已确认继续评估官方非 AWQ BF16 权重。候选覆盖为 `infra-workstation-bf16.compose.yml`，应叠加在 `infra-workstation.compose.yml` 之后、`infra-avatar.compose.yml` 之前。它同时固定下载器、引擎和网关的模型身份为 `openbmb/MiniCPM-o-4_5@fb09628e98b1f55d8d5b863e0eccfcdd11bff499`，明确校验非量化 BF16 配置；沿用原窗口、阶段分工和 INT4 KV，只增加 GPU 0 的内存预算。使用相同文件组合执行 `config --quiet`、`build omni-engine`、`--profile assets run --rm model-fetch` 和 `up -d`。候选尚未通过长文和共驻验收，不作为已验收默认值。回退时去掉 BF16 覆盖并以原三文件组合执行 `up -d`；两个快照各自保留。
 
+BF16 候选已通过普通／流式、结构化和视觉检查，但在相同 INT4 KV 下，39,932-token 检索仍为空答；这次对照不支持仅更换权重精度即可修复长文。[BF16 报告](../evaluations/results/omni-workstation-bf16.json)。用户已允许合适的 8bit 方案，下一步单独对照 Thinker INT8 KV；尚未作为已验收部署配置。
+
 因此整体验收未通过；两小时负载、浏览器麦克风／屏幕的完整交互、插话与原生恢复、客户端渲染故障降级、可信 HTTPS 入口及数字人阶段仍待完成。后续推理基线选择见[当前计划](plans/avatar-workstation.md)。早期 Jetson 结果见[历史 AGX 证据](https://github.com/4everWZ/Tuber_Studio/blob/main/evaluations/results/omni-deployment-20261116.md)。

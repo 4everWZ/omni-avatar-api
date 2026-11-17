@@ -1,0 +1,47 @@
+{
+  "started_utc": "2026-11-17T04:54:49.427187+00:00",
+  "metrics_collector_host": "belal-PC",
+  "scope": "bf16_same_window_chat_preflight",
+  "requested_seconds": 120,
+  "state": "failed",
+  "checks": [
+    {
+      "name": "engine_identity",
+      "window": 40960,
+      "checkpoint": "fb09628e98b1f55d8d5b863e0eccfcdd11bff499",
+      "root_verified": true
+    },
+    {
+      "name": "ordinary_chat",
+      "seconds": 0.9391417971346527
+    },
+    {
+      "name": "structured_chat"
+    },
+    {
+      "name": "second_caller_streaming_chat"
+    },
+    {
+      "name": "vision_color_correct"
+    }
+  ],
+  "samples": [],
+  "candidate": {
+    "model": "openbmb/MiniCPM-o-4_5",
+    "revision": "fb09628e98b1f55d8d5b863e0eccfcdd11bff499",
+    "kv_cache_dtype": "int4_per_token_head",
+    "thinker_gpu_utilization": 0.9
+  },
+  "long_context_attempts": [
+    {
+      "case": "repeated",
+      "prompt_tokens": 39932,
+      "finish_reason": "stop",
+      "completion_tokens": 1,
+      "visible_body_characters": 0,
+      "correct": false
+    }
+  ],
+  "failure": "AssertionError: Long-context retrieval failed for repeated at 39932 prompt tokens",
+  "finished_utc": "2026-11-17T04:55:25.572801+00:00"
+}
