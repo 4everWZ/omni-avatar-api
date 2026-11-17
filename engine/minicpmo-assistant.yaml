@@ -1,0 +1,45 @@
+# Omni assistant on physical GPU 1 (container-local device 0); Avatar stays on this workstation.
+session_mode: duplex
+duplex_session:
+  max_sessions: 1
+
+connectors:
+  connector_of_shared_memory:
+    extra:
+      enable_hift_graph: false
+      enable_cfm_graph: false
+      enable_code2wav_encoder_graph: false
+      cfm_fused_body: false
+
+stages:
+  - stage_id: 0
+    devices: "0"
+    max_num_seqs: 2
+    kv_cache_dtype: auto
+    max_num_batched_tokens: 2048
+    long_prefill_token_threshold: 1024
+    gpu_memory_utilization: 0.50
+    enforce_eager: true
+    default_sampling_params:
+      max_tokens: 4096
+  - stage_id: 1
+    devices: "0"
+    max_num_seqs: 2
+    kv_cache_dtype: auto
+    max_num_batched_tokens: 4096
+    gpu_memory_utilization: 0.10
+    enforce_eager: true
+  - stage_id: 2
+    devices: "0"
+    max_num_seqs: 2
+    gpu_memory_utilization: 0.22
+
+platforms:
+  cuda:
+    stages:
+      - stage_id: 0
+        kv_cache_memory_bytes: 2147483648
+        attention_backend: TRITON_ATTN
+      - stage_id: 1
+        kv_cache_memory_bytes: 536870912
+        attention_backend: TRITON_ATTN

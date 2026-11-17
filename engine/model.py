@@ -70,8 +70,11 @@ def serve(model_id, revision, path):
     overlay = yaml.safe_load(overlay_path.read_text(encoding="utf-8"))
     overlay["base_config"] = str(upstream)
     thinker = next(stage for stage in overlay["stages"] if stage["stage_id"] == 0)
-    thinker["max_model_len"] = checkpoint_chat_window(
-        path, os.environ.get("OMNI_EXPECTED_QUANTIZATION", "awq"))
+    native_window = checkpoint_chat_window(path, os.environ.get("OMNI_EXPECTED_QUANTIZATION", "awq"))
+    window = int(os.environ.get("OMNI_MAX_MODEL_LEN", native_window))
+    if not 4096 <= window <= native_window:
+        raise ValueError("OMNI_MAX_MODEL_LEN must be within the checkpoint window and at least 4096")
+    thinker["max_model_len"] = window
     with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", suffix=".yaml", delete=False) as deploy:
         yaml.safe_dump(overlay, deploy)
     cmd = [

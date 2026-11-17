@@ -8,6 +8,7 @@ RUN env -u UV_CONSTRAINT -u UV_OVERRIDE uv --no-config pip install \
     && python3 -c 'import cosyvoice2, hyperpyyaml, onnxruntime, s3tokenizer, torchaudio'
 
 COPY model.py minicpmo-orin.yaml /opt/tuber-omni/
+COPY llm.py /opt/tuber-omni/
 COPY restore_chat_constraints.py minicpmo_int4_window.py patch_minicpmo_int4_window.py /opt/tuber-omni/
 COPY patch_minicpmo_awq_stages.py patch_chat_prompt_tokens.py /opt/tuber-omni/
 COPY patch_minicpmo_duplex_idle.py /opt/tuber-omni/
