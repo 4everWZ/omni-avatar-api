@@ -1,0 +1,21 @@
+{
+  "state": "passed",
+  "scope": "default_thinking_json_schema_and_function_continuation",
+  "checks": [
+    {
+      "name": "default_thinking_chat_json_schema",
+      "prefix": "omni"
+    },
+    {
+      "name": "default_thinking_chat_json_schema",
+      "prefix": "/llm"
+    },
+    {
+      "name": "default_thinking_responses_json_schema"
+    },
+    {
+      "name": "default_thinking_function_call_owned_continuation",
+      "execution": "literal_fixture_only"
+    }
+  ]
+}

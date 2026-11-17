@@ -29,26 +29,45 @@ Chat 无跨请求业务记忆：应用每次提交希望使用的 messages；Rea
 
 GPU 设备通过容器设备请求隔离；每个容器只见自己的物理卡，因此阶段配置均使用本地设备 0。后台 LLM 保留单请求 262144 上限，默认最多 4 个生成序列，共享 262144 输入加最大输出的活跃 token 预算；具体排队与预留语义见 [API](../api.md)。KV 保留浮点，Gated DeltaNet 的 SSM 状态使用 FP32，不与权重一起量化。Omni 准入独立于 LLM；四路满窗口不在现有显存保证范围。
 
+## Omni 实时窗口选择
+
+默认继续采用官方服务的 `basic`，水位 8000／6000，符合约 8K 近期助手＋外部记忆的分工。外部应用可在创建会话时通过现有 `session.update.session.extra_body` 选择模式及参数；先用 `autostart=0` 连接，不需要修改部署文件或重启模型。`context` 默认只保留 24 个近期输入单元与最多 500 tokens 的早期模型回复，需要重建窗口，不等同于保留更长的完整对话。[API 示例与限制](../api.md#omni-实时历史窗口)。
+
 ## 四路并发与计算预算
 
 当前使用 `axteam/Qwen3.5-9B-AWQ-4bit@5577b5b71e6f06b9f6a1f3743ef6ba6dc4ecd2df`，实际格式为 compressed-tensors W4A16、非对称 group 32。保留 9 GiB BF16 KV、FP32 SSM 和原卡位：GPU 0 为 LLM 与 Ditto，GPU 1 为完整 Omni。`LLM_MAX_NUM_SEQS=4` 同时控制引擎和网关；活跃请求共享 `LLM_TOKEN_BUDGET=262144`，按完整输入加最大输出预留，见 [API](../api.md)。长短请求按 FIFO 等待，不能把异步排队视为四路生成。
 
-神经头像覆盖通过独立 `gpu-mps` 服务启用 GPU 0 的 CUDA MPS。LLM 使用 `LLM_MPS_ACTIVE_THREAD_PERCENTAGE=20`、较低客户端优先级；Ditto 使用正常优先级。20% 是线程资源上限，并非独占 20% 执行时间；实机 LLM 可见 16 个 SM。LLM 启用 `FULL_DECODE_ONLY` CUDA Graph，捕获批次 1、2、4，并关闭异步调度。已移除 Core 固定等待补丁及 `LLM_GPU_STEP_PAUSE_MS`，SSE 即时转发实际生成。调整 MPS 上限需要重验头像时间线；token 预算保护显存，两者分别生效。
+神经头像覆盖通过独立 `gpu-mps` 服务启用 GPU 0 的 CUDA MPS。LLM 使用 `LLM_MPS_ACTIVE_THREAD_PERCENTAGE=20`、较低客户端优先级；Ditto 使用正常优先级。20% 是线程资源上限，并非独占 20% 执行时间；实机 LLM 可见 16 个 SM。LLM 启用 `FULL_DECODE_ONLY` CUDA Graph，捕获批次 1、2、4，并关闭异步调度。已移除固定 250 ms 等待及 `LLM_GPU_STEP_PAUSE_MS`。当前引擎在派发前读取真实渲染帧截止期；余量不足 240 ms 时单次主动让出不超过 18 ms，并在新帧补足余量后提前恢复。SSE 即时转发实际生成。调整 MPS 上限需要重验头像时间线；token 预算保护显存，两者分别生效。
 
-当前端到端输出 TPS 如下：29-token 短提示，每路 256 输出 tokens，温度 0、关闭 thinking、关闭前缀缓存；先预热 32 tokens，头像服务始终共驻。通话状态的两轮结果保留为范围。
+当前 CoT 开启，思考预算未增加自定义上限；温度 0，每路总输出上限 256 tokens，先预热 32 tokens。固定同一整数短提示，按模板实报输入为 Omni 25、LLM 27 tokens，关闭前缀缓存。表内均为端到端思考＋正文总生成 TPS；通话状态保留两轮测量范围。
 
-| 并发请求数 | 头像状态 | 每路 TPS（输出 tokens/s） | 总 TPS（输出 tokens/s） |
-| --- | --- | --- | --- |
-| 1 | 服务共驻、空闲；无原生语音会话 | 47.18 | 47.18 |
-| 4 | 服务共驻、空闲；无原生语音会话 | 37.12–37.27 | 148.47 |
-| 1 | 原生语音与神经头像 25 fps 通话中 | 22.92–23.90 | 22.92–23.90 |
-| 4 | 原生语音与神经头像 25 fps 通话中 | 18.68–19.42 | 74.73–77.34 |
+| 服务 | 生成请求数 | 其他负载 | 每路总生成 TPS | 合计 TPS |
+| --- | --- | --- | --- | --- |
+| Omni Chat | 1 | 空闲 | 65.54 | 65.54 |
+| Omni Chat | 1 | 原生语音＋头像＋四路 LLM | 32.00–36.55 | 32.00–36.55 |
+| LLM | 1 | 空闲 | 47.25 | 47.25 |
+| LLM | 4 | 空闲 | 37.12–37.26 | 148.48 |
+| LLM | 1 | 原生语音＋头像 | 18.33–23.53 | 18.33–23.53 |
+| LLM | 4 | 原生语音＋头像 | 15.37–19.12 | 61.46–76.11 |
+| LLM | 4 | 原生语音＋头像＋一路 Omni Chat | 13.49–16.66 | 53.97–66.32 |
 
-口径：每路 TPS = `usage.output_tokens` ÷ 从本组请求发起到该路 `response.completed` 的秒数；总 TPS = 本组全部输出 tokens ÷ 最晚完成时间，包含预填充及传输等待，不用 SSE 事件数代替 token 数。生成区间另按 `(输出 tokens - 1) / (末增量时间 - 首增量时间)` 计算，空闲单路为 47.75 TPS。原始报告保留两种口径及首包时间；不将短输入吞吐外推到长上下文或持续满载。[吞吐与共驻](../../evaluations/results/throughput-mps-workstation.json)。工具默认的单路 45 TPS／通话四路每路 15 TPS 是防退化检查线，不代表用户确认了长期 SLA。
+前台普通 Chat 默认只有一个准入槽。两个同时提交的短请求实测每路 65.45／32.56 TPS（后者含排队等待），合计 65.13 TPS，输出区间未重叠；不宣称双路实际生成。后台四路要求输出区间真实重叠。
 
-Ditto 运动预测维持有数值漂移检查的 FP16、十步采样、RNG、分辨率及原参考图接口。90 秒生成 2,269 张真实神经帧，接收 2,306 视频／4,610 音频帧及 36 个原生语音块；检查期最大采样时间线偏差 79 ms，原生取消和恢复通过。报告末尾取消恢复期间的样本独立于检查期偏差统计。这不保证四个满窗口同时推理，也不替代完整 262K 质量验收或长期满载 SLA。
+每路 TPS = `usage.completion_tokens`（Omni Chat）或 `usage.output_tokens`（Responses）÷ 从本组请求发起到该路完成的秒数；合计 TPS = 本组全部生成 tokens ÷ 最晚完成时间。均包含思考、预填充、传输和准入／GPU 等待，不以 SSE 事件数代替 token 数。原始记录另存 `(tokens - 1) / (末增量 - 首增量)` 的生成区间参考值；受分块与不可见控制 tokens 影响，不当作精确逐 token 延迟。
 
-同一配置的引擎指标采到 4 个同时运行序列；28,528-token 输入与三路短请求混跑、四个 worker 独立保存与并行续接通过。超出剩余 token 预算时，即使序列槽未满也排队超时 429；剩余预算可接短 Chat，取消后预留归零。[并发与预算](../../evaluations/results/llm-mps-concurrency-workstation.json)。更换 4bit 权重后，Responses 续接、JSON Schema、function 往返、增量 SSE、22,753-token 多轮检索与 Omni 8K 边界均复验通过。[兼容性](../../evaluations/results/responses-mps-compatibility.json)。旧 250 ms 等待方案的约 3.4 TPS 已被用户否决；原报告仅保留为撤回方案的历史基线，不是当前交付性能。[原单路基线](../../evaluations/results/single-request-tps-sleep-baseline.json)。
+256-token 性能夹具中，部分请求会在思考阶段耗尽额度，Omni 本组未进入正文。因此表格不能当作正文吞吐或完整答复时延；思考与正文首增量时间分别记录。默认 CoT 完整答案由独立功能夹具验证。[前台与全栈混跑](../../evaluations/results/omni-throughput-final-workstation.json) · [后台单路／四路](../../evaluations/results/llm-throughput-cot-workstation.json)。后台验证器的空闲单路 45 TPS、原生语音＋头像四路每路 15 TPS 是该负载的防退化检查线；额外叠加 Omni Chat 的负载单独报告，不借用该通过结论。
+
+Ditto 保留现有 FP16、十步采样、RNG、分辨率与 1200 ms 音频输入预留。全栈 90 秒生成 2,263 张真实神经帧，最大检查期采样时间线偏差 84 ms；后台单独共驻的 90 秒生成 2,267 帧、偏差 99 ms，均通过 25 fps／160 ms 检查、原生取消恢复及幂等释放。原关闭 CoT、没有截止期反馈的额外 Chat 混跑曾出现 203 ms 偏差，已作为失败基线保留。[原混跑基线](../../evaluations/results/omni-throughput-basic-workstation.json)。
+
+CoT 默认开启、显式关闭、三个文本接口的 16-token 思考预算与非法预算拒绝通过；JSON Schema、function 调用及归属续接也在默认 CoT 下复验通过。[默认与预算](../../evaluations/results/thinking-defaults-workstation.json) · [结构化与工具续接](../../evaluations/results/thinking-structured-workstation.json)。这些工具仅回填字面量测试结果，不执行 Agent 或真实外部工具。Omni 既有 7,928-token 检索与后台 22,753-token 多轮历史报告使用显式关闭 CoT 的夹具；不将其误记为默认 CoT 的完整窗口质量验收。
+
+旧固定 250 ms／约 3.4 TPS 方案及最初无反馈、关闭 CoT 的 MPS 吞吐报告只作为历史基线保留，不是当前配置性能。完整 262K 质量、四个满窗口、持续满载 SLA 与实物播放仍按各自范围另行验收。
+
+### 渲染截止期反馈
+
+MPS 仍允许四个序列真实同批生成。为覆盖额外一路 Omni Chat 的更重混跑，头像在已有 MPS 控制卷原子发布最近神经帧的单调时钟截止期；LLM 在真实 GPU 批次派发前据此短暂让出算力。反馈不含图像、文本或调用方身份，不增加公共 API 或跨服务 Python 导入。没有活跃头像、文件缺失／无效或超过 500 ms 未更新时不主动等待；会话释放删除自己的时钟文件，崩溃后旧记录自动失效。每次主动等待上限 18 ms，渲染进度追上则提前结束。
+
+这与 token 显存准入分别生效；保留 262144 单请求上限、四序列、W4A16、9 GiB BF16 KV、FP32 SSM、十步运动采样和 1200 ms 音频输入预留。外部 CoT 默认及显式预算见 [API](../api.md#cot-默认与调用方预算)。旧关闭 CoT、没有截止期反馈的吞吐报告属于当时配置，不能当作开启 CoT 后的正文输出速度。
 
 ### MPS 生命周期
 
@@ -62,7 +81,7 @@ python tools/compose.py --portrait --vpn -- up -d --wait --no-deps --force-recre
 python tools/compose.py --portrait --vpn -- up -d --wait llm-engine omni-portrait omni-gateway
 ```
 
-凭据保持不变，准备好的 avatar_id 保存在卷中；引擎 RAM 内的 Responses 历史在重启后失效，调用方应保存业务历史。实机重建 MPS 与客户端后，复用已准备形象的 30 秒四路／25 fps、音画时间线及取消恢复检查通过。[重启复用](../../evaluations/results/mps-lifecycle-workstation.json) · [无固定等待及实际 MPS 资源检查](../../evaluations/results/mps-runtime-workstation.json)。
+凭据保持不变，准备好的 avatar_id 保存在卷中；引擎 RAM 内的 Responses 历史在重启后失效，调用方应保存业务历史。实机重建 MPS 与客户端后，复用已准备形象的 30 秒四路／25 fps、音画时间线及取消恢复检查通过。[重启复用](../../evaluations/results/mps-lifecycle-workstation.json) · [当前部署、官方默认预算和空闲恢复](../../evaluations/results/runtime-cot-deadline-workstation.json)。
 
 ## Avatar 与访问
 

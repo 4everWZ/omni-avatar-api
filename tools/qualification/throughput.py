@@ -17,22 +17,24 @@ class ThroughputQualification(PortraitQualification):
         self.report.update(scope='single_and_four_tps_with_native_neural_portrait',
             model=health['configured_model'], checkpoint=health['checkpoint'],
             sampling_temperature=0, output_tokens_per_request=256,
+            thinking_enabled=self.args.thinking == 'enabled', thinking_token_budget=None,
             regression_guards={'idle_single_e2e_tps': self.args.minimum_idle_tps,
                                'active_four_each_e2e_tps': self.args.minimum_active_tps})
         # Warm the exact short-prompt kernel shapes, without prefix caching.
-        await self.responses(SHORT_PROMPT, max_output_tokens=32, store=False)
-        single = await stream_requests(self.http, self.args.gateway, self.other, [SHORT_PROMPT])
+        self.options = {'chat_template_kwargs': {'enable_thinking': self.args.thinking == 'enabled'}}
+        await self.responses(SHORT_PROMPT, max_output_tokens=32, store=False, **self.options)
+        single = await stream_requests(self.http, self.args.gateway, self.other, [SHORT_PROMPT], [self.options])
         assert single['requests'][0]['end_to_end_output_tps'] >= self.args.minimum_idle_tps, single
         self.check('idle_single_request_throughput', **single)
         self.check('idle_four_request_throughput', **await stream_group(
-            self.http, self.args.gateway, self.other))
+            self.http, self.args.gateway, self.other, request_options=[self.options] * 4))
 
     async def ordinary_request(self):
         if self.avatar is None:
             return await super().ordinary_request()
         self.check('active_single_request_throughput', **await stream_requests(
-            self.http, self.args.gateway, self.other, [SHORT_PROMPT]))
-        group = await stream_group(self.http, self.args.gateway, self.other)
+            self.http, self.args.gateway, self.other, [SHORT_PROMPT], [self.options]))
+        group = await stream_group(self.http, self.args.gateway, self.other, request_options=[self.options] * 4)
         assert min(item['end_to_end_output_tps'] for item in group['requests']) >= self.args.minimum_active_tps, group
         self.check('four_simultaneous_responses_while_neural_avatar_active', **group)
 
@@ -42,9 +44,12 @@ if __name__ == '__main__':
     parser.add_argument('--gateway', default='http://127.0.0.1:8000')
     parser.add_argument('--env', default='.env')
     parser.add_argument('--seconds', type=int, default=90)
-    parser.add_argument('--reference', required=True)
+    reference = parser.add_mutually_exclusive_group(required=True)
+    reference.add_argument('--reference')
+    reference.add_argument('--avatar-id')
     parser.add_argument('--wav', default=str(Path(__file__).resolve().parents[2] / 'evaluations/fixtures/question.wav'))
     parser.add_argument('--report', default='tmp/throughput-workstation.json')
+    parser.add_argument('--thinking', choices=('enabled', 'disabled'), default='enabled')
     parser.add_argument('--minimum-idle-tps', type=float, default=45,
                         help='Short-prompt regression guard, not a long-context SLA')
     parser.add_argument('--minimum-active-tps', type=float, default=15,

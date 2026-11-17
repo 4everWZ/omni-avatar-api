@@ -44,8 +44,16 @@ Omni 7,928-token／20 消息的多轮早期事实检索及超限 400 已通过�
 
 外部任务按 Swarm／orchestrator 思路组织，当前优先交付推理 provider。保留单请求 262144、4 路较短请求真实同时生成、总 token 预算及 25 fps。用户已否决约 3.4 TPS 的固定等待方案，要求优化恢复原约 50 TPS 的单路速度；此前“不设最低速度”不再作为交付依据。
 
-已移除固定等待，采用 W4A16、CUDA MPS 20% 活跃线程上限及解码 CUDA Graph，保留 9 GiB BF16 KV 与 FP32 SSM。空闲单路端到端 47.18 TPS（生成区间 47.75），空闲四路每路 37.12–37.27、合计 148.47；通话单路 22.92–23.90，通话四路每路 18.68–19.42、合计 74.73–77.34。90 秒真实神经帧 2,269、最大检查期采样偏差 79 ms、取消恢复通过。[吞吐与共驻](../../evaluations/results/throughput-mps-workstation.json)。旧 250 ms／3.4 TPS 报告仅作撤回方案的历史记录。
+上一轮关闭 CoT、无截止期反馈的 MPS 基线保留在[历史吞吐记录](../../evaluations/results/throughput-mps-workstation.json)。当前默认与更重混跑的通过结论、TPS 和范围见下节。
 
 新配置复验引擎四序列、28.5K 与三路短请求混跑、四个 worker 独立保存及并行续接、预算拒绝与取消释放；Responses 工具、JSON Schema、SSE、22,753-token 多轮检索及 Omni 8K 边界通过。[并发预算](../../evaluations/results/llm-mps-concurrency-workstation.json) · [兼容性](../../evaluations/results/responses-mps-compatibility.json)。完整 262K 质量、长期满载与实物播放仍按前述边界另行验收。编排、工具执行、共享记忆与工作区由应用项目持有，具体框架集成尚未开展。
 
 MPS 控制服务及客户端重建后，已准备形象复用、30 秒四路／25 fps、音画时间线与取消恢复通过。[重启证据](../../evaluations/results/mps-lifecycle-workstation.json)。
+
+## 当前默认与混跑补充验收
+
+用户确认实时窗口继续按官方默认 `basic`（8000／6000）；外部应用用 `autostart=0` 和首条 `session.update.session.extra_body` 自定义，创建后不可原地更改。CoT 默认开启于 Omni Chat 和后台 Chat／Responses，思考预算保持官方默认，不额外限制；Omni Chat 总输出默认跟随固定官方部署的 2048。调用方可覆盖总输出与 `thinking_token_budget`，原生 Realtime 继续其官方原生策略。
+
+额外叠加一路 Omni Chat 后，原混跑出现 203 ms 偏差。当前采用真实神经帧截止期反馈，低于 240 ms 余量时单次主动让出最多 18 ms；无活跃／有效反馈时不主动等待。保留四路、262144、现有精度和 1200 ms 音频预留。CoT 开启的 90 秒全栈混跑产生 2,263 帧、最大采样偏差 84 ms，取消恢复通过。前台单路空闲 65.54 TPS，全栈混跑 32.00–36.55；后台单路空闲 47.25，空闲四路每路 37.12–37.26，通话四路每路 15.37–19.12，额外叠加 Omni Chat 后每路 13.49–16.66。均为思考＋正文总生成 TPS，不能当作正文速度。[前台](../../evaluations/results/omni-throughput-final-workstation.json) · [后台](../../evaluations/results/llm-throughput-cot-workstation.json)。
+
+默认 CoT 完整答案、显式关闭、三个文本接口的预算及非法值、JSON Schema 和工具归属续接均已复验。[预算与默认](../../evaluations/results/thinking-defaults-workstation.json) · [结构化与工具](../../evaluations/results/thinking-structured-workstation.json)。历史关闭 CoT 的 TPS／上下文记录保留其原始条件，不作为当前默认 CoT 的正文速度或完整窗口质量结论。

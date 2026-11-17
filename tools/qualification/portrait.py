@@ -31,6 +31,10 @@ class PortraitQualification(InferenceQualification):
         pass
 
     async def open_avatar(self):
+        if getattr(self.args, 'avatar_id', None):
+            self.avatar_id = self.args.avatar_id
+            self.report['avatar_id'] = self.avatar_id
+            return await self.open_prepared_avatar()
         asset = await self.json('POST', '/v1/avatar/assets', expected=201, json={
             'mime_type': 'image/png', 'image_base64': base64.b64encode(Path(self.args.reference).read_bytes()).decode()})
         self.reference_id = asset['id']
@@ -50,6 +54,9 @@ class PortraitQualification(InferenceQualification):
         for suffix in ('', '/preview'):
             await self.request('GET', '/v1/avatar/avatars/' + self.avatar_id + suffix, other=True, expected=404)
         self.check('prepared_avatar_owned', seconds=monotonic() - started, avatar_id=self.avatar_id)
+        await self.open_prepared_avatar()
+
+    async def open_prepared_avatar(self):
         await super().open_avatar()
         assert self.avatar['format']['driver'] == 'ditto'
         self.tasks.append(asyncio.create_task(self.inspect_renderer()))
@@ -105,7 +112,9 @@ if __name__ == '__main__':
     parser.add_argument('--env', default='.env')
     parser.add_argument('--seconds', type=int, default=120)
     parser.add_argument('--concurrent-llm', type=int, choices=(1, 4), default=1)
-    parser.add_argument('--reference', required=True)
+    reference = parser.add_mutually_exclusive_group(required=True)
+    reference.add_argument('--reference')
+    reference.add_argument('--avatar-id')
     parser.add_argument('--wav', default=str(Path(__file__).resolve().parents[2] / 'evaluations/fixtures/question.wav'))
     parser.add_argument('--report', default='tmp/portrait-functional.json')
     args = parser.parse_args()

@@ -200,10 +200,12 @@ class Qualification:
     async def open_avatar(self):
         source = {'type': 'audio'}
         if not self.args.avatar_only:
-            self.voice = await self.socket('/v1/realtime?duplex=1&avatar=1&model=omni-default')
+            self.voice = await self.socket('/v1/realtime?duplex=1&autostart=0&avatar=1&model=omni-default')
             await self.voice.send_json({'type': 'session.update', 'session': {
                 'modalities': ['audio', 'text'], 'input_audio_format': 'pcm16', 'output_audio_format': 'pcm16',
-                'playback_commit_policy': 'ack_only', 'extra_body': {'auto_response': True, 'force_listen_count': 0}}})
+                'playback_commit_policy': 'ack_only', 'extra_body': {
+                    'auto_response': True, 'force_listen_count': 0,
+                    **getattr(self.args, 'realtime_extra_body', {})}}})
             async with asyncio.timeout(30):
                 while source['type'] != 'realtime':
                     message = await self.voice.receive_json()

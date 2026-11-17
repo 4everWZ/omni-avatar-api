@@ -34,4 +34,10 @@ python -m tools.qualification.concurrency --env .env --report tmp/llm-concurrenc
 
 `tools.qualification.portrait --reference <PNG> --seconds 90 --concurrent-llm 4` 在原生语音／神经头像播放期间执行四路各 256-token SSE，并要求完整输出区间重叠、真实神经帧达到 25 fps、采样时间线偏差小于 160 ms、取消后恢复。LLM 数字与输出夹具使用温度 0，保持判定内容不变；服务仍保留调用方的采样选择。当前通过 CUDA MPS 与解码 CUDA Graph 分配 GPU 算力，无固定批次等待；报告记录实际首增量和结束时间。
 
-`tools.qualification.throughput --reference <PNG> --seconds 90 --report tmp/throughput.json` 在同一配置测量空闲单路／四路和原生语音、25 fps 头像通话中的单路／四路。短提示 29 tokens，每路输出 256 tokens，温度 0、关闭 thinking；按引擎 usage 记录端到端 TPS、生成区间 TPS、总吞吐和四路输出重叠。预热 32 tokens 后检查单路端到端至少 45 TPS、通话四路每路至少 15 TPS，作为防退化检查线；这不是长上下文或长期 SLA。头像沿用真实神经帧、时间线及取消恢复判定。并发工具另验证四个 worker 的独立历史续接及总 token 预算，不提供 Agent 编排。
+`tools.qualification.throughput --avatar-id <已有形象ID> --seconds 90 --report tmp/throughput.json` 在同一配置测量空闲单路／四路和原生语音、25 fps 头像通话中的单路／四路。默认开启 CoT，使用同一短提示并按模板实报输入 tokens，每路最多生成 256 tokens，温度 0；按引擎 usage 记录端到端 TPS、生成区间 TPS、总吞吐和四路输出重叠。预热 32 tokens 后检查单路端到端至少 45 TPS、通话四路每路至少 15 TPS，作为防退化检查线；这不是长上下文或长期 SLA。头像沿用真实神经帧、时间线及取消恢复判定。并发工具另验证四个 worker 的独立历史续接及总 token 预算，不提供 Agent 编排。
+
+`tools.qualification.omni_throughput --avatar-id <已有形象ID> --seconds 90 --sliding-window-mode basic --report tmp/omni-throughput.json` 测量前台 `/v1/chat/completions` 的文本 SSE：预热后空闲单路、两个同时提交请求，以及原生双工、神经头像和四路后台 LLM 共驻时的额外一路 Omni Chat。也可用 `--reference <PNG>` 新建形象。按 `usage.completion_tokens` 计算端到端及生成区间 TPS，记录输出区间是否重叠；排队请求不算并行生成。原生语音以音频块、正确答复、媒体帧及时间线检查，不把音频块数或字幕增量数当作 token TPS。窗口参数通过 `autostart=0` 后首条会话更新提交；默认 `basic`，`context` 仅用于显式对照。整组通过仍要求 25 fps、最大检查期采样偏差小于 160 ms、原生取消恢复及幂等释放；吞吐数有效不代表其他判定也通过。
+
+`tools.qualification.thinking --report tmp/thinking.json` 验证文本接口默认 CoT、显式关闭、调用方思考预算、非法预算、JSON Schema 与工具续接。完整答案夹具显式给出 4096 总输出额度；这不是修改服务默认预算。`thinking_token_budget=-1` 按上游定义为不限思考预算，非法负值用 -2 测试。工具回填固定的工具结果，不运行真实工具。
+
+两个吞吐工具默认 `--thinking enabled`；可显式 `--thinking disabled` 复现旧对照。CoT 下计时从思考或正文的首个实际文本增量开始，token 数以引擎总生成 usage 为准，另存两个通道的增量数和首包时间。256-token 夹具可能在思考中截断，吞吐通过不能替代完整答案正确性验收。`portrait`／`throughput` 也支持 `--avatar-id` 复用已有形象，和 `--reference` 二选一。
