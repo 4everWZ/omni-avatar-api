@@ -18,20 +18,20 @@ flowchart LR
 | --- | --- | --- |
 | `services/gateway/` | Authentication, aliases, admission, Responses/Chat/Realtime transport and the browser demo. | Private HTTP/WebSocket engine APIs; the Avatar Unix socket. |
 | `services/inference/` | Model acquisition, inference launchers, deployment configuration and patches for pinned upstream packages. | Model snapshots and upstream inference libraries. |
-| `services/avatar/` | Session ownership, audio generations, playback timeline, renderer protocol and WebRTC tracks. | The optional portrait Unix socket; no imports from gateway or portrait implementations. |
+| `services/avatar/` | Session ownership, audio generations, playback timeline, renderer protocol and WebRTC tracks. | The optional portrait Unix socket. |
 | `services/portrait/` | Reference preparation, its GPU lease and timestamped neural rendering. | Pinned Ditto code/models, isolated by a worker image. |
 
 Gateway, Avatar and Portrait are Python packages with importable `app.py` factories and separate `__main__.py` process entrypoints. Imports inside a service are relative. Gateway separates environment/model policy (`config.py`), resource admission (`admission.py`), HTTP application wiring (`app.py`) and backend-specific transport clients. Cross-service communication uses the [API contract](api.md); cross-service Python imports belong in `tests/integration/` only.
 
-`services/inference/configs/` contains model stage configuration. `patches/` contains version-checked upstream adapters and their helper. `docker/` contains historical CUDA/Jetson build variants; the primary inference Dockerfile stays at the service root. Container inference files are installed under `/opt/tuber-omni/`, with configuration and patch subdirectories.
+`services/inference/configs/` contains model stage configuration. `patches/` contains version-checked upstream adapters and their helper. `docker/` contains CUDA/Jetson compatibility build variants; the primary inference Dockerfile stays at the service root. Container inference files are installed under `/opt/tuber-omni/`, with configuration and patch subdirectories.
 
 ## Deployment and state
 
 `deploy/compose/` contains the base stack and composable hardware/service layers. `tools/compose.py` selects supported combinations and passes an explicit repository project directory and environment file to Docker Compose. The Compose project remains `tuber-omni-infra`, preserving existing named volumes.
 
-The workstation target assigns physical GPU 1 to Omni and GPU 0 to the LLM. Each inference container sees its assigned GPU as local device 0. The optional portrait worker shares physical GPU 0; its preparation and rendering use one lease. The portrait overlay adds a project-scoped CUDA MPS controller, with shared PID/IPC and control sockets for GPU 0 clients. The LLM uses a 20% active-thread limit and lower client priority, while the renderer uses normal priority. GPU 1 is outside MPS. GPU 0 clients additionally exchange a private, expiring render-deadline clock in the MPS control volume: the renderer publishes frame progress, and the text engine yields only when deadline headroom is low. No business payload crosses that feedback channel. LLM and Omni admission remain independent. See [deployment](deployment/workstation.md) for the budgets and evidence.
+The workstation target assigns physical GPU 1 to Omni and GPU 0 to the LLM. Each inference container sees its assigned GPU as local device 0. The optional portrait worker shares physical GPU 0; its preparation and rendering use one lease. The portrait overlay adds a project-scoped CUDA MPS controller, with shared PID/IPC and control sockets for GPU 0 clients. The LLM uses a 20% active-thread limit and lower client priority, while the renderer uses normal priority. GPU 1 is outside MPS. GPU 0 clients additionally exchange a private, expiring render-deadline clock in the MPS control volume: the renderer publishes frame progress, and the text engine yields only when deadline headroom is low. That channel carries monotonic frame timing. LLM and Omni admission remain independent. See [deployment](deployment/workstation.md) for the budgets and evidence.
 
-Weights live in ignored `data/` paths. Reference assets, features, control sockets and compiler caches use named volumes. Application credentials live in the ignored root `.env`. The wrapper does not relocate these paths when Compose files move.
+Weights live in ignored `data/` paths. Reference assets, features, control sockets and compiler caches use named volumes. Application credentials live in the ignored root `.env`. The wrapper anchors local paths to the repository root.
 
 ## Validation and documentation
 
@@ -39,6 +39,6 @@ Weights live in ignored `data/` paths. Reference assets, features, control socke
 - `tests/integration/` covers gateway-to-Avatar transport with a fixture inference engine.
 - `tests/tooling/` covers deployment entrypoint selection and path resolution.
 - `tools/qualification/` calls real public APIs and consumes media; `tools/diagnostics/` contains model-boundary investigations.
-- `evaluations/fixtures/` owns shared audio and text inputs for qualification and diagnostics; `evaluations/results/` retains real-device evidence. Historical results describe the code/configuration measured at the time and are not rewritten when source paths move.
+- `evaluations/fixtures/` owns shared audio and text inputs for qualification and diagnostics; `evaluations/results/` retains real-device evidence. Each result records the code, configuration and measurement conditions of its run.
 
 The bilingual root READMEs own project discovery and getting started. This document owns module boundaries; [API](api.md) owns wire behavior; deployment guides own operations and acceptance limits. [Development](development.md) owns local commands and checks.

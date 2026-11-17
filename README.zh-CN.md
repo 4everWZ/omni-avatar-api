@@ -24,7 +24,7 @@
 | Avatar 服务 | 会话归属、音频时间线、渲染生命周期和 WHEP 音画。 |
 | Portrait 工作器 | 可选的 GPU 参考图准备与神经视频生成。 |
 
-已验证的工作站布局使用**双 RTX 3090**：GPU 1 运行 Omni；GPU 0 运行文本 LLM 和可选的神经头像工作器。Ava 2D 使用宿主 CPU 渲染。仓库保留 AGX Orin 历史配置用于复现。详见[架构](docs/architecture.md)与[部署配置](docs/deployment/workstation.md)。
+已验证的工作站布局使用**双 RTX 3090**：GPU 1 运行 Omni；GPU 0 运行文本 LLM 和可选的神经头像工作器。Ava 2D 使用宿主 CPU 渲染。AGX Orin 配置提供独立硬件评估路径。详见[架构](docs/architecture.md)与[部署配置](docs/deployment/workstation.md)。
 
 ## 快速开始
 
@@ -36,7 +36,7 @@
 cp .env.example .env
 ```
 
-为 `OMNI_GATEWAY_TOKEN`、`OMNI_GATEWAY_ADMIN_TOKEN` 和 `OMNI_AVATAR_INTERNAL_TOKEN` 设置**互不相同的随机值**。将 `OMNI_MODEL_DATA` 指向有足够空间存放模型快照的目录。可用配置见 [.env 示例](.env.example)。
+为 `OMNI_GATEWAY_TOKEN`、`OMNI_GATEWAY_ADMIN_TOKEN` 和 `OMNI_AVATAR_INTERNAL_TOKEN` 设置**独立的随机值**。将 `OMNI_MODEL_DATA` 指向有足够空间存放模型快照的目录。可用配置见 [.env 示例](.env.example)。
 
 首次部署创建共享应用网络，然后构建、下载资产并启动：
 
@@ -58,7 +58,7 @@ python tools/compose.py --portrait -- --profile assets run --rm portrait-assets
 python tools/compose.py --portrait -- up -d --wait
 ```
 
-统一入口以仓库根目录解析 `.env`、构建上下文和绑定目录。添加 `--vpn` 可发布到 `OMNI_GATEWAY_VPN_BIND`，添加 `--media` 可启用 MediaMTX。其他硬件／评估配置使用 `--target` 选择。变更配置或迁移已有部署前，请阅读[工作站指南](docs/deployment/workstation.md)。
+统一入口以仓库根目录解析 `.env`、构建上下文和绑定目录。添加 `--vpn` 可发布到 `OMNI_GATEWAY_VPN_BIND`，添加 `--media` 可启用 MediaMTX。其他硬件／评估配置使用 `--target` 选择。配置与服务更新方式见[工作站指南](docs/deployment/workstation.md)。
 
 ## API
 
@@ -87,7 +87,7 @@ with client.responses.stream(
     model="llm-default",
     input="用一句话打个招呼。",
     max_output_tokens=512,
-    extra_body={"chat_template_kwargs": {"enable_thinking": False}},
+    extra_body={"thinking_token_budget": 128},
 ) as stream:
     for event in stream:
         if event.type == "response.output_text.delta":
@@ -133,14 +133,14 @@ evaluations/              共享测试输入和保留的实机证据
 | LLM | 4 | 原生语音＋头像 | 15.37–19.12 | 61.46–76.11 |
 | LLM | 4 | 原生语音＋头像＋一路 Omni Chat | 13.49–16.66 | 53.97–66.32 |
 
-头像维持 25 fps：全栈混跑 90 秒生成 2,263 张真实神经帧，最大采样时间线偏差 84 ms。GPU 0 通过 CUDA MPS 和真实帧截止期反馈共享算力，没有固定 250 ms 批次等待。前台普通 Chat 保持单路准入；两个短请求同时提交时排队，实测合计 65.13 TPS，不能视为双路并行。
+头像维持 25 fps：全栈混跑 90 秒生成 2,263 张真实神经帧，最大采样时间线偏差 84 ms。GPU 0 通过 CUDA MPS 和真实帧截止期反馈分配算力。前台普通 Chat 使用单路准入和 FIFO 排队，两个短请求同时提交时实测合计 65.13 TPS。
 
-256-token 夹具可能在思考阶段截断，以上是总生成吞吐，不能当作正文速度或完整答复延迟；默认 CoT 完整答案、预算、JSON Schema 和工具续接另有功能记录。计算方式、原始数据和验收边界见[工作站指南](docs/deployment/workstation.md#四路并发与计算预算)。完整 262K 质量与物理麦克风／扬声器仍待相应验收。
+256-token 夹具覆盖思考＋正文总生成吞吐，额度可用于思考阶段；完整 CoT 答案、预算、JSON Schema 和工具续接由独立功能夹具验证。计算方式、原始数据和验证范围见[工作站指南](docs/deployment/workstation.md#四路并发与计算预算)。完整 262K 质量、持续负载与实物播放由[后续验收计划](docs/plans/avatar-workstation.md)跟进。
 
 ## 文档
 
 - [API 契约](docs/api.md)
 - [架构与模块边界](docs/architecture.md)
-- [工作站部署与迁移](docs/deployment/workstation.md)
-- [AGX Orin 历史复现](docs/deployment/orin.md) · [JetPack 6／CUDA 12.9](docs/deployment/jetpack6-cu129.md)
+- [工作站部署与运维](docs/deployment/workstation.md)
+- [AGX Orin 评估](docs/deployment/orin.md) · [JetPack 6／CUDA 12.9](docs/deployment/jetpack6-cu129.md)
 - [开发指南](docs/development.md) · [部署与验收工具](tools/README.md)

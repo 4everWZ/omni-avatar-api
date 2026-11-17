@@ -24,7 +24,7 @@ Applications own their users, conversation memory, agent orchestration and tool 
 | Avatar service | Owned sessions, audio timeline, renderer lifecycle and WHEP media. |
 | Portrait worker | Optional GPU-backed reference preparation and neural frame generation. |
 
-The validated workstation layout uses **two RTX 3090s**: GPU 1 runs Omni; GPU 0 runs the text LLM and the optional portrait worker. Ava 2D rendering uses the host CPU. Historical AGX Orin profiles remain available for reproduction. See [architecture](docs/architecture.md) and [deployment profiles](docs/deployment/workstation.md).
+The validated workstation layout uses **two RTX 3090s**: GPU 1 runs Omni; GPU 0 runs the text LLM and the optional portrait worker. Ava 2D rendering uses the host CPU. AGX Orin profiles provide a separate hardware evaluation path. See [architecture](docs/architecture.md) and [deployment profiles](docs/deployment/workstation.md).
 
 ## Quick start
 
@@ -58,7 +58,7 @@ python tools/compose.py --portrait -- --profile assets run --rm portrait-assets
 python tools/compose.py --portrait -- up -d --wait
 ```
 
-The entrypoint anchors `.env`, build contexts and bind mounts to the repository root. Add `--vpn` to publish on `OMNI_GATEWAY_VPN_BIND`, or `--media` for optional MediaMTX transport. Alternative hardware/evaluation stacks use `--target`. See the [workstation guide](docs/deployment/workstation.md) before changing profiles or migrating an existing installation.
+The entrypoint anchors `.env`, build contexts and bind mounts to the repository root. Add `--vpn` to publish on `OMNI_GATEWAY_VPN_BIND`, or `--media` for optional MediaMTX transport. Alternative hardware/evaluation stacks use `--target`. See the [workstation guide](docs/deployment/workstation.md) for profile configuration and service updates.
 
 ## API
 
@@ -87,7 +87,7 @@ with client.responses.stream(
     model="llm-default",
     input="Say hello in one sentence.",
     max_output_tokens=512,
-    extra_body={"chat_template_kwargs": {"enable_thinking": False}},
+    extra_body={"thinking_token_budget": 128},
 ) as stream:
     for event in stream:
         if event.type == "response.output_text.delta":
@@ -111,7 +111,7 @@ docs/                     Architecture, API, development and deployment guides
 evaluations/              Shared fixtures and retained real-device evidence
 ```
 
-`data/`, `runtime/`, `tmp/` and `.env` are local, ignored artifacts. Service dependencies are isolated by image; services communicate through HTTP/WebSocket/Unix-socket contracts and a private GPU deadline signal rather than importing each other's implementation.
+`data/`, `runtime/`, `tmp/` and `.env` are local, ignored artifacts. Service dependencies are isolated by image; services communicate through HTTP/WebSocket/Unix-socket contracts and a private GPU deadline signal.
 
 ## Development and validation
 
@@ -119,7 +119,7 @@ See [development](docs/development.md) for dependency-isolated tests and local s
 
 Recorded checks cover 8K Omni recall, Responses continuation, about 22K tokens of LLM history, and four simultaneous shorter generations with a 25 fps neural portrait.
 
-Omni Chat and LLM Chat/Responses now default to CoT, with upstream thinking-budget defaults. Native duplex retains the official model policy. Realtime defaults to `basic` (8000/6000); applications can override window policy at session creation and text reasoning budgets per request. See the [API](docs/api.md#cot-默认与调用方预算).
+Omni Chat and LLM Chat/Responses default to CoT, with upstream thinking-budget defaults. Native duplex retains the official model policy. Realtime defaults to `basic` (8000/6000); applications can override window policy at session creation and text reasoning budgets per request. See the [API](docs/api.md#cot-默认与调用方预算).
 
 Current dual-3090 measurements use CoT, at most 256 generated tokens per request and temperature 0. Rendered inputs are 25 tokens for Omni and 27 for the LLM. TPS includes reasoning and answer tokens, prefill and waiting.
 
@@ -133,14 +133,14 @@ Current dual-3090 measurements use CoT, at most 256 generated tokens per request
 | LLM | 4 | Native voice + portrait | 15.37–19.12 | 61.46–76.11 |
 | LLM | 4 | Native voice + portrait + one Omni Chat request | 13.49–16.66 | 53.97–66.32 |
 
-The full mixed-load check produced 2,263 real neural frames in 90 seconds at 25 fps, with a maximum sampled timeline lag of 84 ms. CUDA MPS and actual frame-deadline feedback share GPU 0, without the old fixed 250 ms batch sleep. Ordinary Omni Chat retains single-request admission: two simultaneous short submissions queue and aggregate 65.13 TPS, rather than decode in parallel.
+The full mixed-load check produced 2,263 real neural frames in 90 seconds at 25 fps, with a maximum sampled timeline lag of 84 ms. CUDA MPS and actual frame-deadline feedback allocate GPU 0 compute. Ordinary Omni Chat uses single-request admission and FIFO queueing: two simultaneous short submissions aggregate 65.13 TPS.
 
-The 256-token fixture can finish its budget during reasoning; these are total generation rates, not answer-only speed or completed-answer latency. Separate checks cover completed CoT answers, budgets, JSON Schema and tool continuation. See the [workstation guide](docs/deployment/workstation.md#四路并发与计算预算) for formulas, raw records and limits. Full 262K quality and physical speaker/microphone playback still need their respective checks.
+The 256-token fixture measures total generation throughput and can spend its budget on reasoning. Separate checks cover completed CoT answers, budgets, JSON Schema and tool continuation. See the [workstation guide](docs/deployment/workstation.md#四路并发与计算预算) for formulas, raw records and validation coverage. The [acceptance plan](docs/plans/avatar-workstation.md) tracks full 262K quality, sustained load and physical speaker/microphone playback.
 
 ## Documentation
 
 - [API contract](docs/api.md)
 - [Architecture and module boundaries](docs/architecture.md)
-- [Workstation deployment and migration](docs/deployment/workstation.md)
-- [AGX Orin reproduction](docs/deployment/orin.md) · [JetPack 6 / CUDA 12.9](docs/deployment/jetpack6-cu129.md)
+- [Workstation deployment and operations](docs/deployment/workstation.md)
+- [AGX Orin evaluation](docs/deployment/orin.md) · [JetPack 6 / CUDA 12.9](docs/deployment/jetpack6-cu129.md)
 - [Development](docs/development.md) · [Deployment and qualification tools](tools/README.md)

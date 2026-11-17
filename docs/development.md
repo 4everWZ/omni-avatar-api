@@ -9,13 +9,13 @@ uv run --no-project --with-requirements services/gateway/requirements.txt python
 uv run --no-project --with-requirements services/avatar/requirements.txt python -m services.avatar
 ```
 
-Supply the service's documented environment before starting it. Gateway requires engine identity and application/admin credentials. Avatar requires its private bearer. Portrait is normally run in its GPU image because it needs the pinned inference environment and model assets. Local Python entrypoints do not automatically load the Docker `.env` file.
+Supply the service's documented environment before starting it. Gateway requires engine identity and application/admin credentials. Avatar requires its private bearer. Portrait is normally run in its GPU image because it needs the pinned inference environment and model assets. For local Python entrypoints, export the required values into the process environment.
 
-All HTTP factories are importable from `services.<service>.app`. Production code uses relative imports inside its package. Keep external service dependencies behind their transport client; do not add sibling-service imports to application code.
+All HTTP factories are importable from `services.<service>.app`. Production code uses relative imports inside its package. Keep external service dependencies behind their transport client.
 
 ## Contract tests
 
-These checks load no model weights:
+Run lightweight contract checks with fixture engines:
 
 ```sh
 uv run --no-project --with-requirements services/gateway/requirements.txt python -B -m unittest discover -s services/gateway/tests -v
@@ -25,7 +25,7 @@ uv run --no-project --with aiohttp --with pillow python -B -m unittest discover 
 python -B -m unittest services.inference.tests.test_model services.inference.tests.test_chat_validation services.inference.tests.test_llm_admission services.inference.tests.test_gpu_deadline services.inference.tests.test_reasoning_budget services.inference.tests.test_patch_minicpmo_awq_stages tests.tooling.test_compose -v
 ```
 
-INT4 layout/reference tests additionally need PyTorch. Use the pinned inference environment rather than installing GPU libraries into the host's default Python:
+INT4 layout/reference tests additionally need PyTorch. Run them in the pinned inference environment:
 
 ```sh
 docker run --rm --entrypoint python3 -v "$PWD:/work:ro" -w /work \
@@ -42,9 +42,9 @@ python tools/compose.py -- build omni-engine omni-gateway omni-avatar
 python tools/compose.py --portrait -- build omni-portrait
 ```
 
-`--dry-run` prints paths and options without reading Docker configuration or displaying credential values. Real configuration checks need an environment file; use `--env-file <path>` for fixtures or alternate installations. The wrapper resolves an explicitly supplied relative environment path from the caller's working directory, then invokes Docker from the repository root.
+`--dry-run` prints the wrapper's selected paths and options. Real configuration checks need an environment file; use `--env-file <path>` for fixtures or alternate installations. The wrapper resolves an explicitly supplied relative environment path from the caller's working directory, then invokes Docker from the repository root.
 
-Gateway, Avatar and Portrait images contain their own package at `/srv/<service>` and start it with `python -m <service>`. Build contexts are service directories; they do not include the repository's `.env`, model data or evaluation output.
+Gateway, Avatar and Portrait images contain their own package at `/srv/<service>` and start it with `python -m <service>`. Build contexts contain the individual service source and dependencies.
 
 ## Real-device qualification
 
@@ -56,10 +56,10 @@ uv run --no-project --with-requirements services/avatar/requirements.txt \
   --seconds 120 --report tmp/portrait-check.json
 ```
 
-For single/four-request TPS with an active 25 fps portrait, run `python -m tools.qualification.throughput --env .env --reference /path/to/portrait.png --seconds 90 --report tmp/throughput-check.json` in the same isolated environment. Foreground Omni text TPS and full mixed-load checks use `python -m tools.qualification.omni_throughput --avatar-id <id> --seconds 90 --sliding-window-mode basic --report tmp/omni-throughput.json`. See [tools](../tools/README.md) for qualification scope and diagnostics. Run only checks relevant to the change. Source/import/deployment refactors need contract, path and image checks; they do not require repeating long GPU benchmarks when model behavior is unchanged.
+For single/four-request TPS with an active 25 fps portrait, run `python -m tools.qualification.throughput --env .env --reference /path/to/portrait.png --seconds 90 --report tmp/throughput-check.json` in the same isolated environment. Foreground Omni text TPS and full mixed-load checks use `python -m tools.qualification.omni_throughput --avatar-id <id> --seconds 90 --sliding-window-mode basic --report tmp/omni-throughput.json`. See [tools](../tools/README.md) for qualification scope and diagnostics. Run only checks relevant to the change. Source/import/deployment refactors use contract, path and image checks; inference behavior and performance changes also use the corresponding real-device qualification.
 
 ## Contributions
 
 Keep service changes, their tests and maintained API/deployment documentation in the same logical change. Update English and Chinese root READMEs together when setup or user-facing capabilities change. Preserve model pins, ownership and cancellation semantics unless a deliberate contract change is agreed.
 
-Use `tmp/` for disposable probes. Put reusable tools under `tools/`, shared inputs under `evaluations/fixtures/`, and retained qualification evidence under `evaluations/results/`. Commit neither credentials nor downloaded model assets.
+Use `tmp/` for disposable probes. Put reusable tools under `tools/`, shared inputs under `evaluations/fixtures/`, and retained qualification evidence under `evaluations/results/`. Keep credentials and downloaded model assets in local ignored storage.
