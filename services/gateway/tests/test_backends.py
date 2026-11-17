@@ -32,7 +32,9 @@ class BackendPolicyTest(unittest.TestCase):
             self.assertEqual((child.queue_limit, child.queue_timeout, child.request_timeout), (9, 2, 7))
 
     def test_invalid_settings_fail_before_serving(self):
-        for key, values in {'LLM_QUEUE_TIMEOUT': ['0', '-1', 'inf', 'nan'],
+        for key, values in {'LLM_MAX_NUM_SEQS': ['0', '-1', '1.5'],
+                            'LLM_TOKEN_BUDGET': ['0', '-1', 'nan'],
+                            'LLM_QUEUE_TIMEOUT': ['0', '-1', 'inf', 'nan'],
                             'LLM_REQUEST_TIMEOUT': ['0', 'inf'], 'LLM_QUEUE_LIMIT': ['0', '1.5']}.items():
             for value in values:
                 with self.subTest(key=key, value=value), patch.dict(os.environ, self.environment | {key: value}, clear=True):

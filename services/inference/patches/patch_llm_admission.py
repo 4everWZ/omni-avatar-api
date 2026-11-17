@@ -4,6 +4,17 @@ from pathlib import Path
 import shutil
 
 
+def patch_core_source(source):
+    anchor = '        return engine_core_outputs, scheduler_output.total_num_scheduled_tokens > 0\n'
+    if source.count(anchor) != 1 or 'LLM_GPU_STEP_PAUSE_MS' in source:
+        raise RuntimeError('Recheck the synchronous GPU batch yield hook')
+    return source.replace(anchor, (
+        '        pause_ms = float(os.environ.get("LLM_GPU_STEP_PAUSE_MS", "0"))\n'
+        '        if pause_ms > 0 and scheduler_output.total_num_scheduled_tokens > 0:\n'
+        '            time.sleep(pause_ms / 1000)\n'
+    ) + anchor)
+
+
 def main():
     package = distribution('vllm')
     if package.version.split('+', 1)[0] != '0.32.0':
@@ -22,15 +33,7 @@ def main():
     shutil.copyfile(helper, target.parent.parent / 'llm_admission.py')
     target.write_text(source)
     core = package.locate_file('vllm/v1/engine/core.py')
-    source = core.read_text()
-    anchor = '        return engine_core_outputs, scheduler_output.total_num_scheduled_tokens > 0\n'
-    if source.count(anchor) != 1 or 'LLM_GPU_STEP_PAUSE_MS' in source:
-        raise RuntimeError('Recheck the synchronous GPU batch yield hook')
-    source = source.replace(anchor, (
-        '        pause_ms = float(os.environ.get("LLM_GPU_STEP_PAUSE_MS", "0"))\n'
-        '        if pause_ms > 0 and scheduler_output.total_num_scheduled_tokens > 0:\n'
-        '            time.sleep(pause_ms / 1000)\n'
-    ) + anchor)
+    source = patch_core_source(core.read_text())
     compile(source, str(core), 'exec')
     core.write_text(source)
 
