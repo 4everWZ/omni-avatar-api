@@ -15,6 +15,7 @@ from .token_budget import reservation, ReservationRejected
 from .config import Config, MODEL_ALIAS
 from .avatar_proxy import AvatarProxy
 from .responses_proxy import ResponsesProxy
+from .thinking import apply_thinking_default
 
 MAX_BODY = 32 * 1024 * 1024
 MAX_FRAME = 8 * 1024 * 1024
@@ -179,6 +180,7 @@ class Gateway:
         if not isinstance(payload, dict) or payload.get("model") != self.config.model_alias:
             return None, failure(400, "model_not_found", f"Use the {self.config.model_alias} alias.")
         payload["model"] = self.config.model
+        apply_thinking_default(payload)
         if payload.get("modalities") is None:
             payload["modalities"] = ["text"]
         return payload, None
