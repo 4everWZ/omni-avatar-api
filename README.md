@@ -7,6 +7,8 @@
 | 入口 | 用途 |
 | --- | --- |
 | 上述四文件组合 | 工作站主线：GPU 1 实时 Omni，GPU 0 长上下文 LLM，同宿主 Ava 与鉴权网关。 |
+| `infra-portrait.compose.yml` | 参考图驱动的会议式 Ava，GPU 0 与 LLM 共驻。 |
+| `infra-vpn.compose.yml` | 保留回环监听，另向指定私网 VPN 地址发布鉴权 API。 |
 | `infra-media.compose.yml` | 可选节目传输。仅在需要节目媒体时叠加。 |
 | AGX 历史配置 | 基础文件的 ARM64 配置与 CUDA 12.9 覆盖用于历史复现。 [AGX 指南](docs/infra-setup.md) · [JetPack 6 指南](docs/jetpack6-cu129.md) |
 

@@ -57,3 +57,15 @@ docker compose -f infra-compose.yml -f infra-workstation.compose.yml -f infra-av
 25 fps 会议式 Ava 已实测通过：120 秒接收 3,004 视频帧、6,004 音频帧；3,012 张实际神经生成帧，最大音画时间线采样偏差 58 ms；原生语音持续输出，完成 4 次后台 Responses 请求。GPU 显存采样最大值分别为 23,101／21,468 MiB；这是采样读数，不是完整高频峰值或持续满载保证。重启后复用、取消代次与恢复也通过。[神经头像](../evaluations/results/portrait-functional-workstation.json) · [生命周期](../evaluations/results/portrait-lifecycle-workstation.json)。
 
 Tailscale Serve 当前未启用，tailnet 管理员需先在控制台开放该功能才能配置私网 HTTPS。浏览器可使用上述 localhost SSH 隧道的可信上下文；WHEP 媒体继续经 VPN 直连。
+
+## 私网共享 API
+
+需要其他应用直接访问时，再叠加 `infra-vpn.compose.yml`，并在 `.env` 设置 `OMNI_GATEWAY_VPN_BIND` 为宿主的 VPN 地址。该覆盖保留回环监听，并增加指定私网地址的 8000 端口；模型引擎与神经工作器仍无宿主 TCP 入口。当前工作站地址为 `100.119.17.6`，API 基址分别是 `http://100.119.17.6:8000/v1` 和 `http://100.119.17.6:8000/llm/v1`，沿用各应用独立 Bearer。
+
+```sh
+docker compose -f infra-compose.yml -f infra-workstation.compose.yml -f infra-avatar.compose.yml -f infra-inference.compose.yml -f infra-portrait.compose.yml -f infra-vpn.compose.yml up -d --wait omni-gateway
+```
+
+浏览器麦克风／屏幕仍使用 `http://localhost:18080` 的 SSH 隧道，或由 tailnet 管理员开启 Serve 后配置 HTTPS；直接私网 HTTP 地址供 API 客户端调用。
+
+已从另一 VPN 客户端验证两个模型卡、Responses 增量 SSE、准备形象查询及匿名拒绝，回环入口继续保留。[访问证据](../evaluations/results/vpn-api-workstation.json)。

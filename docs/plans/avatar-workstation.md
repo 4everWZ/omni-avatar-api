@@ -38,3 +38,4 @@ Omni、后台 LLM 和 Avatar 全部部署在当前双 3090 工作站；不将 Av
 - 约 20 分钟原生双工／Ava 2D 共驻通过：60,003 音频帧、30,003 视频帧、342 原生音频块和 40 次后台 Responses 请求。调用方隔离及幂等释放通过。[功能证据](../../evaluations/results/inference-functional-workstation.json) · [断流与取消](../../evaluations/results/responses-stream-lifecycle.json)。
 - 浏览器实物麦克风／屏幕完整交互与可信 HTTPS 仍待人工或管理员配置。功能报告未采到 GPU 数据，不将 CLI 零散读数称为负载峰值。
 - 旧 Omni 近 40K 的失败和精度对照保留为模型边界证据，不再是实时助手的新验收门槛。[INT4](../../evaluations/results/omni-workstation-int4.json) · [BF16](../../evaluations/results/omni-workstation-bf16.json) · [INT8 KV](../../evaluations/results/omni-workstation-int8-kv.json) · [直接文本骨干](../../evaluations/results/omni-workstation-text-reference.json)。
+私网 API 已通过 `infra-vpn.compose.yml` 发布到 `100.119.17.6:8000`，同时保留回环入口；从另一 VPN 客户端验证两个模型卡、Responses 增量 SSE、形象归属与匿名拒绝。[私网验证](../../evaluations/results/vpn-api-workstation.json)。
