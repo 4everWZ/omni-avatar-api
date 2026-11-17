@@ -56,7 +56,7 @@ def serve(model, revision, path):
                '--enable-auto-tool-choice', '--tool-call-parser', 'qwen3_coder']
     cache_dtype = os.environ.get('LLM_KV_CACHE_DTYPE', 'auto')
     if cache_dtype != 'auto':
-        command.extend(['--kv-cache-dtype', cache_dtype, '--calculate-kv-scales',
+        command.extend(['--kv-cache-dtype', cache_dtype,
                         '--attention-backend', 'TRITON_ATTN'])
     pause = float(os.environ.get('LLM_GPU_STEP_PAUSE_MS', '0'))
     if not math.isfinite(pause) or pause < 0:
