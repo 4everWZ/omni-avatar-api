@@ -1,0 +1,604 @@
+{
+  "started_utc": "2026-11-17T06:16:09.829716+00:00",
+  "metrics_collector_host": "belal-PC",
+  "scope": "decoupled_responses_omni_avatar_functional",
+  "requested_seconds": 1200,
+  "state": "passed",
+  "checks": [
+    {
+      "name": "backend_identity",
+      "backend": "omni",
+      "checkpoint": "927faefa0bce96e557945e106f3b3d8b4d39f4b2",
+      "window": 8192
+    },
+    {
+      "name": "backend_identity",
+      "backend": "/llm",
+      "checkpoint": "b1c949034d7716055133dcc05c1f085beb2b83fb",
+      "window": 262144
+    },
+    {
+      "name": "omni_multi_turn_history"
+    },
+    {
+      "name": "responses_owned_continuation"
+    },
+    {
+      "name": "responses_json_schema"
+    },
+    {
+      "name": "responses_function_call_roundtrip",
+      "execution": "literal_test_fixture_only"
+    },
+    {
+      "name": "responses_incremental_stream",
+      "delta_events": 230,
+      "first_delta_seconds": 0.051508373115211725,
+      "total_seconds": 4.414801166160032
+    },
+    {
+      "name": "responses_long_multi_turn_history",
+      "input_tokens": 22753,
+      "output": "蓝鲸5738"
+    },
+    {
+      "name": "background_cancel_and_independent_admission"
+    },
+    {
+      "name": "owned_avatar_created"
+    },
+    {
+      "name": "continuous_media",
+      "elapsed_seconds": 1200.0806260320824,
+      "frames": {
+        "audio": 60003,
+        "video": 30003,
+        "audible": 11718
+      },
+      "native_audio_chunks": 342,
+      "playback_evidence": "decoded_and_consumed_not_physical_output"
+    },
+    {
+      "name": "idempotent_release"
+    }
+  ],
+  "samples": [
+    {
+      "elapsed_seconds": 0.0,
+      "frames": {
+        "audio": 0,
+        "video": 0,
+        "audible": 0
+      },
+      "native_audio_chunks": 0,
+      "host_kib": {
+        "MemAvailable": 46673244,
+        "SwapFree": 31747352
+      }
+    },
+    {
+      "elapsed_seconds": 30.1,
+      "frames": {
+        "audio": 1504,
+        "video": 754,
+        "audible": 587
+      },
+      "native_audio_chunks": 19,
+      "host_kib": {
+        "MemAvailable": 46141032,
+        "SwapFree": 31747352
+      }
+    },
+    {
+      "elapsed_seconds": 60.19,
+      "frames": {
+        "audio": 3009,
+        "video": 1506,
+        "audible": 1409
+      },
+      "native_audio_chunks": 41,
+      "host_kib": {
+        "MemAvailable": 46136908,
+        "SwapFree": 31747352
+      }
+    },
+    {
+      "elapsed_seconds": 90.29,
+      "frames": {
+        "audio": 4514,
+        "video": 2258,
+        "audible": 2314
+      },
+      "native_audio_chunks": 67,
+      "host_kib": {
+        "MemAvailable": 46105792,
+        "SwapFree": 31747352
+      }
+    },
+    {
+      "elapsed_seconds": 120.39,
+      "frames": {
+        "audio": 6018,
+        "video": 3011,
+        "audible": 3029
+      },
+      "native_audio_chunks": 90,
+      "host_kib": {
+        "MemAvailable": 46033780,
+        "SwapFree": 31747352
+      }
+    },
+    {
+      "elapsed_seconds": 150.5,
+      "frames": {
+        "audio": 7524,
+        "video": 3764,
+        "audible": 3833
+      },
+      "native_audio_chunks": 114,
+      "host_kib": {
+        "MemAvailable": 45990068,
+        "SwapFree": 31747352
+      }
+    },
+    {
+      "elapsed_seconds": 180.6,
+      "frames": {
+        "audio": 9029,
+        "video": 4516,
+        "audible": 4606
+      },
+      "native_audio_chunks": 135,
+      "host_kib": {
+        "MemAvailable": 45910788,
+        "SwapFree": 31747352
+      }
+    },
+    {
+      "elapsed_seconds": 210.7,
+      "frames": {
+        "audio": 10534,
+        "video": 5269,
+        "audible": 5358
+      },
+      "native_audio_chunks": 156,
+      "host_kib": {
+        "MemAvailable": 45733088,
+        "SwapFree": 31747352
+      }
+    },
+    {
+      "elapsed_seconds": 240.79,
+      "frames": {
+        "audio": 12039,
+        "video": 6021,
+        "audible": 6216
+      },
+      "native_audio_chunks": 182,
+      "host_kib": {
+        "MemAvailable": 45562452,
+        "SwapFree": 31747352
+      }
+    },
+    {
+      "elapsed_seconds": 270.89,
+      "frames": {
+        "audio": 13543,
+        "video": 6773,
+        "audible": 6852
+      },
+      "native_audio_chunks": 198,
+      "host_kib": {
+        "MemAvailable": 45467684,
+        "SwapFree": 31747352
+      }
+    },
+    {
+      "elapsed_seconds": 300.98,
+      "frames": {
+        "audio": 15048,
+        "video": 7526,
+        "audible": 7658
+      },
+      "native_audio_chunks": 223,
+      "host_kib": {
+        "MemAvailable": 45226188,
+        "SwapFree": 31747352
+      }
+    },
+    {
+      "elapsed_seconds": 331.09,
+      "frames": {
+        "audio": 16554,
+        "video": 8278,
+        "audible": 8534
+      },
+      "native_audio_chunks": 248,
+      "host_kib": {
+        "MemAvailable": 45222144,
+        "SwapFree": 31747352
+      }
+    },
+    {
+      "elapsed_seconds": 361.19,
+      "frames": {
+        "audio": 18059,
+        "video": 9031,
+        "audible": 9099
+      },
+      "native_audio_chunks": 264,
+      "host_kib": {
+        "MemAvailable": 44855344,
+        "SwapFree": 31747356
+      }
+    },
+    {
+      "elapsed_seconds": 391.28,
+      "frames": {
+        "audio": 19563,
+        "video": 9783,
+        "audible": 9909
+      },
+      "native_audio_chunks": 289,
+      "host_kib": {
+        "MemAvailable": 43142684,
+        "SwapFree": 31747356
+      }
+    },
+    {
+      "elapsed_seconds": 421.39,
+      "frames": {
+        "audio": 21068,
+        "video": 10536,
+        "audible": 10774
+      },
+      "native_audio_chunks": 314,
+      "host_kib": {
+        "MemAvailable": 41765372,
+        "SwapFree": 31747356
+      }
+    },
+    {
+      "elapsed_seconds": 451.48,
+      "frames": {
+        "audio": 22573,
+        "video": 11288,
+        "audible": 11506
+      },
+      "native_audio_chunks": 336,
+      "host_kib": {
+        "MemAvailable": 41695320,
+        "SwapFree": 31747356
+      }
+    },
+    {
+      "elapsed_seconds": 481.58,
+      "frames": {
+        "audio": 24078,
+        "video": 12041,
+        "audible": 11718
+      },
+      "native_audio_chunks": 342,
+      "host_kib": {
+        "MemAvailable": 44609992,
+        "SwapFree": 31747356
+      }
+    },
+    {
+      "elapsed_seconds": 511.67,
+      "frames": {
+        "audio": 25582,
+        "video": 12793,
+        "audible": 11718
+      },
+      "native_audio_chunks": 342,
+      "host_kib": {
+        "MemAvailable": 44616216,
+        "SwapFree": 31747356
+      }
+    },
+    {
+      "elapsed_seconds": 541.77,
+      "frames": {
+        "audio": 27087,
+        "video": 13545,
+        "audible": 11718
+      },
+      "native_audio_chunks": 342,
+      "host_kib": {
+        "MemAvailable": 44622028,
+        "SwapFree": 31747356
+      }
+    },
+    {
+      "elapsed_seconds": 571.87,
+      "frames": {
+        "audio": 28592,
+        "video": 14298,
+        "audible": 11718
+      },
+      "native_audio_chunks": 342,
+      "host_kib": {
+        "MemAvailable": 44703248,
+        "SwapFree": 31747356
+      }
+    },
+    {
+      "elapsed_seconds": 601.96,
+      "frames": {
+        "audio": 30097,
+        "video": 15050,
+        "audible": 11718
+      },
+      "native_audio_chunks": 342,
+      "host_kib": {
+        "MemAvailable": 44664424,
+        "SwapFree": 31747356
+      }
+    },
+    {
+      "elapsed_seconds": 632.06,
+      "frames": {
+        "audio": 31602,
+        "video": 15803,
+        "audible": 11718
+      },
+      "native_audio_chunks": 342,
+      "host_kib": {
+        "MemAvailable": 44714340,
+        "SwapFree": 31747356
+      }
+    },
+    {
+      "elapsed_seconds": 662.16,
+      "frames": {
+        "audio": 33107,
+        "video": 16555,
+        "audible": 11718
+      },
+      "native_audio_chunks": 342,
+      "host_kib": {
+        "MemAvailable": 44668096,
+        "SwapFree": 31747356
+      }
+    },
+    {
+      "elapsed_seconds": 692.25,
+      "frames": {
+        "audio": 34612,
+        "video": 17308,
+        "audible": 11718
+      },
+      "native_audio_chunks": 342,
+      "host_kib": {
+        "MemAvailable": 44642916,
+        "SwapFree": 31747356
+      }
+    },
+    {
+      "elapsed_seconds": 722.36,
+      "frames": {
+        "audio": 36117,
+        "video": 18060,
+        "audible": 11718
+      },
+      "native_audio_chunks": 342,
+      "host_kib": {
+        "MemAvailable": 44369552,
+        "SwapFree": 31747356
+      }
+    },
+    {
+      "elapsed_seconds": 752.45,
+      "frames": {
+        "audio": 37622,
+        "video": 18813,
+        "audible": 11718
+      },
+      "native_audio_chunks": 342,
+      "host_kib": {
+        "MemAvailable": 44681244,
+        "SwapFree": 31747356
+      }
+    },
+    {
+      "elapsed_seconds": 782.55,
+      "frames": {
+        "audio": 39126,
+        "video": 19565,
+        "audible": 11718
+      },
+      "native_audio_chunks": 342,
+      "host_kib": {
+        "MemAvailable": 44702072,
+        "SwapFree": 31747356
+      }
+    },
+    {
+      "elapsed_seconds": 812.64,
+      "frames": {
+        "audio": 40631,
+        "video": 20317,
+        "audible": 11718
+      },
+      "native_audio_chunks": 342,
+      "host_kib": {
+        "MemAvailable": 44603404,
+        "SwapFree": 31747356
+      }
+    },
+    {
+      "elapsed_seconds": 842.73,
+      "frames": {
+        "audio": 42136,
+        "video": 21070,
+        "audible": 11718
+      },
+      "native_audio_chunks": 342,
+      "host_kib": {
+        "MemAvailable": 44380192,
+        "SwapFree": 31747356
+      }
+    },
+    {
+      "elapsed_seconds": 872.83,
+      "frames": {
+        "audio": 43641,
+        "video": 21822,
+        "audible": 11718
+      },
+      "native_audio_chunks": 342,
+      "host_kib": {
+        "MemAvailable": 44649040,
+        "SwapFree": 31747356
+      }
+    },
+    {
+      "elapsed_seconds": 902.92,
+      "frames": {
+        "audio": 45145,
+        "video": 22574,
+        "audible": 11718
+      },
+      "native_audio_chunks": 342,
+      "host_kib": {
+        "MemAvailable": 44536228,
+        "SwapFree": 31747356
+      }
+    },
+    {
+      "elapsed_seconds": 933.02,
+      "frames": {
+        "audio": 46650,
+        "video": 23327,
+        "audible": 11718
+      },
+      "native_audio_chunks": 342,
+      "host_kib": {
+        "MemAvailable": 44579168,
+        "SwapFree": 31747356
+      }
+    },
+    {
+      "elapsed_seconds": 963.11,
+      "frames": {
+        "audio": 48155,
+        "video": 24079,
+        "audible": 11718
+      },
+      "native_audio_chunks": 342,
+      "host_kib": {
+        "MemAvailable": 44679172,
+        "SwapFree": 31747356
+      }
+    },
+    {
+      "elapsed_seconds": 993.21,
+      "frames": {
+        "audio": 49660,
+        "video": 24832,
+        "audible": 11718
+      },
+      "native_audio_chunks": 342,
+      "host_kib": {
+        "MemAvailable": 44536228,
+        "SwapFree": 31747356
+      }
+    },
+    {
+      "elapsed_seconds": 1023.32,
+      "frames": {
+        "audio": 51165,
+        "video": 25584,
+        "audible": 11718
+      },
+      "native_audio_chunks": 342,
+      "host_kib": {
+        "MemAvailable": 44591708,
+        "SwapFree": 31747356
+      }
+    },
+    {
+      "elapsed_seconds": 1053.42,
+      "frames": {
+        "audio": 52670,
+        "video": 26337,
+        "audible": 11718
+      },
+      "native_audio_chunks": 342,
+      "host_kib": {
+        "MemAvailable": 44452416,
+        "SwapFree": 31747356
+      }
+    },
+    {
+      "elapsed_seconds": 1083.51,
+      "frames": {
+        "audio": 54175,
+        "video": 27089,
+        "audible": 11718
+      },
+      "native_audio_chunks": 342,
+      "host_kib": {
+        "MemAvailable": 44461568,
+        "SwapFree": 31747356
+      }
+    },
+    {
+      "elapsed_seconds": 1113.61,
+      "frames": {
+        "audio": 55680,
+        "video": 27841,
+        "audible": 11718
+      },
+      "native_audio_chunks": 342,
+      "host_kib": {
+        "MemAvailable": 44604400,
+        "SwapFree": 31747356
+      }
+    },
+    {
+      "elapsed_seconds": 1143.71,
+      "frames": {
+        "audio": 57184,
+        "video": 28594,
+        "audible": 11718
+      },
+      "native_audio_chunks": 342,
+      "host_kib": {
+        "MemAvailable": 44567740,
+        "SwapFree": 31747356
+      }
+    },
+    {
+      "elapsed_seconds": 1173.79,
+      "frames": {
+        "audio": 58689,
+        "video": 29346,
+        "audible": 11718
+      },
+      "native_audio_chunks": 342,
+      "host_kib": {
+        "MemAvailable": 44377464,
+        "SwapFree": 31747356
+      }
+    },
+    {
+      "elapsed_seconds": 1200.08,
+      "frames": {
+        "audio": 60003,
+        "video": 30003,
+        "audible": 11718
+      },
+      "native_audio_chunks": 342,
+      "host_kib": {
+        "MemAvailable": 44381736,
+        "SwapFree": 31747356
+      }
+    }
+  ],
+  "load_started_utc": "2026-11-17T06:16:32.189164+00:00",
+  "speech_question_transcript": " Two plus three equals five. I'm a large language model developed by Alibaba's Tongyi Lab, named Q uant um Ultra. I can answer questions, write stories, create text, and more. How can I help you today? Two plus three equals five. I ’m a large language model developed by Ali baba’s Tongyi Lab, called Q uantum Ultra. I can answer questions, write stories, and generate text. What do you need help with? 2 plus 3 is 5. I am a large language model developed by Alibaba's Tongyi Lab, named Q uantum Ultra. I can answer questions, write stories, and create text. How can I assist you? 2 plus 3 equal s 5. I am a large language model developed by Ali baba’s Tongyi Lab, named Quantum U ltra. I can answer questions, write stories, and generate text. How can I help you? 2 plus 3 equal s 5. I am a large language model created by Ali baba's Tong yi Lab, called Q uantum Ultra. I can answer questions, write stories, and generate text. How can I assist you? 2 plus 3 equals 5. I’m a large language model developed by Alibaba ’s Ton",
+  "ordinary_calls": 40,
+  "finished_utc": "2026-11-17T06:36:32.276298+00:00"
+}

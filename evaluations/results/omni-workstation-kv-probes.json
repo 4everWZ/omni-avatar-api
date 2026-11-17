@@ -1,0 +1,64 @@
+{
+  "scope": "temporary_kv_and_attention_diagnosis",
+  "model": "openbmb/MiniCPM-o-4_5-awq",
+  "checkpoint": "927faefa0bce96e557945e106f3b3d8b4d39f4b2",
+  "window": 40960,
+  "probes": [
+    {
+      "thinker_kv": "auto",
+      "attention_backend": "TRITON_ATTN",
+      "state": "stopped_without_result",
+      "observed": "GPU 0 remained at 100% utilization with no visible response for several minutes. A py-spy dump found the engine main thread waiting for OmniAsyncGPUModelRunnerOutput and both output builders waiting in torch.cuda.Event.synchronize.",
+      "kv_capacity_reported_tokens": 106206,
+      "gpu_memory_observed_mib": [13154, 5915],
+      "conclusion": "No correctness result before manual stop. CUDA event waits alone do not establish a deadlock. The duplex-reported token capacity is window-adjusted and does not establish sufficient physical KV for a full 40960-token Chat; the 2 GiB budget needs separate checking."
+    },
+    {
+      "thinker_kv": "auto",
+      "attention_backend": "FLASH_ATTN",
+      "state": "stopped_without_result",
+      "max_tokens": 64,
+      "observed": "The same approximately 39932-token prompt produced no visible response for several minutes, with GPU 0 continuously busy. Reducing the output budget did not make this path suitable for acceptance.",
+      "conclusion": "No correctness result before manual stop. This does not establish a deadlock or rule out higher-precision KV; physical cache capacity was not validated for full-window Chat."
+    },
+    {
+      "thinker_kv": "int4_per_token_head",
+      "attention_backend": "TRITON_ATTN",
+      "async_scheduling": false,
+      "state": "failed",
+      "prompt_tokens": 39932,
+      "max_tokens": 64,
+      "completion_tokens": 1,
+      "content": null,
+      "finish_reason": "stop",
+      "seconds": 35.46,
+      "conclusion": "Disabling asynchronous scheduling did not restore long-context retrieval."
+    },
+    {
+      "thinker_kv": "int4_per_token_head",
+      "attention_backend": "TRITON_ATTN",
+      "async_scheduling": false,
+      "enable_thinking": true,
+      "state": "failed",
+      "prompt_tokens": 39928,
+      "max_tokens": 1024,
+      "completion_tokens": 4,
+      "content": "这是一条",
+      "seconds": 35.71,
+      "conclusion": "Thinking-enabled template and existing visible-reply grammar produced a visible fragment but not the requested identifier."
+    },
+    {
+      "thinker_kv": "int4_per_token_head",
+      "attention_backend": "TRITON_ATTN",
+      "enable_chunked_prefill": false,
+      "max_num_batched_tokens": 40960,
+      "state": "failed",
+      "prompt_tokens": 39932,
+      "max_tokens": 64,
+      "completion_tokens": 1,
+      "content": null,
+      "finish_reason": "stop",
+      "conclusion": "Processing the entire prompt in one prefill did not restore the answer."
+    }
+  ]
+}

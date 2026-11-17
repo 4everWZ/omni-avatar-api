@@ -1,0 +1,5 @@
+# Optional private VPN API publication; keep the base loopback binding too.
+services:
+  omni-gateway:
+    ports:
+      - '${OMNI_GATEWAY_VPN_BIND:?set the workstation VPN IP}:${OMNI_GATEWAY_PORT:-8000}:8000/tcp'

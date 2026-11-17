@@ -1,0 +1,13 @@
+{
+  "started_utc": "2026-11-17T07:39:49.509682+00:00",
+  "metrics_collector_host": "belal-PC",
+  "scope": "single_gpu_omni_vision",
+  "requested_seconds": 1,
+  "state": "passed",
+  "checks": [
+    {
+      "name": "single_gpu_omni_vision_color_correct"
+    }
+  ],
+  "samples": []
+}

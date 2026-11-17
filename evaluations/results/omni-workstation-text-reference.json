@@ -1,0 +1,43 @@
+{
+  "scope": "bf16_text_backbone_reference_not_omni_acceptance",
+  "model": "openbmb/MiniCPM-o-4_5",
+  "checkpoint": "fb09628e98b1f55d8d5b863e0eccfcdd11bff499",
+  "weight_precision": "bfloat16",
+  "kv_precision": "bfloat16",
+  "attention": "transformers_sdpa",
+  "decoding": "greedy",
+  "state": "completed",
+  "cases": [
+    {
+      "case": "short",
+      "prompt_tokens": 22,
+      "answer": "5",
+      "generated_ids": [
+        20,
+        151645
+      ],
+      "seconds": 0.314189676893875,
+      "correct": true,
+      "peak_allocated_mib": [
+        7822.2177734375,
+        7822.05224609375
+      ]
+    },
+    {
+      "case": "repeated_39932",
+      "prompt_tokens": 39932,
+      "answer": "",
+      "generated_ids": [
+        151645
+      ],
+      "seconds": 27.76169556309469,
+      "correct": false,
+      "peak_allocated_mib": [
+        11477.3779296875,
+        11468.8525390625
+      ]
+    }
+  ],
+  "placement": "sequential layer split across GPU 0 and GPU 1; not tensor parallel",
+  "parameters": 8189195264
+}

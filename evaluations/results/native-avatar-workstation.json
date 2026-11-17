@@ -1,0 +1,163 @@
+{
+  "started_utc": "2026-11-16T18:47:55.186726+00:00",
+  "metrics_collector_host": "belal-PC",
+  "scope": "native_duplex_and_avatar_120s_diagnostic",
+  "requested_seconds": 120,
+  "state": "passed",
+  "checks": [
+    {
+      "name": "queue_deadline_returns_429"
+    },
+    {
+      "name": "stream_disconnect_releases_lane_and_engine_responds"
+    },
+    {
+      "name": "owned_avatar_created"
+    },
+    {
+      "name": "continuous_media",
+      "elapsed_seconds": 120.13357263896614,
+      "frames": {
+        "audio": 6005,
+        "video": 3004,
+        "audible": 3464
+      },
+      "native_audio_chunks": 101,
+      "playback_evidence": "decoded_and_consumed_not_physical_output"
+    },
+    {
+      "name": "idempotent_release"
+    }
+  ],
+  "samples": [
+    {
+      "elapsed_seconds": 0.0,
+      "frames": {
+        "audio": 0,
+        "video": 1,
+        "audible": 0
+      },
+      "native_audio_chunks": 0,
+      "gpu": [
+        [
+          0,
+          14950,
+          48
+        ],
+        [
+          1,
+          10777,
+          0
+        ]
+      ],
+      "host_kib": {
+        "MemAvailable": 49630144,
+        "SwapFree": 31746864
+      }
+    },
+    {
+      "elapsed_seconds": 30.14,
+      "frames": {
+        "audio": 1506,
+        "video": 755,
+        "audible": 734
+      },
+      "native_audio_chunks": 24,
+      "gpu": [
+        [
+          0,
+          14950,
+          0
+        ],
+        [
+          1,
+          10777,
+          0
+        ]
+      ],
+      "host_kib": {
+        "MemAvailable": 49609648,
+        "SwapFree": 31746864
+      }
+    },
+    {
+      "elapsed_seconds": 60.26,
+      "frames": {
+        "audio": 3012,
+        "video": 1508,
+        "audible": 1657
+      },
+      "native_audio_chunks": 51,
+      "gpu": [
+        [
+          0,
+          14954,
+          0
+        ],
+        [
+          1,
+          10777,
+          0
+        ]
+      ],
+      "host_kib": {
+        "MemAvailable": 49595032,
+        "SwapFree": 31746864
+      }
+    },
+    {
+      "elapsed_seconds": 90.39,
+      "frames": {
+        "audio": 4518,
+        "video": 2261,
+        "audible": 2635
+      },
+      "native_audio_chunks": 76,
+      "gpu": [
+        [
+          0,
+          14958,
+          36
+        ],
+        [
+          1,
+          10777,
+          0
+        ]
+      ],
+      "host_kib": {
+        "MemAvailable": 49549924,
+        "SwapFree": 31746864
+      }
+    },
+    {
+      "elapsed_seconds": 120.11,
+      "frames": {
+        "audio": 6004,
+        "video": 3004,
+        "audible": 3463
+      },
+      "native_audio_chunks": 101,
+      "gpu": [
+        [
+          0,
+          14962,
+          0
+        ],
+        [
+          1,
+          10777,
+          0
+        ]
+      ],
+      "host_kib": {
+        "MemAvailable": 49506764,
+        "SwapFree": 31746864
+      }
+    }
+  ],
+  "load_started_utc": "2026-11-16T18:48:00.515430+00:00",
+  "speech_question_transcript": " Hello, what can Sure, two plus three equals five. I am a large language model developed by Alibaba Cloud's Tongyi Lab. My name is Q uant um and I can answer your questions or help you with tasks like writing, logical reasoning, programming, and more. Sure, two plus three equals five. I'm a large language model developed by Alibaba Cloud's To ngyi Lab. My name is Q uantum and I can help you with things like answering questions, writing, logical reasoning, programming, and more. Sure, two plus three equals five. I am a large language model developed by Aliba ba Cloud's T ongyi Lab. My name is Quant um and I can assist you with various tasks, such as answering questions, writing, logical reasoning and programming. Sure, two plus three equals five. I am a large language model developed by Ali baba Cloud' s Tongyi Lab. My name is Quan tum and I can help you with answering questions, writing, logical reason ing, programming and other tasks. Sure, two plus three equals five. I am a large language model developed by",
+  "ordinary_calls": 4,
+  "finished_utc": "2026-11-16T18:50:00.654673+00:00"
+}

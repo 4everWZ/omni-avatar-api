@@ -1,0 +1,31 @@
+{
+  "state": "passed",
+  "origin": "http://100.119.17.6:8000",
+  "checked_utc": "2026-11-17T08:11:53.848706+00:00",
+  "checks": [
+    {
+      "name": "vpn_authenticated_model",
+      "prefix": "",
+      "window": 8192
+    },
+    {
+      "name": "vpn_authenticated_model",
+      "prefix": "/llm",
+      "window": 262144
+    },
+    {
+      "name": "anonymous_request_rejected",
+      "status": 401
+    },
+    {
+      "name": "vpn_responses_incremental_sse",
+      "delta_events": 1,
+      "seconds": 0.920536000005086
+    },
+    {
+      "name": "vpn_owned_prepared_avatar",
+      "driver": "ditto",
+      "fps": 25
+    }
+  ]
+}

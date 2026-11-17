@@ -5,15 +5,27 @@ import json
 import math
 import os
 import secrets
+import hashlib
+from pathlib import Path
+from time import monotonic
 from contextlib import AsyncExitStack, asynccontextmanager
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from urllib.parse import urlsplit
 
-from aiohttp import ClientError, ClientSession, ClientTimeout, ClientWSTimeout, DummyCookieJar, WSMsgType, web
+from aiohttp import ClientError, ClientSession, ClientTimeout, ClientWSTimeout, DummyCookieJar, UnixConnector, WSMsgType, web
+from avatar_proxy import AvatarProxy
+from responses_proxy import ResponsesProxy
 
 MODEL_ALIAS = "omni-default"
 MAX_BODY = 32 * 1024 * 1024
 MAX_FRAME = 8 * 1024 * 1024
+
+
+def positive(name, default, convert=float):
+    value = convert(os.environ.get(name, default))
+    if not math.isfinite(value) or value <= 0:
+        raise ValueError(f"{name} must be positive and finite")
+    return value
 
 
 @dataclass(frozen=True)
@@ -33,6 +45,13 @@ class Config:
     request_timeout: float = 1200
     health_timeout: float = 3
     realtime_idle_timeout: float = 120
+    avatar_url: str = ""
+    avatar_token: str = field(default="", repr=False)
+    avatar_socket: str = ""
+    model_alias: str = MODEL_ALIAS
+    public_prefix: str = ""
+    realtime_enabled: bool = True
+    prompt_tokens_path: str = "/v1/chat/prompt_tokens"
 
     @classmethod
     def from_env(cls):
@@ -40,12 +59,6 @@ class Config:
             if value := os.environ.get(name, "").strip():
                 return value
             raise ValueError(f"Missing {name}")
-
-        def positive(name, default, convert=float):
-            value = convert(os.environ.get(name, default))
-            if not math.isfinite(value) or value <= 0:
-                raise ValueError(f"{name} must be positive and finite")
-            return value
 
         engine_url = os.environ.get("OMNI_ENGINE_URL", "http://omni-engine:8000").rstrip("/")
         parsed = urlsplit(engine_url)
@@ -75,7 +88,30 @@ class Config:
             request_timeout=positive("OMNI_REQUEST_TIMEOUT", cls.request_timeout),
             health_timeout=positive("OMNI_HEALTH_TIMEOUT", 3),
             realtime_idle_timeout=positive("OMNI_REALTIME_IDLE_TIMEOUT", 120),
+            avatar_url=os.environ.get("OMNI_AVATAR_URL", ""),
+            avatar_token=os.environ.get("OMNI_AVATAR_INTERNAL_TOKEN", ""),
+            avatar_socket=os.environ.get("OMNI_AVATAR_SOCKET", ""),
         )
+
+    def text_backend(self):
+        def override(name, default, convert=float):
+            return positive(name, default, convert) if os.environ.get(name) else default
+        origin = os.environ["LLM_ENGINE_URL"].rstrip("/")
+        parsed = urlsplit(origin)
+        if (parsed.scheme not in {"http", "https"} or not parsed.hostname or parsed.username
+                or parsed.password or parsed.path or parsed.query or parsed.fragment):
+            raise ValueError("LLM_ENGINE_URL must be an HTTP(S) origin")
+        model, revision = os.environ["LLM_MODEL_ID"].strip(), os.environ["LLM_CHECKPOINT"].strip()
+        if not model or not revision:
+            raise ValueError("LLM model and checkpoint are required")
+        return replace(self, engine_url=origin, model=model, checkpoint=revision,
+                       model_root=f"/models/{revision}", engine_token=os.environ.get("LLM_ENGINE_TOKEN", ""),
+                       engine_version="vLLM 0.32.0", model_alias="llm-default", public_prefix="/llm",
+                       realtime_enabled=False, prompt_tokens_path="/tokenize", program_token="",
+                       queue_limit=override("LLM_QUEUE_LIMIT", self.queue_limit, int),
+                       queue_timeout=override("LLM_QUEUE_TIMEOUT", self.queue_timeout),
+                       request_timeout=override("LLM_REQUEST_TIMEOUT", self.request_timeout),
+                       batch_cap=1, avatar_url="", avatar_token="", avatar_socket="")
 
 
 class Busy(Exception):
@@ -160,11 +196,22 @@ class Gateway:
         self.admission = Admission(config)
         self.capabilities = None
         self.chat_observed = False
+        self.avatar = AvatarProxy(config.avatar_url, config.avatar_token)
+        self.browser_tickets = {}
+        self.responses = ResponsesProxy(self) if not config.realtime_enabled else None
 
     @web.middleware
     async def authenticate(self, request, handler):
-        if request.path == "/livez":
+        path = request.path.removeprefix(self.config.public_prefix) if self.config.public_prefix else request.path
+        if path in ("/livez", "/", "/app.js", "/style.css", "/mic-worklet.js"):
             return await handler(request)
+        if request.method == 'GET' and 'ticket' in request.query:
+            entry = self.browser_tickets.pop(request.query['ticket'], None)
+            if entry and entry['expires'] > monotonic() and entry['path'] == request.path:
+                request['owner'] = entry['owner']
+                request['service_token'] = entry['token']
+                return await handler(request)
+            return failure(401, 'invalid_ticket', 'Browser ticket expired or already used.')
         scheme, _, token = request.headers.get("Authorization", "").partition(" ")
         token = token.encode()
         admin = secrets.compare_digest(token, self.config.admin_token.encode())
@@ -173,9 +220,30 @@ class Gateway:
         )):
             return failure(401, "unauthorized", "A valid service bearer token is required.",
                            headers={"WWW-Authenticate": "Bearer"})
-        if request.path == "/api/mode" and request.method == "PUT" and not admin:
+        if path == "/api/mode" and request.method == "PUT" and not admin:
             return failure(403, "forbidden", "An admin bearer token is required.")
+        request['owner'] = hashlib.sha256(token).hexdigest()
+        request['service_token'] = token.decode()
         return await handler(request)
+
+    async def browser_ticket(self, request):
+        try:
+            body = await request.json()
+            path = body['path']
+            if path != '/v1/realtime' and not (
+                    isinstance(path, str) and path.startswith('/v1/avatar/sessions/')
+                    and path.endswith('/events') and len(path.split('/')) == 6):
+                raise ValueError()
+        except (ValueError, KeyError, TypeError):
+            return failure(400, 'invalid_ticket_path', 'Select a Realtime or Avatar event socket.')
+        self.browser_tickets = {key: value for key, value in self.browser_tickets.items()
+                                if value['expires'] > monotonic()}
+        if len(self.browser_tickets) >= 256:
+            return failure(429, 'ticket_capacity', 'Too many pending browser connections.')
+        ticket = secrets.token_urlsafe(32)
+        self.browser_tickets[ticket] = {'owner': request['owner'], 'token': request['service_token'],
+                                       'path': path, 'expires': monotonic() + 30}
+        return web.json_response({'ticket': ticket, 'expires_in': 30}, headers={'Cache-Control': 'no-store'})
 
     async def session_context(self, app):
         headers = {"Authorization": f"Bearer {self.config.engine_token}"} if self.config.engine_token else {}
@@ -184,7 +252,21 @@ class Gateway:
             timeout=ClientTimeout(total=None, connect=self.config.health_timeout), trust_env=False,
         ) as session:
             self.engine = session
-            yield
+            async with ClientSession(timeout=ClientTimeout(total=None, connect=3),
+                                     connector=UnixConnector(path=self.config.avatar_socket) if self.config.avatar_socket else None,
+                                     cookie_jar=DummyCookieJar(), trust_env=False) as avatar_http:
+                app['avatar_http'] = avatar_http
+                try:
+                    yield
+                finally:
+                    if self.responses:
+                        await self.responses.close()
+
+    async def responses_request(self, request):
+        try:
+            return await self.responses.handle(request)
+        except Busy:
+            return failure(429, 'gateway_busy', 'The inference lane is at capacity.', headers={'Retry-After': '1'})
 
     async def mode(self, request):
         if request.method == "PUT":
@@ -230,7 +312,7 @@ class Gateway:
         if not model:
             self.capabilities, self.chat_observed = None, False
         return web.json_response({
-            "state": "ready" if model else "unavailable", "alias": MODEL_ALIAS,
+            "state": "ready" if model else "unavailable", "alias": self.config.model_alias,
             "model": model["id"] if model else None, "configured_model": self.config.model,
             "model_root": model.get("root") if model else None,
             "checkpoint": self.config.checkpoint, "checkpoint_source": "deployment",
@@ -248,7 +330,7 @@ class Gateway:
             model = None
         if model is None:
             return failure(503, "model_unavailable", "The configured engine model is unavailable.")
-        return web.json_response({"object": "list", "data": [model | {"id": MODEL_ALIAS, "root": MODEL_ALIAS}]})
+        return web.json_response({"object": "list", "data": [model | {"id": self.config.model_alias, "root": self.config.model_alias}]})
 
     async def chat_payload(self, request):
         try:
@@ -258,8 +340,8 @@ class Gateway:
             return None, failure(400, "invalid_json", "Expected a JSON Chat Completions request.")
         except TimeoutError:
             return None, failure(408, "request_timeout", "The request body did not arrive in time.")
-        if not isinstance(payload, dict) or payload.get("model") != MODEL_ALIAS:
-            return None, failure(400, "model_not_found", f"Use the {MODEL_ALIAS} alias.")
+        if not isinstance(payload, dict) or payload.get("model") != self.config.model_alias:
+            return None, failure(400, "model_not_found", f"Use the {self.config.model_alias} alias.")
         payload["model"] = self.config.model
         if payload.get("modalities") is None:
             payload["modalities"] = ["text"]
@@ -271,7 +353,13 @@ class Gateway:
             return error
         try:
             async with asyncio.timeout(self.config.health_timeout):
-                async with self.engine.post("/v1/chat/prompt_tokens", json=payload, allow_redirects=False) as upstream:
+                if self.config.prompt_tokens_path == "/tokenize":
+                    payload = {key: value for key, value in payload.items()
+                               if key in {"model", "messages", "tools", "chat_template_kwargs"}}
+                    payload["add_generation_prompt"] = True
+                async with self.engine.post(self.config.prompt_tokens_path, json=payload, allow_redirects=False) as upstream:
+                    if self.config.prompt_tokens_path == "/tokenize" and upstream.status == 200:
+                        return web.json_response({"count": (await upstream.json())["count"]})
                     return web.Response(status=upstream.status, body=await upstream.read(), content_type="application/json")
         except TimeoutError:
             return failure(504, "tokenizer_timeout", "The engine did not return a prompt token count in time.")
@@ -318,7 +406,7 @@ class Gateway:
             return failure(400, "invalid_realtime_request", f"Use duplex=1 with the {MODEL_ALIAS} alias.")
         program = request.query.get("program") == "1"
         if program:
-            token = request.headers["Authorization"].partition(" ")[2]
+            token = request['service_token']
             if not self.config.program_token or not secrets.compare_digest(
                 token.encode(), self.config.program_token.encode()
             ):
@@ -331,14 +419,25 @@ class Gateway:
         if "model" in request.query:
             query["model"] = self.config.model
         try:
-            async with self.admission.program(program), self.admission.hold("realtime"), AsyncExitStack() as stack:
+            avatar_live = request.query.get('avatar') == '1' and bool(self.config.avatar_url)
+            async with self.admission.program(program or avatar_live), self.admission.hold("realtime"), AsyncExitStack() as stack:
                 async with asyncio.timeout(self.config.health_timeout):
                     upstream = await stack.enter_async_context(self.engine.ws_connect(
                         "/v1/realtime", params=query, heartbeat=20, max_msg_size=MAX_FRAME,
                         timeout=ClientWSTimeout(ws_close=3),
                     ))
                 await downstream.prepare(request)
-                await self.relay(upstream, downstream)
+                tap = None
+                if avatar_live and self.config.avatar_token:
+                    source_id = secrets.token_urlsafe(24)
+                    tap = await stack.enter_async_context(self.avatar.tap(
+                        request.app['avatar_http'], source_id, request['owner']))
+                    await downstream.send_json({'type': 'gateway.session.created',
+                                                'source_session_id': source_id, 'avatar_available': not tap.failed})
+                elif request.query.get('avatar') == '1':
+                    await downstream.send_json({'type': 'gateway.session.created',
+                                                'source_session_id': None, 'avatar_available': False})
+                await self.relay(upstream, downstream, tap)
                 return downstream
         except Busy:
             return failure(429, "gateway_busy", "The realtime lane is at capacity.", headers={"Retry-After": "1"})
@@ -359,7 +458,7 @@ class Gateway:
                 pass
         return raw
 
-    async def relay(self, upstream, downstream):
+    async def relay(self, upstream, downstream, tap=None):
         loop = asyncio.get_running_loop()
         last_activity = loop.time()
 
@@ -378,6 +477,8 @@ class Gateway:
                         except (ValueError, AttributeError, KeyError):
                             pass
                     text = self.alias_realtime_update(frame.data) if source is downstream else frame.data
+                    if tap:
+                        tap.publish(text, 'downstream' if source is downstream else 'upstream')
                     await target.send_str(text)
                 elif frame.type == WSMsgType.BINARY:
                     last_activity = loop.time()
@@ -403,8 +504,12 @@ class Gateway:
         await asyncio.gather(downstream.close(code=code, message=reason), upstream.close(code=code, message=reason))
 
 
-def create_app(config=None):
-    gateway = Gateway(config or Config.from_env())
+def create_app(config=None, text_config=None):
+    if config is None:
+        config = Config.from_env()
+        if os.environ.get("LLM_ENGINE_URL"):
+            text_config = config.text_backend()
+    gateway = Gateway(config)
     app = web.Application(client_max_size=MAX_BODY, middlewares=[gateway.authenticate])
     app.cleanup_ctx.append(gateway.session_context)
 
@@ -416,8 +521,32 @@ def create_app(config=None):
         web.get("/api/mode", gateway.mode), web.put("/api/mode", gateway.mode),
         web.get("/v1/models", gateway.aliased_models), web.post("/v1/chat/completions", gateway.chat),
         web.post("/v1/chat/prompt_tokens", gateway.prompt_tokens),
-        web.get("/v1/realtime", gateway.realtime),
     ])
+    if text_config is not None:
+        app.add_subapp('/llm', create_app(text_config))
+    if not config.realtime_enabled:
+        app.add_routes([
+            web.post('/v1/responses', gateway.responses_request),
+            web.get('/v1/responses/{response_id}', gateway.responses_request),
+            web.post('/v1/responses/{response_id}/cancel', gateway.responses_request),
+        ])
+        return app
+    app.add_routes([
+        web.get("/v1/realtime", gateway.realtime),
+        web.post('/v1/browser-tickets', gateway.browser_ticket),
+        web.route('*', '/v1/avatar/{tail:.*}', gateway.avatar.handle),
+    ])
+    static_root = Path(__file__).with_name('web')
+    async def static(request):
+        name = request.path.lstrip('/') or 'index.html'
+        return web.FileResponse(static_root / name, headers={
+            'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff',
+            'Content-Security-Policy': "default-src 'self'; connect-src 'self'; media-src 'self' blob:; "
+                                       "script-src 'self'; style-src 'self'; img-src 'self' data:",
+            'Referrer-Policy': 'no-referrer',
+        })
+    for path in ('/', '/app.js', '/style.css', '/mic-worklet.js'):
+        app.router.add_get(path, static)
     return app
 
 

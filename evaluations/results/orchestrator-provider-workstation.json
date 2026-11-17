@@ -1,0 +1,21 @@
+{
+  "state": "passed",
+  "sdk_version": "3.35.1",
+  "parallel_callers": 2,
+  "checks": [
+    {
+      "expected": "ALPHA1729",
+      "text": "ALPHA1729",
+      "delta_events": 6,
+      "completed": true
+    },
+    {
+      "expected": "BETA8642",
+      "text": "BETA8642",
+      "delta_events": 6,
+      "completed": true
+    }
+  ],
+  "scope": "caller_managed_independent_contexts_and_parallel_sse_submission",
+  "note": "Provider fixture only. No Agent loop or orchestrator was implemented or started."
+}

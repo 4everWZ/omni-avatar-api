@@ -1,6 +1,6 @@
 # Omni inference gateway
 
-Applications use a configured gateway URL and the `omni-default` model alias. On the shared Compose network, the URL is `http://omni-gateway:8000/v1`. The gateway translates the requested alias to the engine's configured model ID. Upstream response bodies and Realtime events keep their wire format. Deploy one gateway process for each upstream engine so its admission counts cover all callers of that engine.
+Applications use a configured gateway URL and the `omni-default` model alias. On the shared Compose network, the URL is `http://omni-gateway:8000/v1`. The gateway translates the requested alias to the engine's configured model ID. Upstream response bodies and Realtime events keep their wire format. The workstation overlay registers a second backend at `/llm`: each backend has its own upstream session, health checks and admission counters. All callers of each engine share that engine’s admission.
 
 | Endpoint | Behavior |
 | --- | --- |
@@ -39,6 +39,35 @@ Health checks confirm the engine serves the configured model ID and report the e
 
 Run the loopback tests from this directory. They use an HTTP and WebSocket fixture without loading model weights.
 
+The optional Avatar overlay sets `OMNI_AVATAR_URL` and a separate `OMNI_AVATAR_INTERNAL_TOKEN`. Public `/v1/avatar/*` requests retain the caller's identity through a private authenticated proxy. Realtime callers opt in with `avatar=1`: the gateway taps duplex output without opening another engine session and reserves live admission for that socket. A slow or failed tap closes rendering without blocking the original speech socket. Connections without the opt-in retain their original event stream. The browser page at `/` uses short-lived, single-use `/v1/browser-tickets` for authenticated WebSocket upgrades. See the [Avatar contract](../docs/api.md#avatar-会话与音画) for ownership, WHEP and playback semantics.
+
 ```sh
 uv run --no-project --with-requirements requirements.txt python -B -m unittest discover -s tests -v
 ```
+
+## Long-context Responses backend
+
+With `infra-inference.compose.yml`, use `/llm/v1` and `llm-default`. The primary endpoint is `POST /llm/v1/responses`; Chat Completions remains compatible. `/llm/healthz`, `/llm/v1/models` and `/llm/api/mode` describe only this backend. LLM capacity does not consume Omni admission. Text-backend configuration uses `LLM_ENGINE_URL`, `LLM_MODEL_ID`, `LLM_CHECKPOINT`, optional `LLM_ENGINE_TOKEN`, and LLM-only admission/deadline overrides; see the Compose overlay for pinned values.
+
+```python
+from openai import OpenAI
+client = OpenAI(base_url="http://localhost:18080/llm/v1", api_key="<application bearer>")
+with client.responses.stream(model="llm-default", input="你好") as stream:
+    for event in stream:
+        if event.type == "response.output_text.delta":
+            print(event.delta, end="", flush=True)
+```
+
+HTTP Responses supports incremental SSE (`stream: true`), JSON Schema, function-call output, owned `previous_response_id`, retrieval via `GET /llm/v1/responses/{id}` and cancellation via `POST /llm/v1/responses/{id}/cancel`. Only function tools are accepted; the service executes no tools. Hosted tools, conversation IDs, item references, cloud WebSocket/compact/delete endpoints are outside the pinned engine's supported subset. `/llm/v1/chat/prompt_tokens` counts Chat templates, not the entire Responses continuation lineage.
+
+The gateway replaces caller-supplied request IDs with authenticated owner-bound response IDs. Foreign retrieval, cancellation and continuation return 404. Stored responses live in engine RAM and disappear on restart; callers retain durable business history. Foreground stream disconnection cancels upstream work. Background work, including `background: true` plus streaming, keeps its admission lease after disconnection until completion, cancellation or deadline. Keep the admin secret stable across gateway restarts to retain response ownership verification.
+
+The deployed OpenAI Python SDK 3.35.1 also passed typed `responses.stream()`, `get_final_response()`, owned continuation and retrieval against the real backend. [SDK evidence](../evaluations/results/responses-sdk-workstation.json).
+
+## External orchestration clients
+
+Multiple worker conversations can share this provider through `/llm/v1` and `llm-default`. Keep each worker's input history or `previous_response_id` chain separate. Long-running controllers can use `store: false` and persist their own history; stored continuation is process-local and ephemeral. Responses/SSE, function-call output, caller-supplied tool results, JSON Schema, retrieval and cancellation remain inference operations; the caller owns worker scheduling, handoffs, memory, tools and workspace/Git actions.
+
+GPU admission remains one LLM request at a time. Other requests use the bounded queue and receive `429` with `Retry-After` when full or timed out. External controllers can bound provider concurrency while running their own tools in parallel. Optional `LLM_QUEUE_LIMIT`, `LLM_QUEUE_TIMEOUT` and `LLM_REQUEST_TIMEOUT` configure only this backend; unset/empty values inherit the parent gateway's values (normally 16 / 5 s / 1200 s). They do not allocate additional GPU slots or change the Omni lane. Current deployment retains these defaults.
+
+Antigravity documents an [external OpenAI-compatible provider interface](https://antigravity.google/docs/sdk/local-models/#external-openai-compatible-servers); [Agent Orchestrator](https://github.com/OrchestratorInc/agent-orchestrator) manages agent clients as a separate layer. This service is validated as a provider, with two independently continued caller histories and concurrently submitted typed SSE requests. Specific orchestration clients have not been integrated here. [Provider fixture evidence](../evaluations/results/orchestrator-provider-workstation.json).

@@ -1,0 +1,59 @@
+# Append after workstation + avatar: two GPU-isolated inference APIs, same host.
+x-llm: &llm
+  LLM_MODEL_ID: axteam/Qwen3.5-9B-AWQ-8bit
+  LLM_CHECKPOINT: b1c949034d7716055133dcc05c1f085beb2b83fb
+
+services:
+  omni-engine:
+    gpus: !override
+      - driver: nvidia
+        device_ids: ['1']
+    environment:
+      OMNI_MAX_MODEL_LEN: '8192'
+      OMNI_DEPLOY_CONFIG: /opt/tuber-omni/minicpmo-assistant.yaml
+    volumes:
+      - ./engine/minicpmo-assistant.yaml:/opt/tuber-omni/minicpmo-assistant.yaml:ro
+
+  llm-model-fetch:
+    profiles: [assets]
+    image: omni-api-engine:0.32.0-workstation
+    pull_policy: never
+    command: [python3, /opt/tuber-omni/llm.py, fetch]
+    environment: *llm
+    volumes:
+      - ${OMNI_MODEL_DATA:-./data/models}:/models
+    networks: [asset-download]
+
+  llm-engine:
+    image: omni-api-engine:0.32.0-workstation
+    pull_policy: never
+    restart: unless-stopped
+    init: true
+    runtime: nvidia
+    gpus:
+      - driver: nvidia
+        device_ids: ['0']
+    shm_size: 2gb
+    command: [python3, /opt/tuber-omni/llm.py, serve]
+    environment:
+      <<: *llm
+      HF_HUB_OFFLINE: '1'
+      TRANSFORMERS_OFFLINE: '1'
+      VLLM_ENABLE_RESPONSES_API_STORE: '1'
+    volumes:
+      - ${OMNI_MODEL_DATA:-./data/models}:/models:ro
+    networks: [engine-private]
+    healthcheck:
+      test: [CMD, python3, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3).close()"]
+      interval: 15s
+      timeout: 5s
+      start_period: 8m
+      retries: 4
+
+  omni-gateway:
+    environment:
+      <<: *llm
+      LLM_ENGINE_URL: http://llm-engine:8000
+      LLM_QUEUE_LIMIT: ${LLM_QUEUE_LIMIT:-}
+      LLM_QUEUE_TIMEOUT: ${LLM_QUEUE_TIMEOUT:-}
+      LLM_REQUEST_TIMEOUT: ${LLM_REQUEST_TIMEOUT:-}

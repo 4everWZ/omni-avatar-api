@@ -1,0 +1,19 @@
+{
+  "scope": "workstation_int4_long_context",
+  "state": "failed",
+  "model": "openbmb/MiniCPM-o-4_5-awq",
+  "checkpoint": "927faefa0bce96e557945e106f3b3d8b4d39f4b2",
+  "engine": "vLLM-Omni 0.32.0",
+  "thinker_kv": "int4_per_token_head",
+  "attention_backend": "TRITON_ATTN",
+  "advertised_window": 40960,
+  "short_checks_passed": ["ordinary_chat", "structured_json_schema_with_consistent_prompt", "streaming_chat", "vision_color"],
+  "long_context_probes": [
+    {"prompt_tokens": 39932, "max_tokens": 256, "enable_thinking": false, "content": null, "correct": false},
+    {"prompt_tokens": 39932, "max_tokens": 1024, "enable_thinking": false, "content": null, "completion_tokens": 1, "finish_reason": "stop", "correct": false},
+    {"prompt_tokens": 39932, "max_tokens": 1024, "min_tokens": 1, "enable_thinking": false, "content": "这是一条", "completion_tokens": 4, "finish_reason": "stop", "correct": false},
+    {"prompt_tokens": 39922, "max_tokens": 1024, "enable_thinking": false, "input": "varied_inventory_records", "observed": "repeated unrelated inventory fragments", "completion_tokens": 1024, "finish_reason": "length", "correct": false}
+  ],
+  "gpu_memory_observed_after_requests_mib": [14672, 5915],
+  "conclusion": "The advertised window and successful short requests do not establish long-context correctness. Native duplex and two-hour mixed-load acceptance have not passed."
+}

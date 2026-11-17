@@ -1,0 +1,202 @@
+{
+  "scope": "thinker_int8_kv_diagnostics",
+  "window": 40960,
+  "probes": [
+    {
+      "started_utc": "2026-11-17T04:59:15.261205+00:00",
+      "metrics_collector_host": "belal-PC",
+      "scope": "awq_int8_kv_same_window_chat_preflight",
+      "requested_seconds": 120,
+      "state": "stopped_without_result",
+      "checks": [
+        {
+          "name": "engine_identity",
+          "window": 40960,
+          "checkpoint": "927faefa0bce96e557945e106f3b3d8b4d39f4b2",
+          "root_verified": true
+        },
+        {
+          "name": "ordinary_chat",
+          "seconds": 0.7901303451508284
+        },
+        {
+          "name": "structured_chat"
+        },
+        {
+          "name": "second_caller_streaming_chat"
+        },
+        {
+          "name": "vision_color_correct"
+        }
+      ],
+      "samples": [],
+      "candidate": {
+        "model": "openbmb/MiniCPM-o-4_5-awq",
+        "revision": "927faefa0bce96e557945e106f3b3d8b4d39f4b2",
+        "thinker_kv_cache_dtype": "int8_per_token_head",
+        "talker_kv_cache_dtype": "int4_per_token_head",
+        "thinker_gpu_utilization": 0.65
+      },
+      "finished_utc": "2026-11-17T05:02:16.503981+00:00",
+      "observed_total_seconds": 181.242776,
+      "failure": "Long-context request did not finish before manual diagnostic stop; no correctness result.",
+      "gpu_observed": {
+        "memory_used_mib": [
+          14686,
+          5915
+        ],
+        "utilization_percent": [
+          100,
+          0
+        ]
+      },
+      "stack_observed": "Engine main joined OmniAsyncGPUModelRunnerOutput; two output builders waited in torch.cuda.Event.synchronize.",
+      "conclusion": "INT8 KV configuration loaded and short checks passed. Long-context correctness and sustained performance are unverified. Event waits do not establish a deadlock: a later synchronous probe progressed from 18432 to 26624 tokens. The 2 GiB physical KV budget must be checked independently of the duplex-adjusted token capacity."
+    },
+    {
+      "started_utc": "2026-11-17T05:04:53.372529+00:00",
+      "metrics_collector_host": "belal-PC",
+      "scope": "awq_int8_kv_sync_launch_blocking_diagnostic",
+      "requested_seconds": 120,
+      "state": "stopped_without_result",
+      "checks": [
+        {
+          "name": "engine_identity",
+          "window": 40960,
+          "checkpoint": "927faefa0bce96e557945e106f3b3d8b4d39f4b2",
+          "root_verified": true
+        },
+        {
+          "name": "ordinary_chat",
+          "seconds": 0.7854087299201638
+        },
+        {
+          "name": "structured_chat"
+        },
+        {
+          "name": "second_caller_streaming_chat"
+        },
+        {
+          "name": "vision_color_correct"
+        }
+      ],
+      "samples": [],
+      "candidate": {
+        "model": "openbmb/MiniCPM-o-4_5-awq",
+        "revision": "927faefa0bce96e557945e106f3b3d8b4d39f4b2",
+        "thinker_kv_cache_dtype": "int8_per_token_head",
+        "talker_kv_cache_dtype": "int4_per_token_head",
+        "thinker_gpu_utilization": 0.65,
+        "async_scheduling": false,
+        "CUDA_LAUNCH_BLOCKING": true
+      },
+      "finished_utc": "2026-11-17T05:08:17.494480+00:00",
+      "observed_total_seconds": 204.121951,
+      "failure": "Long-context request did not finish before manual diagnostic stop; no correctness result.",
+      "stack_observed": "With synchronous scheduling and CUDA_LAUNCH_BLOCKING=1, main thread was launching kernel_unified_attention.",
+      "conclusion": "INT8 KV configuration loaded and short checks passed. Long-context correctness and sustained performance are unverified; CUDA waits alone do not establish deadlock.",
+      "prefill_progress_observed_tokens": [
+        18432,
+        26624
+      ]
+    },
+    {
+      "started_utc": "2026-11-17T05:14:24.735215+00:00",
+      "metrics_collector_host": "belal-PC",
+      "scope": "awq_int8_kv_4g_same_window_chat_preflight",
+      "requested_seconds": 120,
+      "state": "failed",
+      "checks": [
+        {
+          "name": "engine_identity",
+          "window": 40960,
+          "checkpoint": "927faefa0bce96e557945e106f3b3d8b4d39f4b2",
+          "root_verified": true
+        },
+        {
+          "name": "ordinary_chat",
+          "seconds": 0.7957234929781407
+        },
+        {
+          "name": "structured_chat"
+        },
+        {
+          "name": "second_caller_streaming_chat"
+        },
+        {
+          "name": "vision_color_correct"
+        }
+      ],
+      "samples": [],
+      "candidate": {
+        "model": "openbmb/MiniCPM-o-4_5-awq",
+        "revision": "927faefa0bce96e557945e106f3b3d8b4d39f4b2",
+        "thinker_kv_cache_dtype": "int8_per_token_head",
+        "talker_kv_cache_dtype": "int4_per_token_head",
+        "thinker_gpu_utilization": 0.65,
+        "thinker_kv_cache_memory_bytes": 4294967296
+      },
+      "long_context_attempts": [
+        {
+          "case": "repeated",
+          "prompt_tokens": 39932,
+          "finish_reason": "stop",
+          "completion_tokens": 1,
+          "visible_body_characters": 0,
+          "correct": false
+        }
+      ],
+      "failure": "AssertionError: Long-context retrieval failed for repeated at 39932 prompt tokens",
+      "finished_utc": "2026-11-17T05:15:04.250367+00:00"
+    },
+    {
+      "started_utc": "2026-11-17T05:19:02.452557+00:00",
+      "metrics_collector_host": "belal-PC",
+      "scope": "bf16_int8_kv_4g_same_window_chat_preflight",
+      "requested_seconds": 120,
+      "state": "failed",
+      "checks": [
+        {
+          "name": "engine_identity",
+          "window": 40960,
+          "checkpoint": "fb09628e98b1f55d8d5b863e0eccfcdd11bff499",
+          "root_verified": true
+        },
+        {
+          "name": "ordinary_chat",
+          "seconds": 0.7836575771216303
+        },
+        {
+          "name": "structured_chat"
+        },
+        {
+          "name": "second_caller_streaming_chat"
+        },
+        {
+          "name": "vision_color_correct"
+        }
+      ],
+      "samples": [],
+      "candidate": {
+        "model": "openbmb/MiniCPM-o-4_5",
+        "revision": "fb09628e98b1f55d8d5b863e0eccfcdd11bff499",
+        "thinker_kv_cache_dtype": "int8_per_token_head",
+        "talker_kv_cache_dtype": "int4_per_token_head",
+        "thinker_gpu_utilization": 0.9,
+        "thinker_kv_cache_memory_bytes": 4294967296
+      },
+      "long_context_attempts": [
+        {
+          "case": "repeated",
+          "prompt_tokens": 39932,
+          "finish_reason": "stop",
+          "completion_tokens": 1,
+          "visible_body_characters": 0,
+          "correct": false
+        }
+      ],
+      "failure": "AssertionError: Long-context retrieval failed for repeated at 39932 prompt tokens",
+      "finished_utc": "2026-11-17T05:19:42.118815+00:00"
+    }
+  ]
+}

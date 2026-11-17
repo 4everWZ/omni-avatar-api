@@ -1,0 +1,1023 @@
+{
+  "started_utc": "2026-11-17T07:48:05.654063+00:00",
+  "metrics_collector_host": "belal-PC",
+  "scope": "reference_ditto_native_omni_responses",
+  "requested_seconds": 120,
+  "state": "passed",
+  "checks": [
+    {
+      "name": "single_gpu_omni_vision_color_correct"
+    },
+    {
+      "name": "reference_uploaded_and_preparation_queued",
+      "job_id": "25cb087d5edc7024d6dc096cceea094d"
+    },
+    {
+      "name": "prepared_avatar_owned",
+      "seconds": 25.9590482970234,
+      "avatar_id": "portrait_25cb087d5edc7024d6dc096cceea094d"
+    },
+    {
+      "name": "owned_avatar_created"
+    },
+    {
+      "name": "continuous_media",
+      "elapsed_seconds": 120.10076288483106,
+      "frames": {
+        "audio": 6004,
+        "video": 3004,
+        "audible": 2761
+      },
+      "native_audio_chunks": 85,
+      "playback_evidence": "decoded_and_consumed_not_physical_output"
+    },
+    {
+      "name": "real_neural_frame_throughput",
+      "generated_frames": 3012,
+      "last_generated_ms": 120440,
+      "displayed_frame_ms": 120200
+    },
+    {
+      "name": "video_matches_audio_timeline",
+      "max_sampled_lag_ms": 58,
+      "audio_input_lead_ms": 1200
+    },
+    {
+      "name": "idempotent_release"
+    }
+  ],
+  "samples": [
+    {
+      "elapsed_seconds": 0.0,
+      "frames": {
+        "audio": 0,
+        "video": 0,
+        "audible": 0
+      },
+      "native_audio_chunks": 0,
+      "gpu": [
+        [
+          0,
+          23101,
+          47
+        ],
+        [
+          1,
+          21468,
+          0
+        ]
+      ],
+      "host_kib": {
+        "MemAvailable": 39856880,
+        "SwapFree": 31747408
+      }
+    },
+    {
+      "elapsed_seconds": 30.21,
+      "frames": {
+        "audio": 1510,
+        "video": 756,
+        "audible": 561
+      },
+      "native_audio_chunks": 19,
+      "gpu": [
+        [
+          0,
+          23101,
+          86
+        ],
+        [
+          1,
+          21468,
+          59
+        ]
+      ],
+      "host_kib": {
+        "MemAvailable": 39727056,
+        "SwapFree": 31747408
+      }
+    },
+    {
+      "elapsed_seconds": 60.37,
+      "frames": {
+        "audio": 3017,
+        "video": 1510,
+        "audible": 1359
+      },
+      "native_audio_chunks": 41,
+      "gpu": [
+        [
+          0,
+          23101,
+          93
+        ],
+        [
+          1,
+          21468,
+          61
+        ]
+      ],
+      "host_kib": {
+        "MemAvailable": 41061428,
+        "SwapFree": 31747408
+      }
+    },
+    {
+      "elapsed_seconds": 90.51,
+      "frames": {
+        "audio": 4524,
+        "video": 2263,
+        "audible": 2119
+      },
+      "native_audio_chunks": 63,
+      "gpu": [
+        [
+          0,
+          23101,
+          97
+        ],
+        [
+          1,
+          21468,
+          0
+        ]
+      ],
+      "host_kib": {
+        "MemAvailable": 41060264,
+        "SwapFree": 31747408
+      }
+    },
+    {
+      "elapsed_seconds": 120.06,
+      "frames": {
+        "audio": 6002,
+        "video": 3003,
+        "audible": 2759
+      },
+      "native_audio_chunks": 85,
+      "gpu": [
+        [
+          0,
+          23101,
+          86
+        ],
+        [
+          1,
+          21468,
+          8
+        ]
+      ],
+      "host_kib": {
+        "MemAvailable": 41046880,
+        "SwapFree": 31747408
+      }
+    }
+  ],
+  "avatar_id": "portrait_25cb087d5edc7024d6dc096cceea094d",
+  "load_started_utc": "2026-11-17T07:48:35.314121+00:00",
+  "renderer_samples": [
+    {
+      "generated_frames": 15,
+      "last_generated_ms": 560,
+      "displayed_frame_ms": 80,
+      "timeline_ms": 133,
+      "video_lag_ms": 53
+    },
+    {
+      "generated_frames": 38,
+      "last_generated_ms": 1480,
+      "displayed_frame_ms": 1120,
+      "timeline_ms": 1136,
+      "video_lag_ms": 16
+    },
+    {
+      "generated_frames": 65,
+      "last_generated_ms": 2560,
+      "displayed_frame_ms": 2120,
+      "timeline_ms": 2138,
+      "video_lag_ms": 18
+    },
+    {
+      "generated_frames": 89,
+      "last_generated_ms": 3520,
+      "displayed_frame_ms": 3120,
+      "timeline_ms": 3141,
+      "video_lag_ms": 21
+    },
+    {
+      "generated_frames": 115,
+      "last_generated_ms": 4560,
+      "displayed_frame_ms": 4120,
+      "timeline_ms": 4143,
+      "video_lag_ms": 23
+    },
+    {
+      "generated_frames": 140,
+      "last_generated_ms": 5560,
+      "displayed_frame_ms": 5120,
+      "timeline_ms": 5147,
+      "video_lag_ms": 27
+    },
+    {
+      "generated_frames": 165,
+      "last_generated_ms": 6560,
+      "displayed_frame_ms": 6120,
+      "timeline_ms": 6150,
+      "video_lag_ms": 30
+    },
+    {
+      "generated_frames": 190,
+      "last_generated_ms": 7560,
+      "displayed_frame_ms": 7120,
+      "timeline_ms": 7152,
+      "video_lag_ms": 32
+    },
+    {
+      "generated_frames": 215,
+      "last_generated_ms": 8560,
+      "displayed_frame_ms": 8120,
+      "timeline_ms": 8154,
+      "video_lag_ms": 34
+    },
+    {
+      "generated_frames": 239,
+      "last_generated_ms": 9520,
+      "displayed_frame_ms": 9120,
+      "timeline_ms": 9155,
+      "video_lag_ms": 35
+    },
+    {
+      "generated_frames": 265,
+      "last_generated_ms": 10560,
+      "displayed_frame_ms": 10120,
+      "timeline_ms": 10157,
+      "video_lag_ms": 37
+    },
+    {
+      "generated_frames": 289,
+      "last_generated_ms": 11520,
+      "displayed_frame_ms": 11120,
+      "timeline_ms": 11158,
+      "video_lag_ms": 38
+    },
+    {
+      "generated_frames": 314,
+      "last_generated_ms": 12520,
+      "displayed_frame_ms": 12120,
+      "timeline_ms": 12159,
+      "video_lag_ms": 39
+    },
+    {
+      "generated_frames": 340,
+      "last_generated_ms": 13560,
+      "displayed_frame_ms": 13120,
+      "timeline_ms": 13161,
+      "video_lag_ms": 41
+    },
+    {
+      "generated_frames": 365,
+      "last_generated_ms": 14560,
+      "displayed_frame_ms": 14120,
+      "timeline_ms": 14163,
+      "video_lag_ms": 43
+    },
+    {
+      "generated_frames": 390,
+      "last_generated_ms": 15560,
+      "displayed_frame_ms": 15120,
+      "timeline_ms": 15165,
+      "video_lag_ms": 45
+    },
+    {
+      "generated_frames": 414,
+      "last_generated_ms": 16520,
+      "displayed_frame_ms": 16120,
+      "timeline_ms": 16167,
+      "video_lag_ms": 47
+    },
+    {
+      "generated_frames": 440,
+      "last_generated_ms": 17560,
+      "displayed_frame_ms": 17120,
+      "timeline_ms": 17171,
+      "video_lag_ms": 51
+    },
+    {
+      "generated_frames": 465,
+      "last_generated_ms": 18560,
+      "displayed_frame_ms": 18120,
+      "timeline_ms": 18175,
+      "video_lag_ms": 55
+    },
+    {
+      "generated_frames": 488,
+      "last_generated_ms": 19480,
+      "displayed_frame_ms": 19160,
+      "timeline_ms": 19177,
+      "video_lag_ms": 17
+    },
+    {
+      "generated_frames": 514,
+      "last_generated_ms": 20520,
+      "displayed_frame_ms": 20160,
+      "timeline_ms": 20179,
+      "video_lag_ms": 19
+    },
+    {
+      "generated_frames": 536,
+      "last_generated_ms": 21400,
+      "displayed_frame_ms": 21160,
+      "timeline_ms": 21180,
+      "video_lag_ms": 20
+    },
+    {
+      "generated_frames": 563,
+      "last_generated_ms": 22480,
+      "displayed_frame_ms": 22160,
+      "timeline_ms": 22182,
+      "video_lag_ms": 22
+    },
+    {
+      "generated_frames": 590,
+      "last_generated_ms": 23560,
+      "displayed_frame_ms": 23160,
+      "timeline_ms": 23183,
+      "video_lag_ms": 23
+    },
+    {
+      "generated_frames": 617,
+      "last_generated_ms": 24640,
+      "displayed_frame_ms": 24160,
+      "timeline_ms": 24185,
+      "video_lag_ms": 25
+    },
+    {
+      "generated_frames": 642,
+      "last_generated_ms": 25640,
+      "displayed_frame_ms": 25160,
+      "timeline_ms": 25187,
+      "video_lag_ms": 27
+    },
+    {
+      "generated_frames": 665,
+      "last_generated_ms": 26560,
+      "displayed_frame_ms": 26160,
+      "timeline_ms": 26190,
+      "video_lag_ms": 30
+    },
+    {
+      "generated_frames": 690,
+      "last_generated_ms": 27560,
+      "displayed_frame_ms": 27160,
+      "timeline_ms": 27192,
+      "video_lag_ms": 32
+    },
+    {
+      "generated_frames": 715,
+      "last_generated_ms": 28560,
+      "displayed_frame_ms": 28160,
+      "timeline_ms": 28194,
+      "video_lag_ms": 34
+    },
+    {
+      "generated_frames": 740,
+      "last_generated_ms": 29560,
+      "displayed_frame_ms": 29160,
+      "timeline_ms": 29195,
+      "video_lag_ms": 35
+    },
+    {
+      "generated_frames": 764,
+      "last_generated_ms": 30520,
+      "displayed_frame_ms": 30160,
+      "timeline_ms": 30197,
+      "video_lag_ms": 37
+    },
+    {
+      "generated_frames": 787,
+      "last_generated_ms": 31440,
+      "displayed_frame_ms": 31160,
+      "timeline_ms": 31198,
+      "video_lag_ms": 38
+    },
+    {
+      "generated_frames": 813,
+      "last_generated_ms": 32480,
+      "displayed_frame_ms": 32160,
+      "timeline_ms": 32205,
+      "video_lag_ms": 45
+    },
+    {
+      "generated_frames": 840,
+      "last_generated_ms": 33560,
+      "displayed_frame_ms": 33160,
+      "timeline_ms": 33208,
+      "video_lag_ms": 48
+    },
+    {
+      "generated_frames": 863,
+      "last_generated_ms": 34480,
+      "displayed_frame_ms": 34160,
+      "timeline_ms": 34210,
+      "video_lag_ms": 50
+    },
+    {
+      "generated_frames": 889,
+      "last_generated_ms": 35520,
+      "displayed_frame_ms": 35160,
+      "timeline_ms": 35214,
+      "video_lag_ms": 54
+    },
+    {
+      "generated_frames": 915,
+      "last_generated_ms": 36560,
+      "displayed_frame_ms": 36200,
+      "timeline_ms": 36220,
+      "video_lag_ms": 20
+    },
+    {
+      "generated_frames": 941,
+      "last_generated_ms": 37600,
+      "displayed_frame_ms": 37200,
+      "timeline_ms": 37224,
+      "video_lag_ms": 24
+    },
+    {
+      "generated_frames": 965,
+      "last_generated_ms": 38560,
+      "displayed_frame_ms": 38200,
+      "timeline_ms": 38229,
+      "video_lag_ms": 29
+    },
+    {
+      "generated_frames": 991,
+      "last_generated_ms": 39600,
+      "displayed_frame_ms": 39200,
+      "timeline_ms": 39235,
+      "video_lag_ms": 35
+    },
+    {
+      "generated_frames": 1015,
+      "last_generated_ms": 40560,
+      "displayed_frame_ms": 40200,
+      "timeline_ms": 40241,
+      "video_lag_ms": 41
+    },
+    {
+      "generated_frames": 1041,
+      "last_generated_ms": 41600,
+      "displayed_frame_ms": 41200,
+      "timeline_ms": 41247,
+      "video_lag_ms": 47
+    },
+    {
+      "generated_frames": 1067,
+      "last_generated_ms": 42640,
+      "displayed_frame_ms": 42200,
+      "timeline_ms": 42253,
+      "video_lag_ms": 53
+    },
+    {
+      "generated_frames": 1092,
+      "last_generated_ms": 43640,
+      "displayed_frame_ms": 43240,
+      "timeline_ms": 43261,
+      "video_lag_ms": 21
+    },
+    {
+      "generated_frames": 1116,
+      "last_generated_ms": 44600,
+      "displayed_frame_ms": 44240,
+      "timeline_ms": 44264,
+      "video_lag_ms": 24
+    },
+    {
+      "generated_frames": 1144,
+      "last_generated_ms": 45720,
+      "displayed_frame_ms": 45240,
+      "timeline_ms": 45268,
+      "video_lag_ms": 28
+    },
+    {
+      "generated_frames": 1167,
+      "last_generated_ms": 46640,
+      "displayed_frame_ms": 46240,
+      "timeline_ms": 46273,
+      "video_lag_ms": 33
+    },
+    {
+      "generated_frames": 1191,
+      "last_generated_ms": 47600,
+      "displayed_frame_ms": 47240,
+      "timeline_ms": 47277,
+      "video_lag_ms": 37
+    },
+    {
+      "generated_frames": 1217,
+      "last_generated_ms": 48640,
+      "displayed_frame_ms": 48240,
+      "timeline_ms": 48279,
+      "video_lag_ms": 39
+    },
+    {
+      "generated_frames": 1243,
+      "last_generated_ms": 49680,
+      "displayed_frame_ms": 49240,
+      "timeline_ms": 49283,
+      "video_lag_ms": 43
+    },
+    {
+      "generated_frames": 1269,
+      "last_generated_ms": 50720,
+      "displayed_frame_ms": 50240,
+      "timeline_ms": 50290,
+      "video_lag_ms": 50
+    },
+    {
+      "generated_frames": 1293,
+      "last_generated_ms": 51680,
+      "displayed_frame_ms": 51240,
+      "timeline_ms": 51294,
+      "video_lag_ms": 54
+    },
+    {
+      "generated_frames": 1316,
+      "last_generated_ms": 52600,
+      "displayed_frame_ms": 52240,
+      "timeline_ms": 52298,
+      "video_lag_ms": 58
+    },
+    {
+      "generated_frames": 1339,
+      "last_generated_ms": 53520,
+      "displayed_frame_ms": 53280,
+      "timeline_ms": 53302,
+      "video_lag_ms": 22
+    },
+    {
+      "generated_frames": 1365,
+      "last_generated_ms": 54560,
+      "displayed_frame_ms": 54280,
+      "timeline_ms": 54308,
+      "video_lag_ms": 28
+    },
+    {
+      "generated_frames": 1391,
+      "last_generated_ms": 55600,
+      "displayed_frame_ms": 55280,
+      "timeline_ms": 55312,
+      "video_lag_ms": 32
+    },
+    {
+      "generated_frames": 1416,
+      "last_generated_ms": 56600,
+      "displayed_frame_ms": 56280,
+      "timeline_ms": 56315,
+      "video_lag_ms": 35
+    },
+    {
+      "generated_frames": 1441,
+      "last_generated_ms": 57600,
+      "displayed_frame_ms": 57280,
+      "timeline_ms": 57317,
+      "video_lag_ms": 37
+    },
+    {
+      "generated_frames": 1467,
+      "last_generated_ms": 58640,
+      "displayed_frame_ms": 58280,
+      "timeline_ms": 58319,
+      "video_lag_ms": 39
+    },
+    {
+      "generated_frames": 1493,
+      "last_generated_ms": 59680,
+      "displayed_frame_ms": 59280,
+      "timeline_ms": 59324,
+      "video_lag_ms": 44
+    },
+    {
+      "generated_frames": 1516,
+      "last_generated_ms": 60600,
+      "displayed_frame_ms": 60280,
+      "timeline_ms": 60328,
+      "video_lag_ms": 48
+    },
+    {
+      "generated_frames": 1540,
+      "last_generated_ms": 61560,
+      "displayed_frame_ms": 61280,
+      "timeline_ms": 61332,
+      "video_lag_ms": 52
+    },
+    {
+      "generated_frames": 1563,
+      "last_generated_ms": 62480,
+      "displayed_frame_ms": 62280,
+      "timeline_ms": 62335,
+      "video_lag_ms": 55
+    },
+    {
+      "generated_frames": 1589,
+      "last_generated_ms": 63520,
+      "displayed_frame_ms": 63320,
+      "timeline_ms": 63339,
+      "video_lag_ms": 19
+    },
+    {
+      "generated_frames": 1614,
+      "last_generated_ms": 64520,
+      "displayed_frame_ms": 64320,
+      "timeline_ms": 64341,
+      "video_lag_ms": 21
+    },
+    {
+      "generated_frames": 1641,
+      "last_generated_ms": 65600,
+      "displayed_frame_ms": 65320,
+      "timeline_ms": 65345,
+      "video_lag_ms": 25
+    },
+    {
+      "generated_frames": 1665,
+      "last_generated_ms": 66560,
+      "displayed_frame_ms": 66320,
+      "timeline_ms": 66349,
+      "video_lag_ms": 29
+    },
+    {
+      "generated_frames": 1693,
+      "last_generated_ms": 67680,
+      "displayed_frame_ms": 67320,
+      "timeline_ms": 67351,
+      "video_lag_ms": 31
+    },
+    {
+      "generated_frames": 1719,
+      "last_generated_ms": 68720,
+      "displayed_frame_ms": 68320,
+      "timeline_ms": 68354,
+      "video_lag_ms": 34
+    },
+    {
+      "generated_frames": 1745,
+      "last_generated_ms": 69760,
+      "displayed_frame_ms": 69320,
+      "timeline_ms": 69358,
+      "video_lag_ms": 38
+    },
+    {
+      "generated_frames": 1770,
+      "last_generated_ms": 70760,
+      "displayed_frame_ms": 70320,
+      "timeline_ms": 70360,
+      "video_lag_ms": 40
+    },
+    {
+      "generated_frames": 1794,
+      "last_generated_ms": 71720,
+      "displayed_frame_ms": 71320,
+      "timeline_ms": 71361,
+      "video_lag_ms": 41
+    },
+    {
+      "generated_frames": 1820,
+      "last_generated_ms": 72760,
+      "displayed_frame_ms": 72320,
+      "timeline_ms": 72363,
+      "video_lag_ms": 43
+    },
+    {
+      "generated_frames": 1844,
+      "last_generated_ms": 73720,
+      "displayed_frame_ms": 73320,
+      "timeline_ms": 73365,
+      "video_lag_ms": 45
+    },
+    {
+      "generated_frames": 1869,
+      "last_generated_ms": 74720,
+      "displayed_frame_ms": 74320,
+      "timeline_ms": 74370,
+      "video_lag_ms": 50
+    },
+    {
+      "generated_frames": 1895,
+      "last_generated_ms": 75760,
+      "displayed_frame_ms": 75320,
+      "timeline_ms": 75375,
+      "video_lag_ms": 55
+    },
+    {
+      "generated_frames": 1920,
+      "last_generated_ms": 76760,
+      "displayed_frame_ms": 76360,
+      "timeline_ms": 76377,
+      "video_lag_ms": 17
+    },
+    {
+      "generated_frames": 1945,
+      "last_generated_ms": 77760,
+      "displayed_frame_ms": 77360,
+      "timeline_ms": 77379,
+      "video_lag_ms": 19
+    },
+    {
+      "generated_frames": 1967,
+      "last_generated_ms": 78640,
+      "displayed_frame_ms": 78360,
+      "timeline_ms": 78381,
+      "video_lag_ms": 21
+    },
+    {
+      "generated_frames": 1992,
+      "last_generated_ms": 79640,
+      "displayed_frame_ms": 79360,
+      "timeline_ms": 79385,
+      "video_lag_ms": 25
+    },
+    {
+      "generated_frames": 2017,
+      "last_generated_ms": 80640,
+      "displayed_frame_ms": 80360,
+      "timeline_ms": 80390,
+      "video_lag_ms": 30
+    },
+    {
+      "generated_frames": 2044,
+      "last_generated_ms": 81720,
+      "displayed_frame_ms": 81360,
+      "timeline_ms": 81396,
+      "video_lag_ms": 36
+    },
+    {
+      "generated_frames": 2068,
+      "last_generated_ms": 82680,
+      "displayed_frame_ms": 82360,
+      "timeline_ms": 82400,
+      "video_lag_ms": 40
+    },
+    {
+      "generated_frames": 2094,
+      "last_generated_ms": 83720,
+      "displayed_frame_ms": 83360,
+      "timeline_ms": 83403,
+      "video_lag_ms": 43
+    },
+    {
+      "generated_frames": 2120,
+      "last_generated_ms": 84760,
+      "displayed_frame_ms": 84360,
+      "timeline_ms": 84409,
+      "video_lag_ms": 49
+    },
+    {
+      "generated_frames": 2145,
+      "last_generated_ms": 85760,
+      "displayed_frame_ms": 85360,
+      "timeline_ms": 85413,
+      "video_lag_ms": 53
+    },
+    {
+      "generated_frames": 2171,
+      "last_generated_ms": 86800,
+      "displayed_frame_ms": 86400,
+      "timeline_ms": 86418,
+      "video_lag_ms": 18
+    },
+    {
+      "generated_frames": 2195,
+      "last_generated_ms": 87760,
+      "displayed_frame_ms": 87400,
+      "timeline_ms": 87423,
+      "video_lag_ms": 23
+    },
+    {
+      "generated_frames": 2221,
+      "last_generated_ms": 88800,
+      "displayed_frame_ms": 88400,
+      "timeline_ms": 88427,
+      "video_lag_ms": 27
+    },
+    {
+      "generated_frames": 2246,
+      "last_generated_ms": 89800,
+      "displayed_frame_ms": 89400,
+      "timeline_ms": 89431,
+      "video_lag_ms": 31
+    },
+    {
+      "generated_frames": 2271,
+      "last_generated_ms": 90800,
+      "displayed_frame_ms": 90400,
+      "timeline_ms": 90437,
+      "video_lag_ms": 37
+    },
+    {
+      "generated_frames": 2296,
+      "last_generated_ms": 91800,
+      "displayed_frame_ms": 91400,
+      "timeline_ms": 91441,
+      "video_lag_ms": 41
+    },
+    {
+      "generated_frames": 2321,
+      "last_generated_ms": 92800,
+      "displayed_frame_ms": 92400,
+      "timeline_ms": 92445,
+      "video_lag_ms": 45
+    },
+    {
+      "generated_frames": 2345,
+      "last_generated_ms": 93760,
+      "displayed_frame_ms": 93400,
+      "timeline_ms": 93450,
+      "video_lag_ms": 50
+    },
+    {
+      "generated_frames": 2370,
+      "last_generated_ms": 94760,
+      "displayed_frame_ms": 94400,
+      "timeline_ms": 94456,
+      "video_lag_ms": 56
+    },
+    {
+      "generated_frames": 2395,
+      "last_generated_ms": 95760,
+      "displayed_frame_ms": 95440,
+      "timeline_ms": 95464,
+      "video_lag_ms": 24
+    },
+    {
+      "generated_frames": 2420,
+      "last_generated_ms": 96760,
+      "displayed_frame_ms": 96440,
+      "timeline_ms": 96467,
+      "video_lag_ms": 27
+    },
+    {
+      "generated_frames": 2441,
+      "last_generated_ms": 97600,
+      "displayed_frame_ms": 97440,
+      "timeline_ms": 97471,
+      "video_lag_ms": 31
+    },
+    {
+      "generated_frames": 2468,
+      "last_generated_ms": 98680,
+      "displayed_frame_ms": 98440,
+      "timeline_ms": 98474,
+      "video_lag_ms": 34
+    },
+    {
+      "generated_frames": 2492,
+      "last_generated_ms": 99640,
+      "displayed_frame_ms": 99440,
+      "timeline_ms": 99479,
+      "video_lag_ms": 39
+    },
+    {
+      "generated_frames": 2518,
+      "last_generated_ms": 100680,
+      "displayed_frame_ms": 100440,
+      "timeline_ms": 100482,
+      "video_lag_ms": 42
+    },
+    {
+      "generated_frames": 2545,
+      "last_generated_ms": 101760,
+      "displayed_frame_ms": 101440,
+      "timeline_ms": 101485,
+      "video_lag_ms": 45
+    },
+    {
+      "generated_frames": 2568,
+      "last_generated_ms": 102680,
+      "displayed_frame_ms": 102440,
+      "timeline_ms": 102490,
+      "video_lag_ms": 50
+    },
+    {
+      "generated_frames": 2593,
+      "last_generated_ms": 103680,
+      "displayed_frame_ms": 103440,
+      "timeline_ms": 103493,
+      "video_lag_ms": 53
+    },
+    {
+      "generated_frames": 2619,
+      "last_generated_ms": 104720,
+      "displayed_frame_ms": 104440,
+      "timeline_ms": 104495,
+      "video_lag_ms": 55
+    },
+    {
+      "generated_frames": 2645,
+      "last_generated_ms": 105760,
+      "displayed_frame_ms": 105480,
+      "timeline_ms": 105499,
+      "video_lag_ms": 19
+    },
+    {
+      "generated_frames": 2669,
+      "last_generated_ms": 106720,
+      "displayed_frame_ms": 106480,
+      "timeline_ms": 106501,
+      "video_lag_ms": 21
+    },
+    {
+      "generated_frames": 2694,
+      "last_generated_ms": 107720,
+      "displayed_frame_ms": 107480,
+      "timeline_ms": 107503,
+      "video_lag_ms": 23
+    },
+    {
+      "generated_frames": 2718,
+      "last_generated_ms": 108680,
+      "displayed_frame_ms": 108480,
+      "timeline_ms": 108506,
+      "video_lag_ms": 26
+    },
+    {
+      "generated_frames": 2744,
+      "last_generated_ms": 109720,
+      "displayed_frame_ms": 109480,
+      "timeline_ms": 109509,
+      "video_lag_ms": 29
+    },
+    {
+      "generated_frames": 2770,
+      "last_generated_ms": 110760,
+      "displayed_frame_ms": 110480,
+      "timeline_ms": 110515,
+      "video_lag_ms": 35
+    },
+    {
+      "generated_frames": 2797,
+      "last_generated_ms": 111840,
+      "displayed_frame_ms": 111480,
+      "timeline_ms": 111519,
+      "video_lag_ms": 39
+    },
+    {
+      "generated_frames": 2823,
+      "last_generated_ms": 112880,
+      "displayed_frame_ms": 112480,
+      "timeline_ms": 112522,
+      "video_lag_ms": 42
+    },
+    {
+      "generated_frames": 2848,
+      "last_generated_ms": 113880,
+      "displayed_frame_ms": 113480,
+      "timeline_ms": 113526,
+      "video_lag_ms": 46
+    },
+    {
+      "generated_frames": 2874,
+      "last_generated_ms": 114920,
+      "displayed_frame_ms": 114480,
+      "timeline_ms": 114527,
+      "video_lag_ms": 47
+    },
+    {
+      "generated_frames": 2898,
+      "last_generated_ms": 115880,
+      "displayed_frame_ms": 115480,
+      "timeline_ms": 115529,
+      "video_lag_ms": 49
+    },
+    {
+      "generated_frames": 2923,
+      "last_generated_ms": 116880,
+      "displayed_frame_ms": 116480,
+      "timeline_ms": 116533,
+      "video_lag_ms": 53
+    },
+    {
+      "generated_frames": 2946,
+      "last_generated_ms": 117800,
+      "displayed_frame_ms": 117520,
+      "timeline_ms": 117538,
+      "video_lag_ms": 18
+    },
+    {
+      "generated_frames": 2971,
+      "last_generated_ms": 118800,
+      "displayed_frame_ms": 118520,
+      "timeline_ms": 118542,
+      "video_lag_ms": 22
+    },
+    {
+      "generated_frames": 2994,
+      "last_generated_ms": 119720,
+      "displayed_frame_ms": 119520,
+      "timeline_ms": 119545,
+      "video_lag_ms": 25
+    }
+  ],
+  "speech_question_transcript": " Two plus three equals five. I'm a large language model developed by Alibaba's Tongyi Lab, named Q uant um Ultra. I can answer questions, write stories, create text, and more. How can I help you today? Two plus three equals five. I ’m a large language model developed by Ali baba’s Tongyi Lab, called Q uantum Ultra. I can answer questions, write stories, and generate text. What do you need help with? Two plus three equals five. I ’m a large language model developed by Alibaba’s To ngyi Lab, named Q uantum Ultra. I can answer questions, write stories, and create text. What do you need help with? Two plus three equals five. I ’m a large language model developed by Alibaba’s To ngyi Lab, named Quantum Ultra. I can answer questions, write stories, and create text. What do you need help with? Two plus three equals five. I’ m a large language model developed by Alibaba’s To ngyi Lab, named Q uantum Ultra. I can answer questions, write stories, and create text. What do you need help with? Two plus three equals five. ",
+  "ordinary_calls": 4,
+  "finished_utc": "2026-11-17T07:50:35.441811+00:00"
+}

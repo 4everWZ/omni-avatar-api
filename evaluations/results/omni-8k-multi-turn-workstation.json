@@ -1,0 +1,21 @@
+{
+  "started_utc": "2026-11-17T08:25:59.333476+00:00",
+  "metrics_collector_host": "belal-PC",
+  "scope": "omni_8k_multi_turn_boundary",
+  "requested_seconds": 1,
+  "state": "passed",
+  "checks": [
+    {
+      "name": "omni_near_full_multi_turn_recall",
+      "input_tokens": 7928,
+      "messages": 20
+    },
+    {
+      "name": "omni_over_window_rejected",
+      "input_tokens": 9975,
+      "status": 400
+    }
+  ],
+  "samples": [],
+  "note": "Chat history submitted by caller; not permanent Realtime memory."
+}

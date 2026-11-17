@@ -1,0 +1,19 @@
+{
+  "started_utc": "2026-11-17T06:48:22.885879+00:00",
+  "metrics_collector_host": "belal-PC",
+  "scope": "post_publish_responses_stream_lifecycle",
+  "requested_seconds": 1,
+  "state": "passed",
+  "checks": [
+    {
+      "name": "foreground_stream_disconnect_cancels",
+      "next_response_seconds": 0.09439953789114952
+    },
+    {
+      "name": "background_stream_disconnect_preserves_quota",
+      "next_response_seconds": 0.07147212000563741
+    }
+  ],
+  "samples": [],
+  "finished_utc": "2026-11-17T06:48:28.456265+00:00"
+}

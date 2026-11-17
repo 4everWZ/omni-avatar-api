@@ -38,13 +38,20 @@ def fetch(model_id, revision, path):
     temporary.replace(path / ".snapshot-ready")
 
 
-def checkpoint_chat_window(path):
+def checkpoint_chat_window(path, expected_quantization="awq"):
     config = json.loads((path / "config.json").read_text(encoding="utf-8"))
-    if config.get("quantization_config", {}).get("quant_method") != "awq":
-        raise ValueError("The MiniCPM-o profile requires the AWQ checkpoint")
+    quantization = config.get("quantization_config") or {}
+    if expected_quantization == "awq":
+        matches = quantization.get("quant_method") == "awq"
+    elif expected_quantization == "none":
+        matches = not quantization and config.get("torch_dtype") == "bfloat16"
+    else:
+        raise ValueError("OMNI_EXPECTED_QUANTIZATION must be awq or none")
+    if not matches:
+        raise ValueError(f"Checkpoint does not match expected quantization: {expected_quantization}")
     window = config.get("max_position_embeddings")
     if type(window) is not int or window < 4096:
-        raise ValueError("The AWQ checkpoint did not report a valid Chat context")
+        raise ValueError("The checkpoint did not report a valid Chat context")
     return window
 
 
@@ -63,7 +70,11 @@ def serve(model_id, revision, path):
     overlay = yaml.safe_load(overlay_path.read_text(encoding="utf-8"))
     overlay["base_config"] = str(upstream)
     thinker = next(stage for stage in overlay["stages"] if stage["stage_id"] == 0)
-    thinker["max_model_len"] = checkpoint_chat_window(path)
+    native_window = checkpoint_chat_window(path, os.environ.get("OMNI_EXPECTED_QUANTIZATION", "awq"))
+    window = int(os.environ.get("OMNI_MAX_MODEL_LEN", native_window))
+    if not 4096 <= window <= native_window:
+        raise ValueError("OMNI_MAX_MODEL_LEN must be within the checkpoint window and at least 4096")
+    thinker["max_model_len"] = window
     with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", suffix=".yaml", delete=False) as deploy:
         yaml.safe_dump(overlay, deploy)
     cmd = [
