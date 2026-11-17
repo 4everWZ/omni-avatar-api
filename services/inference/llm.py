@@ -45,7 +45,7 @@ def serve(model, revision, path):
     command = [sys.executable, '-m', 'vllm.entrypoints.openai.api_server',
                '--model', str(path), '--served-model-name', model,
                '--host', '0.0.0.0', '--port', '8000', '--dtype', 'bfloat16',
-               '--max-model-len', str(window), '--max-num-seqs', '1',
+               '--max-model-len', str(window), '--max-num-seqs', os.environ.get('LLM_MAX_NUM_SEQS', '4'),
                '--max-num-batched-tokens', '2048', '--enforce-eager',
                '--language-model-only', '--no-enable-prefix-caching',
                '--gpu-memory-utilization', '0.90',

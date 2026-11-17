@@ -9,7 +9,7 @@ Applications own their users, conversation memory, agent orchestration and tool 
 ## Features
 
 - **Real-time multimodal assistant:** MiniCPM-o Chat Completions and native duplex Realtime with an 8K recent-context window.
-- **Long-context inference:** a separate Qwen3.5 backend with Responses, incremental SSE, structured output and function-call output. Chat Completions remains available for compatible clients.
+- **Long-context inference:** a separate Qwen3.5 backend with a 262K per-request window, up to four generation sequences under a shared token budget, Responses, incremental SSE, structured output and function-call output. Chat Completions remains available for compatible clients.
 - **Pluggable avatars:** built-in Ava 2D, or a reference-image-driven Ditto talking portrait; audio and video are delivered over WHEP with interruption and generation handling.
 - **Shared infrastructure:** per-application bearer credentials, independent backend admission, bounded queues, cancellation and caller-owned response continuation.
 - **Pinned deployments:** model revisions and inference images are fixed; model downloads are separate from offline serving.

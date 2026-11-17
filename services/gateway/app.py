@@ -10,7 +10,8 @@ from time import monotonic
 from contextlib import AsyncExitStack
 
 from aiohttp import ClientError, ClientSession, ClientTimeout, ClientWSTimeout, DummyCookieJar, UnixConnector, WSMsgType, web
-from .admission import Admission, Busy
+from .admission import Admission, Busy, BudgetExceeded
+from .token_budget import reservation, ReservationRejected
 from .config import Config, MODEL_ALIAS
 from .avatar_proxy import AvatarProxy
 from .responses_proxy import ResponsesProxy
@@ -100,6 +101,8 @@ class Gateway:
             return await self.responses.handle(request)
         except Busy:
             return failure(429, 'gateway_busy', 'The inference lane is at capacity.', headers={'Retry-After': '1'})
+        except ReservationRejected as error:
+            return error.response()
 
     async def mode(self, request):
         if request.method == "PUT":
@@ -205,7 +208,9 @@ class Gateway:
             return error
         outgoing = None
         try:
-            async with self.admission.hold("chat"), asyncio.timeout(self.config.request_timeout):
+            async with asyncio.timeout(self.config.request_timeout):
+                budget = await reservation(self, 'chat', payload)
+            async with self.admission.hold("chat", **budget), asyncio.timeout(self.config.request_timeout):
                 async with self.engine.post("/v1/chat/completions", json=payload, allow_redirects=False) as upstream:
                     content_type = upstream.headers.get("Content-Type", "application/json")
                     accepted = 200 <= upstream.status < 300
@@ -225,6 +230,10 @@ class Gateway:
                     return outgoing
         except Busy:
             return failure(429, "gateway_busy", "The inference lane is at capacity.", headers={"Retry-After": "1"})
+        except BudgetExceeded as error:
+            return failure(400, 'request_budget_exceeded', str(error))
+        except ReservationRejected as error:
+            return error.response()
         except (TimeoutError, ClientError) as error:
             if outgoing is not None and outgoing.prepared:
                 if request.transport:

@@ -39,6 +39,7 @@ class Config:
     public_prefix: str = ""
     realtime_enabled: bool = True
     prompt_tokens_path: str = "/v1/chat/prompt_tokens"
+    token_budget: int = 0
 
     @classmethod
     def from_env(cls):
@@ -98,4 +99,6 @@ class Config:
                        queue_limit=override("LLM_QUEUE_LIMIT", self.queue_limit, int),
                        queue_timeout=override("LLM_QUEUE_TIMEOUT", self.queue_timeout),
                        request_timeout=override("LLM_REQUEST_TIMEOUT", self.request_timeout),
-                       batch_cap=1, avatar_url="", avatar_token="", avatar_socket="")
+                       batch_cap=override("LLM_MAX_NUM_SEQS", 4, int),
+                       token_budget=override("LLM_TOKEN_BUDGET", 262144, int),
+                       avatar_url="", avatar_token="", avatar_socket="")

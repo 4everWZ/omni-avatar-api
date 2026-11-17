@@ -15,13 +15,14 @@ class BackendPolicyTest(unittest.TestCase):
                              queue_timeout=2, request_timeout=7)
         self.environment = {'LLM_ENGINE_URL': 'http://llm', 'LLM_MODEL_ID': 'text', 'LLM_CHECKPOINT': 'text'}
 
-    def test_text_policy_is_independent_without_adding_gpu_slots(self):
+    def test_text_policy_is_independent(self):
         with patch.dict(os.environ, self.environment | {'LLM_QUEUE_LIMIT': '32', 'LLM_QUEUE_TIMEOUT': '120',
                                                        'LLM_REQUEST_TIMEOUT': '900'}, clear=True):
             child = self.parent.text_backend()
         self.assertEqual((child.queue_limit, child.queue_timeout, child.request_timeout), (32, 120, 900))
         self.assertEqual((self.parent.queue_limit, self.parent.queue_timeout, self.parent.request_timeout), (9, 2, 7))
-        self.assertEqual(child.batch_cap, 1)
+        self.assertEqual(child.batch_cap, 4)
+        self.assertEqual(child.token_budget, 262144)
         self.assertFalse(child.realtime_enabled)
 
     def test_unset_or_empty_values_inherit(self):

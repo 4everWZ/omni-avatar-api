@@ -42,4 +42,4 @@ Omni、后台 LLM 和 Avatar 全部部署在当前双 3090 工作站；不将 Av
 
 Omni 7,928-token／20 消息的多轮早期事实检索及超限 400 已通过；相关 API 适配回归 3 项通过。后台 LLM 的官方 Python SDK 3.35.1 typed streaming、续接和查询也通过。[8K](../../evaluations/results/omni-8k-multi-turn-workstation.json) · [Responses SDK](../../evaluations/results/responses-sdk-workstation.json)。
 
-外部任务按 Swarm／orchestrator 思路组织，当前优先交付推理 provider。保持模型与显存配置；补充 LLM 独立排队／总期限配置，并验证两个调用方分支的历史隔离与并发 SSE 提交。编排、工具执行、共享记忆与工作区由应用项目持有，具体框架集成尚未开展。
+外部任务按 Swarm／orchestrator 思路组织，当前优先交付推理 provider。用户新增目标：保留单请求 262144，先验收 4 路较短请求实际同时生成，再以总 token 预算控制长短混跑；四路满窗口需另行量化或硬件分工，不能用异步排队冒充并行。先在既有 8bit 权重与 9 GiB KV 配置上验证四序列和精确预算准入，如不足再尝试进一步量化。编排、工具执行、共享记忆与工作区由应用项目持有，具体框架集成尚未开展。
