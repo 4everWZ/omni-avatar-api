@@ -1,0 +1,18 @@
+# Evaluation candidate: append after infra-workstation.compose.yml.
+# Keep model identity aligned across fetching, engine and gateway.
+x-bf16-model: &bf16-model
+  OMNI_MODEL_ID: openbmb/MiniCPM-o-4_5
+  OMNI_CHECKPOINT: fb09628e98b1f55d8d5b863e0eccfcdd11bff499
+
+services:
+  model-fetch:
+    environment: *bf16-model
+  omni-engine:
+    environment:
+      <<: *bf16-model
+      OMNI_EXPECTED_QUANTIZATION: none
+      OMNI_DEPLOY_CONFIG: /opt/tuber-omni/minicpmo-workstation-bf16.yaml
+    volumes:
+      - ./engine/minicpmo-workstation-bf16.yaml:/opt/tuber-omni/minicpmo-workstation-bf16.yaml:ro
+  omni-gateway:
+    environment: *bf16-model

@@ -49,4 +49,6 @@ docker compose -f infra-compose.yml -f infra-workstation.compose.yml -f infra-av
 
 当前近 4 万 tokens 的长文检索失败：原配置空答或产生无关重复文本。提高生成预算、启用思考、关闭异步调度或整段预填充均未恢复答案；自动 KV 精度的 Triton／FlashAttention 对照出现持续 CUDA 等待。目标机现已恢复原工作站配置，未采用这些诊断覆盖。[原配置失败证据](../evaluations/results/omni-workstation-int4.json) · [诊断结果](../evaluations/results/omni-workstation-kv-probes.json)。
 
+用户已确认继续评估官方非 AWQ BF16 权重。候选覆盖为 `infra-workstation-bf16.compose.yml`，应叠加在 `infra-workstation.compose.yml` 之后、`infra-avatar.compose.yml` 之前。它同时固定下载器、引擎和网关的模型身份为 `openbmb/MiniCPM-o-4_5@fb09628e98b1f55d8d5b863e0eccfcdd11bff499`，明确校验非量化 BF16 配置；沿用原窗口、阶段分工和 INT4 KV，只增加 GPU 0 的内存预算。使用相同文件组合执行 `config --quiet`、`build omni-engine`、`--profile assets run --rm model-fetch` 和 `up -d`。候选尚未通过长文和共驻验收，不作为已验收默认值。回退时去掉 BF16 覆盖并以原三文件组合执行 `up -d`；两个快照各自保留。
+
 因此整体验收未通过；两小时负载、浏览器麦克风／屏幕的完整交互、插话与原生恢复、客户端渲染故障降级、可信 HTTPS 入口及数字人阶段仍待完成。后续推理基线选择见[当前计划](plans/avatar-workstation.md)。早期 Jetson 结果见[历史 AGX 证据](https://github.com/4everWZ/Tuber_Studio/blob/main/evaluations/results/omni-deployment-20261116.md)。
