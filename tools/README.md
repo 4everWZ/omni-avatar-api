@@ -17,6 +17,6 @@ python tools/qualify_inference.py --env .env --seconds 1200 --report tmp/inferen
 
 `reference_minicpmo_text.py` 是长文定位工具：只读取同一官方 BF16 快照的 `llm.*` 权重，严格加载 Qwen3 文本骨干，用 Transformers SDPA、BF16 KV 和贪心解码运行短问答及相同的 39,932-token 检索。它按层分布到两张 GPU；使用现有引擎镜像中的 PyTorch、Transformers、Accelerate 与 safetensors，不需修改宿主依赖。运行前停止占 GPU 的引擎，挂载仓库与只读模型目录，用 `--gpus all`，结束后恢复原 Compose 服务。入口为 `python3 tools/reference_minicpmo_text.py --checkpoint /models/<revision> --report tmp/text-reference.json`。它不经过 Omni 的多模态编码器、服务调度或输出解析；`state=completed` 只表示完成测试，必须检查各 case 的 `correct`。该结果不替代 Omni API 或原生双工验收。
 
-`qualify_inference.py` 是当前分卡主线验证器：先检查 Omni 8192、LLM 262144 的模型配置、Omni 多轮事实、Responses 归属续接、约 22K-token 多轮历史、JSON Schema、function 输出与测试夹具回填、增量 SSE、后台取消和独立准入，再进行 1200 秒原生双工／Ava 2D 与每三十秒后台 Responses 请求。它不实现 Agent。已通过的实机结果见 [功能报告](../evaluations/results/inference-functional-workstation.json)；完整 262K 窗口质量不在该通过结论内。
+`qualify_inference.py` 是当前分卡主线验证器：先检查 Omni 8192、LLM 262144 的模型配置、Omni 约 7.9K-token 多轮早期事实与超限 400、Responses 归属续接、约 22K-token 多轮历史、JSON Schema、function 输出与测试夹具回填、增量 SSE、后台取消和独立准入，再进行 1200 秒原生双工／Ava 2D 与每三十秒后台 Responses 请求。它不实现 Agent。已通过的实机结果见 [功能报告](../evaluations/results/inference-functional-workstation.json)；完整 262K 窗口质量不在该通过结论内。
 
 `qualify_portrait.py --reference <单人PNG> --seconds 120 --report tmp/portrait-functional.json` 验证参考图上传、异步准备、跨调用方隔离、真实神经视频、原生语音绑定及后台 Responses 共驻。它按测试时长检查 25 fps 的实际生成总量、帧进度及共享音画时间线采样偏差、取消后的代次隔离与恢复和幂等释放。输出诊断帧保存在报告旁；`renderer.generated_frames` 来自神经帧接收计数，不以 WHEP 的重复画面凑数。短功能测试不证明持续满载 QoS 或物理扬声器播放。

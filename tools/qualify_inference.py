@@ -48,6 +48,39 @@ class InferenceQualification(Qualification):
         assert '红' in answer or 'red' in answer
         self.check('single_gpu_omni_vision_color_correct')
 
+    async def omni_context_checks(self):
+        def candidate(records):
+            messages = [{'role': 'system', 'content': '准确使用本次对话历史回答问题。'},
+                        {'role': 'user', 'content': '本项目的代号是蓝鲸5738，请记住。'},
+                        {'role': 'assistant', 'content': '收到，本项目代号蓝鲸5738。'}]
+            for turn in range(8):
+                rows = '\n'.join(f'任务{turn:02d}-{i:03d}：工位{(i*7+turn)%91}，零件数量{11+i*3}，'
+                                 f'状态已登记；批次T{turn:02d}{i:04d}。' for i in range(records))
+                messages.extend([{'role': 'user', 'content': f'第{turn+1}轮的任务记录如下：\n' + rows},
+                                 {'role': 'assistant', 'content': f'第{turn+1}轮任务已登记。'}])
+            messages.append({'role': 'user', 'content': '最初约定的项目代号是什么？只回答代号。'})
+            return {'model': 'omni-default', 'messages': messages, 'max_tokens': 128,
+                    'chat_template_kwargs': {'enable_thinking': False}}
+        low, high, body, count = 1, 64, None, 0
+        while low <= high:
+            middle = (low + high) // 2
+            current = candidate(middle)
+            measured = (await self.json('POST', '/v1/chat/prompt_tokens', json=current))['count']
+            if measured <= 7936:
+                body, count, low = current, measured, middle + 1
+            else:
+                high = middle - 1
+        assert body and count > 7400
+        reply = await self.json('POST', '/v1/chat/completions', json=body)
+        assert '5738' in reply['choices'][0]['message']['content']
+        self.check('omni_near_full_multi_turn_recall', input_tokens=count, messages=len(body['messages']))
+        overflow = candidate(high + 8)
+        count = (await self.json('POST', '/v1/chat/prompt_tokens', json=overflow))['count']
+        assert count + 128 > 8192
+        response = await self.request('POST', '/v1/chat/completions', json=overflow, expected=400)
+        response.release()
+        self.check('omni_over_window_rejected', input_tokens=count, status=400)
+
     async def chat_checks(self):
         for prefix, window in [('', 8192), ('/llm', 262144)]:
             health = await self.json('GET', prefix + '/healthz')
@@ -66,6 +99,7 @@ class InferenceQualification(Qualification):
         assert '5738' in reply['choices'][0]['message']['content']
         self.check('omni_multi_turn_history')
         await self.vision_check()
+        await self.omni_context_checks()
 
         first = await self.responses('记住项目代号是蓝鲸5738。只回答收到。')
         for method, path, options in [

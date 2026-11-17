@@ -85,6 +85,23 @@ def patch_chat_source(source):
 
 
 def patch_api_source(source):
+    source = _replace_once(
+        source,
+        'async def create_chat_completion(request: ChatCompletionRequest, raw_request: Request):\n',
+        'async def create_chat_completion(request: ChatCompletionRequest, raw_request: Request):\n'
+        '    from vllm.exceptions import VLLMValidationError\n',
+    )
+    source = _replace_once(
+        source,
+        '''        generator = await handler.create_chat_completion(request, raw_request)
+    except (EngineGenerateError, EngineDeadError) as exc:
+''',
+        '''        generator = await handler.create_chat_completion(request, raw_request)
+    except VLLMValidationError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except (EngineGenerateError, EngineDeadError) as exc:
+''',
+    )
     anchor = '@router.post(\n    "/v1/chat/completions",\n'
     return _replace_once(
         source,
@@ -92,6 +109,7 @@ def patch_api_source(source):
         """@router.post("/v1/chat/prompt_tokens", dependencies=[Depends(validate_json_request)])
 @with_cancellation
 async def count_chat_prompt_tokens(request: ChatCompletionRequest, raw_request: Request):
+    from vllm.exceptions import VLLMValidationError
     body = await raw_request.json()
     _validate_chat_completion_raw_body(body)
     extra_body = body.get("extra_body")
@@ -116,6 +134,8 @@ async def count_chat_prompt_tokens(request: ChatCompletionRequest, raw_request: 
         raise HTTPException(status_code=404, detail="The model does not support Chat Completions API")
     try:
         result = await handler._create_chat_completion(request, raw_request, count_only=True)
+    except VLLMValidationError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     except (EngineGenerateError, EngineDeadError) as exc:
         return _create_engine_error_json_response(raw_request, exc)
     if isinstance(result, ErrorResponse):

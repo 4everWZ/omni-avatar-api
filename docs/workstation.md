@@ -69,3 +69,5 @@ docker compose -f infra-compose.yml -f infra-workstation.compose.yml -f infra-av
 浏览器麦克风／屏幕仍使用 `http://localhost:18080` 的 SSH 隧道，或由 tailnet 管理员开启 Serve 后配置 HTTPS；直接私网 HTTP 地址供 API 客户端调用。
 
 已从另一 VPN 客户端验证两个模型卡、Responses 增量 SSE、准备形象查询及匿名拒绝，回环入口继续保留。[访问证据](../evaluations/results/vpn-api-workstation.json)。
+
+Omni 的 8K 多轮边界已验证：20 条消息、7,928 个输入 tokens 能找回早期事实；9,975-token 输入返回 400。固定引擎适配修正了上游将 `VLLMValidationError` 包装成 500 的行为，其他服务错误保持原状态。[上下文边界](../evaluations/results/omni-8k-multi-turn-workstation.json)。

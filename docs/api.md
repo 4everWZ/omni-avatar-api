@@ -13,6 +13,8 @@
 | `POST /v1/chat/prompt_tokens` | 文本按同一聊天模板计量，供需要精确上下文预算的客户端使用。 |
 | `GET /v1/realtime?duplex=1` | Realtime WebSocket。以 `session.created` 报告的能力确定输入模态、切片、字幕、打断、恢复和播放确认。 |
 
+Omni 已验证 20 条消息、7,928 个输入 tokens 的多轮历史检索；超限输入返回 400，调用方可先计量再选择保留的历史与记忆。计量接口允许计算超出窗口的文本，用于压缩预算。[8K 边界证据](../evaluations/results/omni-8k-multi-turn-workstation.json)。
+
 Bearer 鉴权、排队、取消、超时和管理接口由[网关规范](../gateway/README.md)维护。原生模型服务的协议和 Avatar 能力独立发布，调用应用根据各自会话实际协商。
 
 ## 后台 Responses
