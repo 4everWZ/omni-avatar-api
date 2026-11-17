@@ -21,7 +21,8 @@ async def stream_group(http, gateway, token, inputs=None):
         async with http.post(gateway + '/llm/v1/responses',
                 headers={'Authorization': 'Bearer ' + token}, json={
                     'model': 'llm-default', 'input': text, 'stream': True, 'store': False,
-                    'max_output_tokens': 256, 'chat_template_kwargs': {'enable_thinking': False}}) as response:
+                    'max_output_tokens': 256, 'temperature': 0,
+                    'chat_template_kwargs': {'enable_thinking': False}}) as response:
             assert response.status == 200, ('stream', index, response.status)
             async for line in response.content:
                 if not line.startswith(b'data: '):
