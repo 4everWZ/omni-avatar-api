@@ -1,0 +1,38 @@
+# syntax=docker/dockerfile:1.7
+ARG VLLM_CORE_IMAGE=vllm/vllm-openai:v0.32.0-cu129-ubuntu2404@sha256:9e1009574f37cd2d84dc45727fe7e0a7bcefaa79fc78cff17cfa4e588bc00489
+FROM ${VLLM_CORE_IMAGE}
+
+ADD --checksum=sha256:759bf03190f82d402e82c380586da27a1966ec264532c517d04dc7a13104c3da https://codeload.github.com/vllm-project/vllm-omni/tar.gz/5917730a4b02aedb44d374173cdc1b10484ccd52 /tmp/vllm-omni.tar.gz
+COPY cu129_runtime.py vocoder.lock /opt/tuber-omni/
+RUN <<'SH'
+set -eu
+python_path=$(command -v python3)
+mkdir -p /tmp/vllm-omni-source
+tar -xzf /tmp/vllm-omni.tar.gz -C /tmp/vllm-omni-source --strip-components=1
+python3 /opt/tuber-omni/cu129_runtime.py pins > /tmp/cuda-abi-before.txt
+VLLM_OMNI_TARGET_DEVICE=cuda VLLM_OMNI_VERSION_OVERRIDE=0.32.0 \
+    uv pip install --python "$python_path" --no-cache-dir --constraint /tmp/cuda-abi-before.txt /tmp/vllm-omni-source
+env -u UV_CONSTRAINT -u UV_OVERRIDE uv --no-config pip install \
+    --python "$python_path" --no-deps --require-hashes --no-cache-dir -r /opt/tuber-omni/vocoder.lock
+python3 /opt/tuber-omni/cu129_runtime.py verify /tmp/cuda-abi-before.txt
+python3 -c 'import cosyvoice2, hyperpyyaml, onnxruntime, s3tokenizer, torchaudio; from importlib.metadata import version; assert version("vllm-omni") == "0.32.0"'
+rm -rf /tmp/vllm-omni-source /tmp/vllm-omni.tar.gz /tmp/cuda-abi-before.txt
+SH
+
+ARG TORCHCODEC_WHEEL=torchcodec-0.17.0+cpu-cp312-cp312-manylinux_2_27_aarch64.manylinux_2_28_aarch64.whl
+ADD --checksum=sha256:187383c26847db470a22a9aa8b15e45611dda594f3fdc1a6a32b670f1d7ddd82 https://download.pytorch.org/whl/cpu/torchcodec-0.17.0%2Bcpu-cp312-cp312-manylinux_2_27_aarch64.manylinux_2_28_aarch64.whl /tmp/${TORCHCODEC_WHEEL}
+# The inherited wheel's image extension loads CUDA 13 NVRTC even for CPU decoding.
+RUN env -u UV_CONSTRAINT -u UV_OVERRIDE uv --no-config pip install \
+      --python "$(command -v python3)" --no-index --no-deps --reinstall "/tmp/$TORCHCODEC_WHEEL" \
+    && python3 -c 'from torchcodec.decoders import AudioDecoder, VideoDecoder' \
+    && rm "/tmp/$TORCHCODEC_WHEEL"
+
+COPY model.py /opt/tuber-omni/
+COPY configs/ /opt/tuber-omni/configs/
+COPY patches/ /opt/tuber-omni/patches/
+RUN python3 /opt/tuber-omni/patches/restore_chat_constraints.py \
+    && python3 /opt/tuber-omni/patches/patch_minicpmo_int4_window.py \
+    && python3 /opt/tuber-omni/patches/patch_minicpmo_awq_stages.py \
+    && python3 /opt/tuber-omni/patches/patch_chat_prompt_tokens.py \
+    && python3 /opt/tuber-omni/patches/patch_minicpmo_duplex_idle.py
+ENTRYPOINT []

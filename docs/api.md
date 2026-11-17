@@ -15,13 +15,13 @@
 
 Omni 已验证 20 条消息、7,928 个输入 tokens 的多轮历史检索；超限输入返回 400，调用方可先计量再选择保留的历史与记忆。计量接口允许计算超出窗口的文本，用于压缩预算。[8K 边界证据](../evaluations/results/omni-8k-multi-turn-workstation.json)。
 
-Bearer 鉴权、排队、取消、超时和管理接口由[网关规范](../gateway/README.md)维护。原生模型服务的协议和 Avatar 能力独立发布，调用应用根据各自会话实际协商。
+Bearer 鉴权、排队、取消、超时和管理接口由[网关规范](../services/gateway/README.md)维护。原生模型服务的协议和 Avatar 能力独立发布，调用应用根据各自会话实际协商。
 
 ## 后台 Responses
 
 使用 `POST /llm/v1/responses`，模型 `llm-default`，设置 `stream: true` 接收原生增量 SSE。支持文本、多轮 `previous_response_id`、JSON Schema 及 function 工具调用输出；工具由应用执行。`GET /llm/v1/responses/{id}` 与 `POST /llm/v1/responses/{id}/cancel` 只允许原调用方访问，其他调用方得到 404。
 
-当前实现 vLLM 0.32 的 HTTP／SSE 子集，不承诺云端 Responses 全能力。保存的响应与续接关系位于引擎内存，重启即失效，不是业务记忆。后台任务在客户端断开后保留准入直到结束或取消；前台流式请求断开会取消。详见[网关规范](../gateway/README.md)。
+当前实现 vLLM 0.32 的 HTTP／SSE 子集，不承诺云端 Responses 全能力。保存的响应与续接关系位于引擎内存，重启即失效，不是业务记忆。后台任务在客户端断开后保留准入直到结束或取消；前台流式请求断开会取消。详见[网关规范](../services/gateway/README.md)。
 
 ## 外部 Swarm／orchestrator 调用
 
@@ -29,11 +29,11 @@ Bearer 鉴权、排队、取消、超时和管理接口由[网关规范](../gate
 
 当前 LLM 使用单路 GPU 准入，其余调用在有界队列等待；超出配额或排队期限返回 429 和 Retry-After。编排器应限制模型请求并发并处理重试。`LLM_QUEUE_LIMIT`、`LLM_QUEUE_TIMEOUT`、`LLM_REQUEST_TIMEOUT` 可独立设置后台排队和总期限，默认继承现有 16／5 秒／1200 秒；Omni 的实时通道和当前显存预算保持独立。
 
-当前验收范围是 provider API，具体 Antigravity／agent-orchestrator 客户端接入留在应用项目。[provider 约定](../gateway/README.md#external-orchestration-clients)。
+当前验收范围是 provider API，具体 Antigravity／agent-orchestrator 客户端接入留在应用项目。[provider 约定](../services/gateway/README.md#external-orchestration-clients)。
 
 ## Avatar 会话与音画
 
-Avatar 由独立服务持有，所有外部请求通过共享网关鉴权。用不同客户端创建独立会话，按会话隔离媒体和控制。渲染服务可替换驱动，统一消费带时间戳和代次的音频，输出同步的视频帧及媒体状态。渲染失败时，原生语音和字幕仍可交付。当前 Ava 2D 已通过分卡配置下约 20 分钟原生双工与后台 LLM 共驻检查；参考图驱动的会议式神经头像也已通过 25 fps、同步、归属隔离及取消恢复检查；浏览器实物交互仍需人工确认。[当前验收结论](workstation.md#实机准入)。
+Avatar 由独立服务持有，所有外部请求通过共享网关鉴权。用不同客户端创建独立会话，按会话隔离媒体和控制。渲染服务可替换驱动，统一消费带时间戳和代次的音频，输出同步的视频帧及媒体状态。渲染失败时，原生语音和字幕仍可交付。当前 Ava 2D 已通过分卡配置下约 20 分钟原生双工与后台 LLM 共驻检查；参考图驱动的会议式神经头像也已通过 25 fps、同步、归属隔离及取消恢复检查；浏览器实物交互仍需人工确认。[当前验收结论](deployment/workstation.md#实机准入)。
 
 | 会话操作 | 目标契约 |
 | --- | --- |
@@ -72,11 +72,11 @@ Realtime 客户端仍使用原协议。客户端以 `?avatar=1` 选择 Avatar �
 
 ### 可插拔渲染与后续数字人
 
-`avatar/avatars.json` 登记 `avatar_id`、驱动和素材目录；`OMNI_AVATAR_REGISTRY` 可指定替代登记文件。驱动接收带采样起点和代次的原始 PCM，按会话时间戳提供画面，并实现能力声明、代次清除和关闭；音频入队与取帧应保持非阻塞，神经驱动可在独立 worker 推理。媒体与权限不依赖具体驱动。首版 `sprite2d` 使用 Ava 的四状态素材和共享时间线的音量。2D 实机验收成功后，再以同一 Ava 为基础实现数字人驱动；数字人模型、视觉形式及性能目标在该阶段确定。推进顺序见[当前计划](plans/avatar-workstation.md)。
+`services/avatar/avatars.json` 登记 `avatar_id`、驱动和素材目录；`OMNI_AVATAR_REGISTRY` 可指定替代登记文件。驱动接收带采样起点和代次的原始 PCM，按会话时间戳提供画面，并实现能力声明、代次清除和关闭；音频入队与取帧应保持非阻塞，神经驱动可在独立 worker 推理。媒体与权限不依赖具体驱动。首版 `sprite2d` 使用 Ava 的四状态素材和共享时间线的音量。2D 实机验收成功后，再以同一 Ava 为基础实现数字人驱动；数字人模型、视觉形式及性能目标在该阶段确定。推进顺序见[当前计划](plans/avatar-workstation.md)。
 
 ## 参考图与会议式头像
 
-参考图驱动的会议式说话头像采用可插拔 Ditto 驱动，不强制 3D。启用 `infra-portrait.compose.yml` 后，所有请求沿用应用 Bearer，通过网关进入私有准备／渲染服务；未启用时返回 503。参考图和生成结果仅原调用方可访问，其他调用方得到 404。
+参考图驱动的会议式说话头像采用可插拔 Ditto 驱动，不强制 3D。启用 `deploy/compose/portrait.yml` 后，所有请求沿用应用 Bearer，通过网关进入私有准备／渲染服务；未启用时返回 503。参考图和生成结果仅原调用方可访问，其他调用方得到 404。
 
 | 接口 | 行为 |
 | --- | --- |
@@ -94,4 +94,4 @@ Realtime 客户端仍使用原协议。客户端以 `?avatar=1` 选择 Avatar �
 
 神经头像 120 秒共驻检查通过：3,012 张实际生成帧，最大音画时间线采样偏差 58 ms；重启后的准备、取消及恢复通过。[功能证据](../evaluations/results/portrait-functional-workstation.json) · [生命周期证据](../evaluations/results/portrait-lifecycle-workstation.json)。该结果覆盖轻量后台请求，不代表持续满载 QoS 或主观口型质量均已验收。
 
-实现与实机验收进度见[当前计划](plans/avatar-workstation.md)；驱动、资产和资源生命周期见 [portrait/README.md](../portrait/README.md)。
+实现与实机验收进度见[当前计划](plans/avatar-workstation.md)；驱动、资产和资源生命周期见 [services/portrait/README.md](../services/portrait/README.md)。

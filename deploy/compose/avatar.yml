@@ -1,0 +1,28 @@
+# Avatar has no GPU allocation. Host networking makes LAN/VPN ICE candidates reachable.
+# Control uses a private shared Unix socket, without a host TCP listener.
+services:
+  omni-avatar:
+    build: ./services/avatar
+    image: omni-api-avatar:2d
+    network_mode: host
+    restart: unless-stopped
+    init: true
+    environment:
+      OMNI_AVATAR_INTERNAL_TOKEN: ${OMNI_AVATAR_INTERNAL_TOKEN:?set OMNI_AVATAR_INTERNAL_TOKEN in .env}
+      OMNI_AVATAR_SOCKET: /run/omni-avatar/control.sock
+    volumes:
+      - avatar-control:/run/omni-avatar
+    healthcheck:
+      test: [CMD, python, -c, "import socket; s=socket.socket(socket.AF_UNIX); s.settimeout(3); s.connect('/run/omni-avatar/control.sock'); s.sendall(b'GET /livez HTTP/1.0'+bytes([13,10,13,10])); assert b'200 OK' in s.recv(1024)"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+  omni-gateway:
+    volumes:
+      - avatar-control:/run/omni-avatar:ro
+    environment:
+      OMNI_AVATAR_URL: http://omni-avatar
+      OMNI_AVATAR_SOCKET: /run/omni-avatar/control.sock
+      OMNI_AVATAR_INTERNAL_TOKEN: ${OMNI_AVATAR_INTERNAL_TOKEN:?set OMNI_AVATAR_INTERNAL_TOKEN in .env}
+volumes:
+  avatar-control:

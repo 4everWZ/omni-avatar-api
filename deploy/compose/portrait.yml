@@ -1,0 +1,53 @@
+# Append after the four-file inference mainline. GPU0 is shared with the LLM.
+services:
+  portrait-assets:
+    profiles: [assets]
+    image: omni-api-portrait:ditto
+    user: '0:0'
+    command: [python, -m, portrait.assets]
+    volumes:
+      - ${OMNI_PORTRAIT_MODELS:-./data/portrait}:/portrait
+    networks: [asset-download]
+
+  omni-portrait:
+    build: ./services/portrait
+    image: omni-api-portrait:ditto
+    pull_policy: never
+    restart: unless-stopped
+    init: true
+    stop_grace_period: 30s
+    network_mode: none
+    runtime: nvidia
+    gpus:
+      - driver: nvidia
+        device_ids: ['0']
+    shm_size: 1gb
+    environment:
+      OMNI_AVATAR_INTERNAL_TOKEN: ${OMNI_AVATAR_INTERNAL_TOKEN:?set internal token}
+      HF_HUB_OFFLINE: '1'
+      TRANSFORMERS_OFFLINE: '1'
+    volumes:
+      - ${OMNI_PORTRAIT_MODELS:-./data/portrait}:/portrait:ro
+      - portrait-data:/data
+      - portrait-cache:/cache
+      - portrait-control:/run/omni-portrait
+    healthcheck:
+      test: [CMD, python, -c, "import socket; s=socket.socket(socket.AF_UNIX); s.settimeout(3); s.connect('/run/omni-portrait/control.sock'); s.sendall(b'GET /livez HTTP/1.0'+bytes([13,10,13,10])); assert b'200 OK' in s.recv(1024)"]
+      interval: 15s
+      timeout: 5s
+      start_period: 2m
+      retries: 3
+
+  omni-avatar:
+    depends_on:
+      omni-portrait:
+        condition: service_healthy
+    environment:
+      OMNI_PORTRAIT_SOCKET: /run/omni-portrait/control.sock
+    volumes:
+      - portrait-control:/run/omni-portrait:ro
+
+volumes:
+  portrait-data:
+  portrait-cache:
+  portrait-control:
