@@ -54,3 +54,6 @@ services:
     environment:
       <<: *llm
       LLM_ENGINE_URL: http://llm-engine:8000
+      LLM_QUEUE_LIMIT: ${LLM_QUEUE_LIMIT:-}
+      LLM_QUEUE_TIMEOUT: ${LLM_QUEUE_TIMEOUT:-}
+      LLM_REQUEST_TIMEOUT: ${LLM_REQUEST_TIMEOUT:-}

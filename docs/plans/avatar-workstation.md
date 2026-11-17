@@ -41,3 +41,5 @@ Omni、后台 LLM 和 Avatar 全部部署在当前双 3090 工作站；不将 Av
 私网 API 已通过 `infra-vpn.compose.yml` 发布到 `100.119.17.6:8000`，同时保留回环入口；从另一 VPN 客户端验证两个模型卡、Responses 增量 SSE、形象归属与匿名拒绝。[私网验证](../../evaluations/results/vpn-api-workstation.json)。
 
 Omni 7,928-token／20 消息的多轮早期事实检索及超限 400 已通过；相关 API 适配回归 3 项通过。后台 LLM 的官方 Python SDK 3.35.1 typed streaming、续接和查询也通过。[8K](../../evaluations/results/omni-8k-multi-turn-workstation.json) · [Responses SDK](../../evaluations/results/responses-sdk-workstation.json)。
+
+外部任务按 Swarm／orchestrator 思路组织，当前优先交付推理 provider。保持模型与显存配置；补充 LLM 独立排队／总期限配置，并验证两个调用方分支的历史隔离与并发 SSE 提交。编排、工具执行、共享记忆与工作区由应用项目持有，具体框架集成尚未开展。

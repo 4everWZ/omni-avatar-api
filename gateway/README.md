@@ -47,7 +47,7 @@ uv run --no-project --with-requirements requirements.txt python -B -m unittest d
 
 ## Long-context Responses backend
 
-With `infra-inference.compose.yml`, use `/llm/v1` and `llm-default`. The primary endpoint is `POST /llm/v1/responses`; Chat Completions remains compatible. `/llm/healthz`, `/llm/v1/models` and `/llm/api/mode` describe only this backend. LLM capacity does not consume Omni admission. Text-backend configuration uses `LLM_ENGINE_URL`, `LLM_MODEL_ID`, `LLM_CHECKPOINT`, and optional `LLM_ENGINE_TOKEN`; timeout settings are shared with the parent gateway; see the Compose overlay for pinned values.
+With `infra-inference.compose.yml`, use `/llm/v1` and `llm-default`. The primary endpoint is `POST /llm/v1/responses`; Chat Completions remains compatible. `/llm/healthz`, `/llm/v1/models` and `/llm/api/mode` describe only this backend. LLM capacity does not consume Omni admission. Text-backend configuration uses `LLM_ENGINE_URL`, `LLM_MODEL_ID`, `LLM_CHECKPOINT`, optional `LLM_ENGINE_TOKEN`, and LLM-only admission/deadline overrides; see the Compose overlay for pinned values.
 
 ```python
 from openai import OpenAI
@@ -63,3 +63,11 @@ HTTP Responses supports incremental SSE (`stream: true`), JSON Schema, function-
 The gateway replaces caller-supplied request IDs with authenticated owner-bound response IDs. Foreign retrieval, cancellation and continuation return 404. Stored responses live in engine RAM and disappear on restart; callers retain durable business history. Foreground stream disconnection cancels upstream work. Background work, including `background: true` plus streaming, keeps its admission lease after disconnection until completion, cancellation or deadline. Keep the admin secret stable across gateway restarts to retain response ownership verification.
 
 The deployed OpenAI Python SDK 3.35.1 also passed typed `responses.stream()`, `get_final_response()`, owned continuation and retrieval against the real backend. [SDK evidence](../evaluations/results/responses-sdk-workstation.json).
+
+## External orchestration clients
+
+Multiple worker conversations can share this provider through `/llm/v1` and `llm-default`. Keep each worker's input history or `previous_response_id` chain separate. Long-running controllers can use `store: false` and persist their own history; stored continuation is process-local and ephemeral. Responses/SSE, function-call output, caller-supplied tool results, JSON Schema, retrieval and cancellation remain inference operations; the caller owns worker scheduling, handoffs, memory, tools and workspace/Git actions.
+
+GPU admission remains one LLM request at a time. Other requests use the bounded queue and receive `429` with `Retry-After` when full or timed out. External controllers can bound provider concurrency while running their own tools in parallel. Optional `LLM_QUEUE_LIMIT`, `LLM_QUEUE_TIMEOUT` and `LLM_REQUEST_TIMEOUT` configure only this backend; unset/empty values inherit the parent gateway's values (normally 16 / 5 s / 1200 s). They do not allocate additional GPU slots or change the Omni lane. Current deployment retains these defaults.
+
+Antigravity documents an [external OpenAI-compatible provider interface](https://antigravity.google/docs/sdk/local-models/#external-openai-compatible-servers); [Agent Orchestrator](https://github.com/OrchestratorInc/agent-orchestrator) manages agent clients as a separate layer. This service is validated as a provider, with two independently continued caller histories and concurrently submitted typed SSE requests. Specific orchestration clients have not been integrated here. [Provider fixture evidence](../evaluations/results/orchestrator-provider-workstation.json).

@@ -21,6 +21,13 @@ MAX_BODY = 32 * 1024 * 1024
 MAX_FRAME = 8 * 1024 * 1024
 
 
+def positive(name, default, convert=float):
+    value = convert(os.environ.get(name, default))
+    if not math.isfinite(value) or value <= 0:
+        raise ValueError(f"{name} must be positive and finite")
+    return value
+
+
 @dataclass(frozen=True)
 class Config:
     engine_url: str
@@ -52,12 +59,6 @@ class Config:
             if value := os.environ.get(name, "").strip():
                 return value
             raise ValueError(f"Missing {name}")
-
-        def positive(name, default, convert=float):
-            value = convert(os.environ.get(name, default))
-            if not math.isfinite(value) or value <= 0:
-                raise ValueError(f"{name} must be positive and finite")
-            return value
 
         engine_url = os.environ.get("OMNI_ENGINE_URL", "http://omni-engine:8000").rstrip("/")
         parsed = urlsplit(engine_url)
@@ -93,6 +94,8 @@ class Config:
         )
 
     def text_backend(self):
+        def override(name, default, convert=float):
+            return positive(name, default, convert) if os.environ.get(name) else default
         origin = os.environ["LLM_ENGINE_URL"].rstrip("/")
         parsed = urlsplit(origin)
         if (parsed.scheme not in {"http", "https"} or not parsed.hostname or parsed.username
@@ -105,6 +108,9 @@ class Config:
                        model_root=f"/models/{revision}", engine_token=os.environ.get("LLM_ENGINE_TOKEN", ""),
                        engine_version="vLLM 0.32.0", model_alias="llm-default", public_prefix="/llm",
                        realtime_enabled=False, prompt_tokens_path="/tokenize", program_token="",
+                       queue_limit=override("LLM_QUEUE_LIMIT", self.queue_limit, int),
+                       queue_timeout=override("LLM_QUEUE_TIMEOUT", self.queue_timeout),
+                       request_timeout=override("LLM_REQUEST_TIMEOUT", self.request_timeout),
                        batch_cap=1, avatar_url="", avatar_token="", avatar_socket="")
 
 

@@ -1,9 +1,42 @@
 import asyncio
 from dataclasses import replace
 import unittest
+import os
+from unittest.mock import patch
 
 from aiohttp import ClientSession, web
 from gateway import Config, create_app
+
+
+class BackendPolicyTest(unittest.TestCase):
+    def setUp(self):
+        self.parent = Config(engine_url='http://omni', model='omni', checkpoint='omni',
+                             tokens=('client',), admin_token='admin', queue_limit=9,
+                             queue_timeout=2, request_timeout=7)
+        self.environment = {'LLM_ENGINE_URL': 'http://llm', 'LLM_MODEL_ID': 'text', 'LLM_CHECKPOINT': 'text'}
+
+    def test_text_policy_is_independent_without_adding_gpu_slots(self):
+        with patch.dict(os.environ, self.environment | {'LLM_QUEUE_LIMIT': '32', 'LLM_QUEUE_TIMEOUT': '120',
+                                                       'LLM_REQUEST_TIMEOUT': '900'}, clear=True):
+            child = self.parent.text_backend()
+        self.assertEqual((child.queue_limit, child.queue_timeout, child.request_timeout), (32, 120, 900))
+        self.assertEqual((self.parent.queue_limit, self.parent.queue_timeout, self.parent.request_timeout), (9, 2, 7))
+        self.assertEqual(child.batch_cap, 1)
+        self.assertFalse(child.realtime_enabled)
+
+    def test_unset_or_empty_values_inherit(self):
+        for extra in ({}, {'LLM_QUEUE_LIMIT': '', 'LLM_QUEUE_TIMEOUT': '', 'LLM_REQUEST_TIMEOUT': ''}):
+            with patch.dict(os.environ, self.environment | extra, clear=True):
+                child = self.parent.text_backend()
+            self.assertEqual((child.queue_limit, child.queue_timeout, child.request_timeout), (9, 2, 7))
+
+    def test_invalid_settings_fail_before_serving(self):
+        for key, values in {'LLM_QUEUE_TIMEOUT': ['0', '-1', 'inf', 'nan'],
+                            'LLM_REQUEST_TIMEOUT': ['0', 'inf'], 'LLM_QUEUE_LIMIT': ['0', '1.5']}.items():
+            for value in values:
+                with self.subTest(key=key, value=value), patch.dict(os.environ, self.environment | {key: value}, clear=True):
+                    with self.assertRaises(ValueError):
+                        self.parent.text_backend()
 
 
 class BackendIsolationTest(unittest.IsolatedAsyncioTestCase):

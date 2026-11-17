@@ -23,6 +23,14 @@ Bearer 鉴权、排队、取消、超时和管理接口由[网关规范](../gate
 
 当前实现 vLLM 0.32 的 HTTP／SSE 子集，不承诺云端 Responses 全能力。保存的响应与续接关系位于引擎内存，重启即失效，不是业务记忆。后台任务在客户端断开后保留准入直到结束或取消；前台流式请求断开会取消。详见[网关规范](../gateway/README.md)。
 
+## 外部 Swarm／orchestrator 调用
+
+外部编排器统一使用后台 `base_url=http://100.119.17.6:8000/llm/v1`、模型 `llm-default` 和应用 Bearer，优先调用 Responses；Chat 保留兼容。每个逻辑 worker 单独持有历史或 `previous_response_id` 分支；任务、交接、工具执行、共享记忆和工作区操作由应用项目负责。
+
+当前 LLM 使用单路 GPU 准入，其余调用在有界队列等待；超出配额或排队期限返回 429 和 Retry-After。编排器应限制模型请求并发并处理重试。`LLM_QUEUE_LIMIT`、`LLM_QUEUE_TIMEOUT`、`LLM_REQUEST_TIMEOUT` 可独立设置后台排队和总期限，默认继承现有 16／5 秒／1200 秒；Omni 的实时通道和当前显存预算保持独立。
+
+当前验收范围是 provider API，具体 Antigravity／agent-orchestrator 客户端接入留在应用项目。[provider 约定](../gateway/README.md#external-orchestration-clients)。
+
 ## Avatar 会话与音画
 
 Avatar 由独立服务持有，所有外部请求通过共享网关鉴权。用不同客户端创建独立会话，按会话隔离媒体和控制。渲染服务可替换驱动，统一消费带时间戳和代次的音频，输出同步的视频帧及媒体状态。渲染失败时，原生语音和字幕仍可交付。当前 Ava 2D 已通过分卡配置下约 20 分钟原生双工与后台 LLM 共驻检查；参考图驱动的会议式神经头像也已通过 25 fps、同步、归属隔离及取消恢复检查；浏览器实物交互仍需人工确认。[当前验收结论](workstation.md#实机准入)。
