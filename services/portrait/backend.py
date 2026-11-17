@@ -150,7 +150,7 @@ class CudaPrediction:
                 expected = tree_flatten(reference(*trial))[0]
                 actual = tree_flatten(mixed_predictions(*trial))[0]
                 for fp32, fp16 in zip(expected, actual):
-                    torch.testing.assert_close(fp16, fp32, rtol=1e-2, atol=5e-3)
+                    torch.testing.assert_close(fp16, fp32, rtol=1e-2, atol=5e-3, check_dtype=False)
                 logging.warning('Portrait motion FP16/FP32 difference: max=%g',
                     max((a-b).abs().max().item() for a,b in zip(expected, actual)))
         self.graph = torch.cuda.CUDAGraph()
