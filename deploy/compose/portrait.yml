@@ -54,6 +54,7 @@ services:
       CUDA_MPS_PIPE_DIRECTORY: /run/omni-mps
       CUDA_MPS_CLIENT_PRIORITY: '1'
       CUDA_MPS_ACTIVE_THREAD_PERCENTAGE: ${LLM_MPS_ACTIVE_THREAD_PERCENTAGE:-20}
+      OMNI_GPU_RENDER_CLOCK: /run/omni-mps/render-clock.json
     volumes:
       - mps-control:/run/omni-mps
 
@@ -90,6 +91,7 @@ services:
       TRANSFORMERS_OFFLINE: '1'
       CUDA_MPS_PIPE_DIRECTORY: /run/omni-mps
       CUDA_MPS_CLIENT_PRIORITY: '0'
+      OMNI_GPU_RENDER_CLOCK: /run/omni-mps/render-clock.json
     volumes:
       - ${OMNI_PORTRAIT_MODELS:-./data/portrait}:/portrait:ro
       - portrait-data:/data
