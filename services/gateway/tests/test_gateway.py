@@ -1,6 +1,9 @@
 import asyncio
+import base64
+import io
 import os
 import unittest
+import wave
 from unittest.mock import patch
 
 from aiohttp import ClientSession, ClientPayloadError, WSServerHandshakeError, web
@@ -65,7 +68,8 @@ class GatewayTest(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(request.headers.get("Authorization"), "Bearer fixture-engine")
             self.assertEqual(body["model"], self.model)
             if not body.get("stream"):
-                return web.json_response({"model": body["model"], "choices": [{"message": {"content": "ok"}}]})
+                return web.json_response({"model": body["model"], "choices": [
+                    {"message": {"content": "ok"}, "finish_reason": "stop"}]})
             try:
                 response = web.StreamResponse(headers={"Content-Type": "text/event-stream"})
                 await response.prepare(request)
@@ -105,6 +109,7 @@ class GatewayTest(unittest.IsolatedAsyncioTestCase):
             web.post("/v1/chat/prompt_tokens", prompt_tokens),
         ])
         engine_url = await self.serve(engine)
+        self.engine_url = engine_url
         self.url = await self.serve(create_app(Config(
             engine_url=engine_url, model=self.model, checkpoint="fixture-pinned-revision",
             tokens=("fixture-client", "fixture-second-client", "fixture-media"), admin_token="fixture-admin",
@@ -133,6 +138,49 @@ class GatewayTest(unittest.IsolatedAsyncioTestCase):
         with self.assertRaises(WSServerHandshakeError) as rejected:
             await self.client.ws_connect(f'/v1/realtime?duplex=1&ticket={ticket}')
         self.assertEqual(rejected.exception.status, 401)
+
+    async def test_explicit_private_audio_transcription(self):
+        from services.gateway.input_transcription import PREFIX
+
+        app = create_app(Config(engine_url=self.engine_url, model=self.model, checkpoint="fixture",
+                                engine_token="fixture-engine", tokens=("fixture-client",), admin_token="fixture-admin",
+                                batch_cap=2, shared_capacity=True))
+        origin = await self.serve(app)
+        mic = {"type":"input_audio_buffer.append", "sample_rate_hz":16000, "format":"pcm16"}
+        async with ClientSession(base_url=origin) as client:
+            async with client.ws_connect("/v1/realtime?duplex=1&input_transcription=explicit", headers=SERVICE_AUTH) as ws:
+                caps = (await ws.receive_json())["session"]["capabilities"]
+                self.assertEqual(caps["gateway_input_transcription"]["mode"], "explicit_once")
+                self.assertEqual(self.realtime_query, {"duplex":"1"})
+                async def echo(event):
+                    await ws.send_json(event)
+                    self.assertEqual(await ws.receive_json(), event)
+                await echo(mic | {"audio": "AAAA"})
+                await ws.send_json({"type":PREFIX+"start"})
+                started = await ws.receive_json()
+                self.assertEqual(started["type"], PREFIX+"started")
+                capture = started["capture_id"]
+                await echo({"type":"response.output_audio_transcript.done","transcript":"assistant answer"})
+                await ws.send_json({"type":PREFIX+"finish", "capture_id":"wrong"})
+                await echo(mic | {"audio":"AQIDBA=="})
+                self.assertFalse(hasattr(self, "chat_payload"))
+                await ws.send_json({"type":PREFIX+"finish", "capture_id":capture})
+                self.assertEqual(await ws.receive_json(), {"type":PREFIX+"completed", "capture_id":capture,
+                                 "samples":2, "source":"explicit_user_audio", "transcript":"ok"})
+                message = self.chat_payload["messages"][-1]
+                self.assertEqual(message["role"], "user")
+                part, = message["content"]
+                with wave.open(io.BytesIO(base64.b64decode(part["input_audio"]["data"]))) as wav:
+                    self.assertEqual((wav.getframerate(), wav.getnchannels(), wav.readframes(100)), (16000, 1, bytes([1,2,3,4])))
+                self.assertNotIn("assistant answer", str(self.chat_payload))
+                await ws.send_json({"type":PREFIX+"start"})
+                second = (await ws.receive_json())["capture_id"]
+                self.assertNotEqual(second, capture)
+                await ws.send_json({"type":PREFIX+"finish", "capture_id":second})
+                self.assertEqual((await ws.receive_json())["reason"], "empty_audio")
+        for query, auth in [("", SERVICE_AUTH), ("&program=1&input_transcription=explicit", MEDIA_AUTH)]:
+            async with self.client.ws_connect("/v1/realtime?duplex=1"+query, headers=auth) as ws:
+                self.assertNotIn("gateway_input_transcription", (await ws.receive_json())["session"]["capabilities"])
 
     async def test_chat_defaults_to_text_and_preserves_explicit_modalities(self):
         for options, expected in (

@@ -15,6 +15,7 @@ from .token_budget import reservation, ReservationRejected
 from .config import Config, MODEL_ALIAS
 from .avatar_proxy import AvatarProxy
 from .responses_proxy import ResponsesProxy
+from .input_transcription import CAPABILITY as TRANSCRIPTION_CAPABILITY, InputTranscription
 from .image_jobs import DedicatedImageJobs, ImageJobs
 from .thinking import apply_thinking_default
 
@@ -287,7 +288,11 @@ class Gateway:
                 elif request.query.get('avatar') == '1':
                     await downstream.send_json({'type': 'gateway.session.created',
                                                 'source_session_id': None, 'avatar_available': False})
-                await self.relay(upstream, downstream, tap)
+                transcription = None
+                if not program and request.query.get("input_transcription") == "explicit":
+                    transcription = InputTranscription(self, downstream)
+                    stack.push_async_callback(transcription.stop)
+                await self.relay(upstream, downstream, tap, transcription)
                 return downstream
         except Busy:
             return failure(429, "gateway_busy", "The realtime lane is at capacity.", headers={"Retry-After": "1"})
@@ -308,7 +313,7 @@ class Gateway:
                 pass
         return raw
 
-    async def relay(self, upstream, downstream, tap=None):
+    async def relay(self, upstream, downstream, tap=None, transcription=None):
         loop = asyncio.get_running_loop()
         last_activity = loop.time()
 
@@ -317,6 +322,9 @@ class Gateway:
             async for frame in source:
                 if frame.type == WSMsgType.TEXT:
                     last_activity = loop.time()
+                    if transcription and source is downstream and await transcription.consume(frame.data):
+                        continue
+                    modified = None
                     if source is upstream and '"session.created"' in frame.data:
                         try:
                             event = json.loads(frame.data)
@@ -324,9 +332,13 @@ class Gateway:
                                 capabilities = event["session"].get("capabilities")
                                 if isinstance(capabilities, dict):
                                     self.capabilities = capabilities
+                                    if transcription:
+                                        event["session"]["capabilities"] = capabilities | {
+                                            "gateway_input_transcription": TRANSCRIPTION_CAPABILITY}
+                                        modified = json.dumps(event, ensure_ascii=False)
                         except (ValueError, AttributeError, KeyError):
                             pass
-                    text = self.alias_realtime_update(frame.data) if source is downstream else frame.data
+                    text = self.alias_realtime_update(frame.data) if source is downstream else (modified or frame.data)
                     if tap:
                         tap.publish(text, 'downstream' if source is downstream else 'upstream')
                     await target.send_str(text)

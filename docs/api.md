@@ -38,6 +38,21 @@ Omni Chat、后台 LLM Chat／Responses 默认 `chat_template_kwargs.enable_thin
 
 原生 Realtime 双工使用模型官方监听／说话策略及语音分块预算。上述 CoT 开关与思考 token 预算适用于 Chat／Responses。
 
+## 私聊中转认号主选定的一句话
+
+固定版 vLLM-Omni 接受并回显 `input_audio_transcription`，此字段不会启动独立 ASR。原生最终用户转写事件取决于模型是否产出转写。服务端历史校准的 ASR 选择针对中断后已播的助手音频。[固定版双工协议](https://github.com/vllm-project/vllm-omni/blob/v0.32.0/docs/serving/realtime_duplex_api.md)
+
+私有连接可在 WebSocket URL 加 `input_transcription=explicit`。客户端收到 `session.created.session.capabilities.gateway_input_transcription` 的 `mode=explicit_once` 后可显示转认操作。连接协商本身不会保存音频或发起转写。`program=1` 不提供该能力。
+
+| 方向 | 事件与含义 |
+| --- | --- |
+| 客户端 → 网关 | 用户选择开始后发 `gateway.input_transcription.start`。网关返回 `.started` 及本次 `capture_id`。使用原连接后续的单声道 16 kHz PCM16 `input_audio_buffer.append`，最长 15 秒。 |
+| 客户端 → 网关 | `gateway.input_transcription.finish` 带相同 `capture_id`，仅提交本次选择的音频一次。客户端可用相同 ID 发 `.cancel` 丢弃录音；挂断会清理正在处理的请求。 |
+| 网关 → 客户端 | `gateway.input_transcription.completed` 返回 `capture_id`、实际样本数 `samples`、`source=explicit_user_audio` 与 `transcript`。客户端应显示原文供核对，记忆与交办各需用户确认。 |
+| 网关 → 客户端 | `gateway.input_transcription.failed` 返回本次 ID 与原因，如 `empty_audio`、`audio_bounds`、`capacity` 或 `budget`。 |
+
+转认与原生 final 使用不同事件。网关将选中的录音封装为 WAV，走 Omni 的音频 Chat 和普通推理准入；不传会话提示、记忆、助手回复或预期句子。每个私聊连接分别持有在内存中的短时录音。
+
 ## Omni 实时历史窗口
 
 默认沿用固定 vLLM-Omni 0.32 的 `basic`：高水位 8000、低水位 6000。省略窗口字段即采用这个官方服务默认值。Chat 总窗口为 8192 tokens，Realtime 滑动策略在该模型容量内管理历史保留。
