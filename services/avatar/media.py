@@ -1,8 +1,8 @@
-"""WHEP media tracks share one session clock and presentation timeline."""
+"""Pace both WHEP senders from the instant a subscription can send media."""
 import asyncio
 import logging
 from fractions import Fraction
-from time import monotonic
+from time import monotonic, perf_counter
 
 from aiortc import MediaStreamTrack
 from aiortc.mediastreams import MediaStreamError
@@ -13,37 +13,65 @@ from .sessions import RATE
 VIDEO_SAMPLES = RATE // 25
 
 
+class PlaybackClock:
+    def __init__(self, session):
+        # The SDP answer commits the content cursor for playback receipts.
+        # ICE/DTLS may still take seconds. It does not advance this cursor.
+        self.start_sample = ((session.now_sample() + VIDEO_SAMPLES - 1) // VIDEO_SAMPLES) * VIDEO_SAMPLES
+        self.earliest = session.origin + self.start_sample / RATE
+        self.started_at = None
+        self.senders = set()
+        self.ready = asyncio.Event()
+
+    async def packet(self, kind, index, size):
+        if self.started_at is None:
+            self.senders.add(kind)
+            if len(self.senders) == 2:
+                self.started_at = perf_counter() + max(0, self.earliest - monotonic())
+                self.ready.set()
+            else:
+                await self.ready.wait()
+        deadline = self.started_at + index * size / RATE
+        while (delay := deadline - perf_counter()) > 0:
+            await asyncio.sleep(delay)
+        if index == 0:
+            return 0  # Both RTP streams start at the cursor advertised in SDP.
+        # A late encoder skips expired packets on the same elapsed timeline
+        # for either medium. Its RTP timestamp advances by the same amount.
+        due = int((perf_counter() - self.started_at) * RATE) // size
+        return max(index, due)
+
+
 class TimelineTrack(MediaStreamTrack):
-    def __init__(self, session, kind, start_sample):
+    def __init__(self, session, kind, clock):
         super().__init__()
-        self.session, self.kind, self.start_sample = session, kind, start_sample
+        self.session, self.kind, self.clock = session, kind, clock
         self.index = 0
 
     async def recv(self):
-        if self.readyState != 'live' or self.session.state == 'closed':
+        if self.readyState != 'live' or self.session.state != 'active':
             raise MediaStreamError
         samples_per_packet = 480 if self.kind == 'audio' else VIDEO_SAMPLES
-        index = self.index
-        if index and self.kind == 'video' and hasattr(self.session.renderer, 'render_pcm'):
-            # Keep the negotiated first timestamp. When rendering falls behind,
-            # skip expired poses before sampling audio on the session clock.
-            due = (self.session.now_sample() - self.start_sample) // VIDEO_SAMPLES
-            index = max(index, due)
-        position = self.start_sample + index * samples_per_packet
-        timestamp = self.session.origin + position / RATE
-        await asyncio.sleep(max(0, timestamp - monotonic()))
+        index = await self.clock.packet(self.kind, self.index, samples_per_packet)
+        if self.readyState != 'live' or self.session.state != 'active':
+            raise MediaStreamError
+        position = self.clock.start_sample + index * samples_per_packet
         if self.kind == 'audio':
             frame = AudioFrame(format='s16', layout='mono', samples=480)
             frame.planes[0].update(self.session.pcm(position, 480))
             frame.sample_rate = RATE
-            frame.pts, frame.time_base = self.index * 480, Fraction(1, RATE)
+            frame.pts, frame.time_base = index * samples_per_packet, Fraction(1, RATE)
         else:
             try:
                 renderer = self.session.renderer
                 if render_pcm := getattr(renderer, 'render_pcm', None):
                     offset, size = getattr(renderer, 'pcm_window', (0, 480))
-                    audio = self.session.pcm(position + offset, size)
-                    image = await asyncio.to_thread(render_pcm, position / RATE, audio)
+                    while True:
+                        generation = self.session.generation
+                        audio = self.session.pcm(position + offset, size)
+                        image = await asyncio.to_thread(render_pcm, position / RATE, audio)
+                        if generation == self.session.generation:
+                            break
                 else:
                     image = renderer.render(position / RATE, self.session.rms(position))
                 frame = VideoFrame.from_image(image)

@@ -9,6 +9,8 @@ from time import monotonic
 from aiohttp import ClientError, WSMsgType, web
 from PIL import Image
 
+from .sessions import PLAYBACK_HISTORY_SECONDS
+
 
 class PortraitClient:
     def __init__(self, http, token):
@@ -62,7 +64,7 @@ class PortraitRenderer:
         self.socket, self.preview = socket, preview
         # WHEP supplies its timeline origin before ICE connects. Keep enough
         # compressed history for the first media read after negotiation.
-        self.frames = deque(maxlen=25 * 15)
+        self.frames = deque(maxlen=25 * PLAYBACK_HISTORY_SECONDS)
         self.audio = asyncio.Queue(maxsize=128)
         self.generation = 0
         self.failed = False
@@ -119,13 +121,16 @@ class PortraitRenderer:
     def render(self, timestamp, rms):
         if self.failed or monotonic() - self.received > 2:
             raise RuntimeError('Portrait output stalled')
-        selected = None
-        while self.frames and self.frames[0][0] <= timestamp:
-            selected = self.frames.popleft()
+        # Peers negotiate independently and can request an earlier session pose.
+        selected = next((frame for frame in reversed(self.frames) if frame[0] <= timestamp), None)
         if selected:
-            self.latest_time, encoded = selected
-            with Image.open(io.BytesIO(encoded)) as image:
-                self.latest = image.convert('RGB')
+            selected_time, encoded = selected
+            if self.latest is self.preview or selected_time != self.latest_time:
+                self.latest_time = selected_time
+                with Image.open(io.BytesIO(encoded)) as image:
+                    self.latest = image.convert('RGB')
+        elif timestamp < self.latest_time:
+            return self.preview
         if monotonic() > self.reset_deadline and timestamp - self.latest_time > .75:
             raise RuntimeError('Portrait output behind playback')
         return self.latest

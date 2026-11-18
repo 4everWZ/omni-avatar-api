@@ -136,7 +136,7 @@ Realtime 客户端仍使用原协议。客户端以 `?avatar=1` 选择 Avatar �
 ### 音画与事件
 
 - 向 `media_url` POST `application/sdp` 的完整 ICE offer，同时请求音频和视频；201 返回 SDP answer 和 `Location`。首版为非 trickle WHEP，DELETE `Location` 幂等释放订阅。每会话最多两个订阅者。媒体连接协商 Opus 和浏览器支持的视频编码；2D 输出为 640×720、25 FPS、RGB。
-- `X-Avatar-Timeline-Origin-Ms` 将该订阅的媒体时间零点映射到 Avatar 会话时间。音频与视频由同一服务端时间线驱动；字幕事件携带该时间线上的 `start_ms`。
+- `X-Avatar-Timeline-Origin-Ms` 将该订阅的媒体时间零点映射到 Avatar 会话时间。SDP 应答为订阅保留起始采样，两个 RTP 发送器均可取帧时才开始计时。握手期间已排在该起点之后的语音与口型从同一位置按实时速度播放。起播后，迟到的发送器按共同播放时钟跳过已过期的包，RTP 时间戳与取样一同推进。会话保留 15 秒播放历史；连接建立时若订阅起点已超出历史窗口，须重新订阅以取得新起点。字幕事件的 `start_ms` 和播放回执均使用会话时间。
 - `events_url` 是鉴权 WebSocket。事件包括 `avatar.snapshot`、`avatar.audio.queued`、`avatar.subtitle`、`avatar.cleared`、`avatar.failed`、`avatar.closed` 与 `avatar.resync_required`。`source_epoch` 提供上游打断栅栏（显式音频源为 -1），用于与原语音事件对齐。慢消费者收到 resync 后须重新建立会话；字幕与音频均按代次失效。
 - `avatar.audio.queued` 提供音频在媒体时间线的 `start_ms/end_ms`、`response_id` 和原回复的 `source_start_ms`。该事件报告排队状态，实际播放由消费者回执报告。
 - 消费者可在事件连接提交 `{"type":"playback.ack","generation":0,"played_ms":1000}`。服务保存为 `consumer_report`；生成、传输和消费报告分别计量。Realtime 历史回执仍由消费者按上游协议发送到原语音连接，使用回复相对位置。

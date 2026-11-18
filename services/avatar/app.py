@@ -10,9 +10,9 @@ from time import monotonic
 from aiohttp import ClientSession, ClientTimeout, UnixConnector, WSMsgType, web
 from aiortc import RTCConfiguration, RTCPeerConnection, RTCSessionDescription
 
-from .media import TimelineTrack, VIDEO_SAMPLES
+from .media import PlaybackClock, TimelineTrack
 from .renderers import DRIVERS
-from .sessions import RATE, Session
+from .sessions import PLAYBACK_HISTORY_SECONDS, RATE, Session
 from .portrait_client import PortraitClient
 from .registered import RegisteredRigs
 
@@ -230,6 +230,12 @@ class AvatarService:
 
         @pc.on('connectionstatechange')
         async def state_changed():
+            if (pc.connectionState == 'connected' and clock.started_at is None
+                    and monotonic() - clock.earliest >= PLAYBACK_HISTORY_SECONDS):
+                # Its negotiated cursor can already be evicted. A fresh offer
+                # gets a new receipt origin without affecting other peers.
+                await pc.close()
+                return
             if pc.connectionState in ('failed', 'closed'):
                 session.peers.pop(peer_id, None)
                 if pc.connectionState != 'closed':
@@ -241,17 +247,18 @@ class AvatarService:
                 await pc.setRemoteDescription(RTCSessionDescription(sdp=offer, type='offer'))
                 if {t.kind for t in pc.getTransceivers()} != {'audio', 'video'}:
                     raise ValueError('Offer must request both audio and video')
-                # Start both tracks on the next neural frame's exact PCM boundary.
-                start_sample = ((session.now_sample() + VIDEO_SAMPLES - 1) // VIDEO_SAMPLES) * VIDEO_SAMPLES
-                pc.addTrack(TimelineTrack(session, 'audio', start_sample))
-                pc.addTrack(TimelineTrack(session, 'video', start_sample))
+                clock = PlaybackClock(session)
+                pc.addTrack(TimelineTrack(session, 'audio', clock))
+                pc.addTrack(TimelineTrack(session, 'video', clock))
                 await pc.setLocalDescription(await pc.createAnswer())
+                if any(t.currentDirection not in ('sendonly', 'sendrecv') for t in pc.getTransceivers()):
+                    raise ValueError('Subscriber must receive both audio and video')
                 sdp = pc.localDescription.sdp
                 # Host networking exposes routable host ICE candidates, no Docker bridge addresses.
                 return web.Response(status=201, text=sdp, content_type='application/sdp', headers={
                     'Location': f'/v1/avatar/sessions/{session.id}/whep/{peer_id}',
                     'Cache-Control': 'no-store',
-                    'X-Avatar-Timeline-Origin-Ms': str(start_sample * 1000 // RATE),
+                    'X-Avatar-Timeline-Origin-Ms': str(clock.start_sample * 1000 // RATE),
                 })
         except BaseException:
             session.peers.pop(peer_id, None)

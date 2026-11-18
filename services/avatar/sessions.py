@@ -11,6 +11,7 @@ from time import monotonic
 
 RATE = 24000
 MAX_AUDIO_SECONDS = 30
+PLAYBACK_HISTORY_SECONDS = 15
 
 
 @dataclass
@@ -101,7 +102,9 @@ class Session:
         if not pcm or len(pcm) % 2:
             raise ValueError('Expected nonempty PCM16 samples')
         now = self.now_sample()
-        while self.segments and self.segments[0][0] + len(self.segments[0][1]) // 2 < now - RATE:
+        # Independent subscribers can still be playing PCM queued during ICE.
+        oldest = now - RATE * PLAYBACK_HISTORY_SECONDS
+        while self.segments and self.segments[0][0] + len(self.segments[0][1]) // 2 < oldest:
             self.segments.popleft()
         lead = self.renderer.capabilities.get('input_lead_ms', 100)
         start = max(self.end_sample, now + round(RATE * lead / 1000))
