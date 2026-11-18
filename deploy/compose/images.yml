@@ -23,6 +23,7 @@ services:
       HF_HUB_OFFLINE: '1'
       TRANSFORMERS_OFFLINE: '1'
       OMNI_GPU_SWITCH_ROOT: /run/omni-gpu
+      OMNI_IMAGE_PRELOAD_CPU: ${OMNI_IMAGE_PRELOAD_CPU:-0}
       OMNI_IMAGE_INTERNAL_TOKEN: ${OMNI_IMAGE_INTERNAL_TOKEN:?set image worker token}
     volumes:
       - ${OMNI_MODEL_DATA:-./data/models}:/models:ro

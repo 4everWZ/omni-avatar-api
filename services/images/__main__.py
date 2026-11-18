@@ -17,7 +17,10 @@ def main():
     from .app import create_app
     dedicated = os.environ.get('OMNI_IMAGE_PLACEMENT') == 'dedicated'
     switch_root = None if dedicated else os.environ['OMNI_GPU_SWITCH_ROOT']
-    web.run_app(create_app(Klein(path), os.environ['OMNI_IMAGE_INTERNAL_TOKEN'],
+    model = Klein(path)
+    if os.environ.get('OMNI_IMAGE_PRELOAD_CPU') == '1':
+        model.warm_cpu()
+    web.run_app(create_app(model, os.environ['OMNI_IMAGE_INTERNAL_TOKEN'],
                            switch_root),
                 host='0.0.0.0', port=8000, handler_cancellation=False, access_log=None)
 

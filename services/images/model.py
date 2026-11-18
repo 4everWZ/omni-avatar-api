@@ -26,15 +26,37 @@ class Klein:
         finally:
             nvml.nvmlShutdown()
 
-    def prepare(self, payload, cancelled):
+    def load_cpu(self):
+        if self.pipe is not None:
+            return
         import torch
-        from PIL import Image, ImageOps
         from diffusers import Flux2KleinPipeline
 
         class MixedDevicePipeline(Flux2KleinPipeline):
             @property
             def _execution_device(self):
                 return self.transformer.device
+
+        torch.set_num_threads(min(torch.get_num_threads(), 6))
+        pipe = MixedDevicePipeline.from_pretrained(self.path, torch_dtype=torch.bfloat16,
+                                                  local_files_only=True)
+        pipe.set_progress_bar_config(disable=True)
+        self.cpu_weights = [(module, module.state_dict(), nonpersistent_buffers(module))
+                            for module in (pipe.transformer, pipe.vae)]
+        self.pipe = pipe
+
+    def encode(self, prompt):
+        import torch
+        with torch.inference_mode():
+            embeddings, _ = self.pipe.encode_prompt(prompt=prompt, device=torch.device('cpu'))
+        return embeddings
+
+    def warm_cpu(self):
+        self.load_cpu()
+        self.encode('warmup')
+
+    def prepare(self, payload, cancelled):
+        from PIL import Image, ImageOps
 
         started = monotonic()
         check_cancelled(cancelled)
@@ -45,17 +67,10 @@ class Klein:
                     raise ValueError('Expected a PNG or JPEG of at most eight megapixels')
                 reference = ImageOps.exif_transpose(source).convert('RGB')
                 reference.thumbnail((1024, 1024))
-        if self.pipe is None:
-            torch.set_num_threads(min(torch.get_num_threads(), 6))
-            self.pipe = MixedDevicePipeline.from_pretrained(self.path, torch_dtype=torch.bfloat16,
-                                                            local_files_only=True)
-            self.pipe.set_progress_bar_config(disable=True)
-            self.cpu_weights = [(module, module.state_dict(), nonpersistent_buffers(module))
-                                for module in (self.pipe.transformer, self.pipe.vae)]
+        self.load_cpu()
         loaded = monotonic()
         check_cancelled(cancelled)
-        with torch.inference_mode():
-            embeddings, _ = self.pipe.encode_prompt(prompt=payload['prompt'], device=torch.device('cpu'))
+        embeddings = self.encode(payload['prompt'])
         check_cancelled(cancelled)
         return (reference, embeddings, payload['seed'],
                 {'load_cpu': loaded - started, 'encode_cpu': monotonic() - loaded})
