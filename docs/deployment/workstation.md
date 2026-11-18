@@ -146,6 +146,17 @@ Klein 4B 蒸馏快照使用原精度 BF16。加载和文本编码在 CPU 上进�
 
 停用生图前先取消或等待图片任务进入终态，并确认 `/llm/healthz` 为 `ready`，再停掉 `omni-images` 并在去掉 `--images` 后重建网关和 LLM。恢复失败时保留 GPU 保护标记，确认图像 worker 已退出 GPU 工作后恢复 LLM 引擎，协调器会在恢复确认后清除标记。模型和结果卷可复用。 [生图 API](../api.md#生图任务)
 
+### 在另一节点运行 Klein
+
+在图像节点设置 `IMAGE_GPU_DEVICE`、`OMNI_IMAGE_INTERNAL_TOKEN` 和模型目录，执行以下命令。默认监听回环 8101，可通过私网隧道接入；在专用网络上用 `IMAGE_PUBLISH_BIND` 选择受控监听地址。在 Gateway 节点设置可达的 `OMNI_IMAGE_WORKER_URL`、同一 worker token，选择 `--remote-images`。部署配置决定是否启用专用节点，按请求动态选择多个实例仍在设计阶段。
+
+```sh
+python tools/compose.py --target images -- build omni-images
+python tools/compose.py --target images -- --profile assets run --rm image-model-fetch
+python tools/compose.py --target images -- up -d --wait
+python tools/compose.py --target workstation-omni --remote-images -- up -d --wait
+```
+
 ## Avatar 与访问
 
 工作站为 `research-2@100.119.17.6`，仓库 `/home/research-2/code/omni-avatar-api`。API 客户端使用 `http://100.119.17.6:8000/v1` 或 `http://100.119.17.6:8000/llm/v1`，各应用使用独立 Bearer。`--vpn` 保留回环监听并发布 `OMNI_GATEWAY_VPN_BIND` 指定地址。

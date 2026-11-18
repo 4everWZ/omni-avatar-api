@@ -1,0 +1,11 @@
+services:
+  omni-gateway:
+    environment:
+      OMNI_IMAGE_PLACEMENT: dedicated
+      OMNI_IMAGE_WORKER_URL: ${OMNI_IMAGE_WORKER_URL:?set the dedicated image worker origin}
+      OMNI_IMAGE_INTERNAL_TOKEN: ${OMNI_IMAGE_INTERNAL_TOKEN:?set image worker token}
+      OMNI_IMAGE_DATA: /image-data
+    volumes:
+      - image-jobs:/image-data
+volumes:
+  image-jobs:

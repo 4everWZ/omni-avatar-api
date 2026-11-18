@@ -169,3 +169,7 @@ Ditto 支持两个渲染和参考图准备共享的 GPU 槽位，工作站默认
 切换开始后，已准入的 LLM 生成正常完成，新的 Chat／Responses 生成按现有 FIFO 和等待时限准入，超时返回 `429` 和 `Retry-After`。已有 Responses 查询和取消可用，已存储的历史在正常切换后可用原 `previous_response_id` 续接。`/llm/healthz` 在切换时返回 `busy`，恢复状态不明时返回 `503`。
 
 实现与实机验收进度见[当前计划](plans/avatar-workstation.md)；驱动、资产和资源生命周期见 [services/portrait/README.md](../services/portrait/README.md)。
+
+### 独立图像节点
+
+Gateway 可用 `--remote-images` 将上述生图任务交给专用 worker。提交、归属校验、轮询、取消及下载沿用同一接口；专用节点独立执行准备和生成，端到端耗时包含排队与跨机传输。专用模式不需要文本服务、共享 GPU 卷或 LLM 控制凭据，结果不含同卡切换特有的 `gpu_release`。每个 worker 由一个 Gateway 作业队列驱动，作业元数据和结果保存在该 Gateway 的 image-jobs 卷。

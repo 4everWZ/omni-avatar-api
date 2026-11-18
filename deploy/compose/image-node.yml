@@ -1,0 +1,34 @@
+name: omni-image-node
+services:
+  image-model-fetch:
+    profiles: [assets]
+    image: omni-api-images:klein4b
+    pull_policy: never
+    command: [fetch]
+    user: ${OMNI_IMAGE_FETCH_USER:-10001:10001}
+    volumes:
+      - ${OMNI_MODEL_DATA:-./data/models}:/models
+
+  omni-images:
+    build: ./services/images
+    image: omni-api-images:klein4b
+    restart: unless-stopped
+    init: true
+    runtime: nvidia
+    gpus:
+      - driver: nvidia
+        device_ids: ["${IMAGE_GPU_DEVICE:?select the image device}"]
+    environment:
+      HF_HUB_OFFLINE: '1'
+      TRANSFORMERS_OFFLINE: '1'
+      OMNI_IMAGE_PLACEMENT: dedicated
+      OMNI_IMAGE_INTERNAL_TOKEN: ${OMNI_IMAGE_INTERNAL_TOKEN:?set image worker token}
+    volumes:
+      - ${OMNI_MODEL_DATA:-./data/models}:/models:ro
+    ports:
+      - '${IMAGE_PUBLISH_BIND:-127.0.0.1}:${IMAGE_PUBLISH_PORT:-8101}:8000'
+    healthcheck:
+      test: [CMD, python3, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/livez', timeout=3).close()"]
+      interval: 15s
+      timeout: 5s
+      retries: 3

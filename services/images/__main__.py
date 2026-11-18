@@ -15,8 +15,10 @@ def main():
         return
     from aiohttp import web
     from .app import create_app
+    dedicated = os.environ.get('OMNI_IMAGE_PLACEMENT') == 'dedicated'
+    switch_root = None if dedicated else os.environ['OMNI_GPU_SWITCH_ROOT']
     web.run_app(create_app(Klein(path), os.environ['OMNI_IMAGE_INTERNAL_TOKEN'],
-                           os.environ['OMNI_GPU_SWITCH_ROOT']),
+                           switch_root),
                 host='0.0.0.0', port=8000, handler_cancellation=False, access_log=None)
 
 

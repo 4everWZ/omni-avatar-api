@@ -13,7 +13,7 @@ from .model import Cancelled
 def create_app(backend, token, switch_root):
     if not token:
         raise ValueError('Image worker token required')
-    marker = Path(switch_root) / 'image-active'
+    marker = Path(switch_root) / 'image-active' if switch_root else None
     current = None
     job = {}
 
@@ -64,12 +64,13 @@ def create_app(backend, token, switch_root):
     async def render(request):
         nonlocal current
         identifier = request.match_info['id']
-        try:
-            allowed = marker.read_text(encoding='ascii') == identifier
-        except FileNotFoundError:
-            allowed = False
-        if not allowed:
-            raise web.HTTPConflict(reason='GPU lease is unavailable')
+        if marker is not None:
+            try:
+                allowed = marker.read_text(encoding='ascii') == identifier
+            except FileNotFoundError:
+                allowed = False
+            if not allowed:
+                raise web.HTTPConflict(reason='GPU lease is unavailable')
         if job.get('id') != identifier:
             raise web.HTTPNotFound()
         if job['state'] == 'prepared':

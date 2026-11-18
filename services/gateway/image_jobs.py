@@ -24,30 +24,16 @@ class Cancelled(Exception):
     pass
 
 
-class ImageJobs:
-    def __init__(self, text, root, switch_root, worker_url, worker_token, llm_token, minimum_mib,
-                 kv_bytes=0):
-        self.text = text
-        self.root, self.switch_root = Path(root), Path(switch_root)
-        self.marker = self.switch_root / 'image-active'
-        self.worker_url, self.worker_token, self.llm_token = worker_url, worker_token, llm_token
-        self.minimum_free = minimum_mib * 1024 ** 2
-        self.kv_bytes = kv_bytes
+class ImageQueue:
+    def __init__(self, root, worker_url, worker_token, timeout):
+        self.root = Path(root)
+        self.worker_url, self.worker_token = worker_url, worker_token
+        self.timeout = timeout
         self.jobs, self.cancelled = {}, {}
         self.queue = deque()
         self.changed = asyncio.Event()
         self.active = None
         self.stopping = False
-
-    @classmethod
-    def from_env(cls, text):
-        minimum_mib = int(os.environ.get('OMNI_IMAGE_MIN_FREE_MIB', '13312'))
-        kv_bytes = int(os.environ.get('LLM_KV_CACHE_BYTES', '9663676416'))
-        if minimum_mib <= 0 or kv_bytes <= 0:
-            raise ValueError('Image GPU memory threshold and LLM KV allocation must be positive')
-        return cls(text, os.environ['OMNI_IMAGE_DATA'], os.environ['OMNI_GPU_SWITCH_ROOT'],
-                   os.environ['OMNI_IMAGE_WORKER_URL'], os.environ['OMNI_IMAGE_INTERNAL_TOKEN'],
-                   os.environ['LLM_GPU_CONTROL_TOKEN'], minimum_mib, kv_bytes)
 
     @staticmethod
     def atomic(path, data):
@@ -128,6 +114,95 @@ class ImageJobs:
             response.raise_for_status()
             return await response.json()
 
+    async def await_worker(self, path, cancel, *, success):
+        async with asyncio.timeout(self.timeout):
+            while True:
+                if cancel.is_set():
+                    await self.worker('POST', path + '/cancel')
+                job = await self.worker('GET', path)
+                if job['state'] in TERMINAL or job['state'] == success:
+                    if cancel.is_set() or job['state'] == 'cancelled':
+                        raise Cancelled()
+                    return job
+                await asyncio.sleep(.25)
+
+    async def recover(self):
+        pass
+
+    async def after_job(self):
+        pass
+
+    def initializing(self):
+        pass
+
+    async def process(self):
+        while not self.stopping:
+            while self.queue and time() - self.queue[0][0]['created_at'] >= QUEUE_TIMEOUT:
+                job, _ = self.queue.popleft()
+                self.save(job, state='failed', error='image_queue_timeout', finished_at=time())
+                self.cancelled.pop(job['id'], None)
+            await self.recover()
+            if self.stopping:
+                break
+            if not self.queue:
+                self.changed.clear()
+                await self.changed.wait()
+                continue
+            self.active, payload = self.queue.popleft()
+            await self.run_job(self.active, payload)
+            self.active = None
+            await self.after_job()
+
+    async def lifecycle(self, app):
+        self.root.mkdir(parents=True, exist_ok=True)
+        for path in self.root.glob('*.json'):
+            job = json.loads(path.read_text())
+            if job['state'] not in TERMINAL:
+                self.save(job, state='failed', error='image_coordinator_restarted', finished_at=time())
+                path.with_suffix('.png').unlink(missing_ok=True)
+            self.jobs[job['id']] = job
+        self.prune()
+        self.initializing()
+        async with ClientSession(timeout=ClientTimeout(total=15, connect=3), trust_env=False) as session:
+            self.http = session
+            task = asyncio.create_task(self.process())
+            try:
+                yield
+            finally:
+                self.stopping = True
+                self.changed.set()
+                if self.active:
+                    if cancel := self.cancelled.get(self.active['id']):
+                        cancel.set()
+                    try:
+                        await asyncio.wait_for(asyncio.shield(task), 10)
+                    except TimeoutError:
+                        pass
+                task.cancel()
+                await asyncio.gather(task, return_exceptions=True)
+
+
+class ImageJobs(ImageQueue):
+    def __init__(self, text, root, switch_root, worker_url, worker_token, llm_token, minimum_mib,
+                 kv_bytes=0):
+        super().__init__(root, worker_url, worker_token, text.config.request_timeout)
+        self.text = text
+        self.switch_root = Path(switch_root)
+        self.marker = self.switch_root / 'image-active'
+        self.llm_token = llm_token
+        self.minimum_free = minimum_mib * 1024 ** 2
+        self.kv_bytes = kv_bytes
+
+    @classmethod
+    def from_env(cls, text):
+        minimum_mib = int(os.environ.get('OMNI_IMAGE_MIN_FREE_MIB', '13312'))
+        kv_bytes = int(os.environ.get('LLM_KV_CACHE_BYTES', '9663676416'))
+        if minimum_mib <= 0 or kv_bytes <= 0:
+            raise ValueError('Image GPU memory threshold and LLM KV allocation must be positive')
+        return cls(text, os.environ['OMNI_IMAGE_DATA'], os.environ['OMNI_GPU_SWITCH_ROOT'],
+                   os.environ['OMNI_IMAGE_WORKER_URL'], os.environ['OMNI_IMAGE_INTERNAL_TOKEN'],
+                   os.environ['LLM_GPU_CONTROL_TOKEN'], minimum_mib, kv_bytes)
+
     async def llm(self, action):
         async with self.http.post(self.text.config.engine_url + '/internal/gpu-control/' + action,
                 headers={'X-GPU-Control': self.llm_token}, allow_redirects=False,
@@ -173,18 +248,6 @@ class ImageJobs:
             drain.cancel()
             stop.cancel()
             await asyncio.gather(drain, stop, return_exceptions=True)
-
-    async def await_worker(self, path, cancel, *, success):
-        async with asyncio.timeout(self.text.config.request_timeout):
-            while True:
-                if cancel.is_set():
-                    await self.worker('POST', path + '/cancel')
-                job = await self.worker('GET', path)
-                if job['state'] in TERMINAL or job['state'] == success:
-                    if cancel.is_set() or job['state'] == 'cancelled':
-                        raise Cancelled()
-                    return job
-                await asyncio.sleep(.25)
 
     async def run_job(self, job, payload):
         identifier = job['id']
@@ -294,55 +357,59 @@ class ImageJobs:
                 self.save(job, **result, timing=timing, finished_at=finished)
             self.cancelled.pop(identifier, None)
 
-    async def process(self):
-        while not self.stopping:
-            while self.queue and time() - self.queue[0][0]['created_at'] >= QUEUE_TIMEOUT:
-                job, _ = self.queue.popleft()
-                self.save(job, state='failed', error='image_queue_timeout', finished_at=time())
-                self.cancelled.pop(job['id'], None)
-            if self.text.admission.paused:
-                try:
-                    await self.restore()
-                except IO_ERRORS:
-                    self.text.admission.pause('image_gpu_recovery_failed')
-                    await asyncio.sleep(2)
-                    continue
-            if not self.queue:
-                self.changed.clear()
-                await self.changed.wait()
-                continue
-            self.active, payload = self.queue.popleft()
-            await self.run_job(self.active, payload)
-            self.active = None
-            # Resume the current head before another image can close admission.
-            head = self.text.admission.waiters[0] if self.text.admission.waiters else None
-            while head is not None and head in self.text.admission.waiters:
-                await self.text.admission.changed.wait()
-
-    async def lifecycle(self, app):
-        self.root.mkdir(parents=True, exist_ok=True)
-        for path in self.root.glob('*.json'):
-            job = json.loads(path.read_text())
-            if job['state'] not in TERMINAL:
-                self.save(job, state='failed', error='image_coordinator_restarted', finished_at=time())
-                path.with_suffix('.png').unlink(missing_ok=True)
-            self.jobs[job['id']] = job
-        self.prune()
+    def initializing(self):
         self.text.admission.pause('image_gpu_initializing')
-        async with ClientSession(timeout=ClientTimeout(total=15, connect=3), trust_env=False) as session:
-            self.http = session
-            task = asyncio.create_task(self.process())
+
+    async def recover(self):
+        while self.text.admission.paused and not self.stopping:
             try:
-                yield
-            finally:
-                self.stopping = True
-                self.changed.set()
-                if self.active:
-                    if cancel := self.cancelled.get(self.active['id']):
-                        cancel.set()
-                    try:
-                        await asyncio.wait_for(asyncio.shield(task), 10)
-                    except TimeoutError:
-                        pass
-                task.cancel()
-                await asyncio.gather(task, return_exceptions=True)
+                await self.restore()
+            except IO_ERRORS:
+                self.text.admission.pause('image_gpu_recovery_failed')
+                await asyncio.sleep(2)
+
+    async def after_job(self):
+        # Resume the current head before another image can close admission.
+        head = self.text.admission.waiters[0] if self.text.admission.waiters else None
+        while head is not None and head in self.text.admission.waiters:
+            await self.text.admission.changed.wait()
+
+
+class DedicatedImageJobs(ImageQueue):
+    @classmethod
+    def from_env(cls, text=None):
+        return cls(os.environ['OMNI_IMAGE_DATA'], os.environ['OMNI_IMAGE_WORKER_URL'],
+                   os.environ['OMNI_IMAGE_INTERNAL_TOKEN'], float(os.environ.get('OMNI_REQUEST_TIMEOUT', 1200)))
+
+    async def run_job(self, job, payload):
+        identifier = job['id']
+        path = '/render/' + identifier
+        cancel = self.cancelled[identifier]
+        result = {'state': 'failed', 'error': 'image_worker_unavailable'}
+        try:
+            self.save(job, state='running')
+            await self.worker('PUT', '/prepare/' + identifier, json=payload)
+            prepared = await self.await_worker(path, cancel, success='prepared')
+            if prepared['state'] != 'prepared':
+                result['error'] = prepared.get('error', 'image_prepare_failed')
+                return
+            await self.worker('PUT', path)
+            rendered = await self.await_worker(path, cancel, success='completed')
+            if rendered['state'] == 'completed':
+                output = rendered['output']
+                self.atomic(self.root / (identifier + '.png'), base64.b64decode(output['png'], validate=True))
+                result = {'state': 'completed', 'timing': output['timing'],
+                          'worker_peak_reserved_bytes': output['worker_peak_reserved_bytes']}
+            else:
+                result['error'] = rendered.get('error', 'image_inference_failed')
+        except Cancelled:
+            result = {'state': 'cancelled'}
+        except IO_ERRORS:
+            logging.exception('Dedicated image worker failed for %s', identifier)
+            try:
+                await self.worker('POST', path + '/cancel')
+            except IO_ERRORS:
+                pass
+        finally:
+            self.save(job, **result, finished_at=time())
+            self.cancelled.pop(identifier, None)

@@ -15,7 +15,7 @@ from .token_budget import reservation, ReservationRejected
 from .config import Config, MODEL_ALIAS
 from .avatar_proxy import AvatarProxy
 from .responses_proxy import ResponsesProxy
-from .image_jobs import ImageJobs
+from .image_jobs import DedicatedImageJobs, ImageJobs
 from .thinking import apply_thinking_default
 
 MAX_BODY = 32 * 1024 * 1024
@@ -360,7 +360,12 @@ def create_app(config=None, text_config=None, *, image_factory=None):
         if os.environ.get("LLM_ENGINE_URL"):
             text_config = config.text_backend()
         if os.environ.get('OMNI_IMAGE_WORKER_URL'):
-            image_factory = ImageJobs.from_env
+            placement = os.environ.get('OMNI_IMAGE_PLACEMENT', 'shared')
+            if placement not in ('shared', 'dedicated'):
+                raise ValueError('Unknown image worker placement')
+            if placement == 'shared' and text_config is None:
+                raise ValueError('Shared image placement requires a text engine')
+            image_factory = DedicatedImageJobs.from_env if placement == 'dedicated' else ImageJobs.from_env
     gateway = Gateway(config)
     app = web.Application(client_max_size=MAX_BODY, middlewares=[gateway.authenticate])
     app['gateway'] = gateway
@@ -378,17 +383,15 @@ def create_app(config=None, text_config=None, *, image_factory=None):
     if text_config is not None:
         text_app = create_app(text_config)
         app.add_subapp('/llm', text_app)
-        if image_factory:
-            images = image_factory(text_app['gateway'])
-            app.cleanup_ctx.append(images.lifecycle)
-            app.add_routes([
-                web.post('/v1/images/jobs', images.submit),
-                web.get('/v1/images/jobs/{id}', images.detail),
-                web.get('/v1/images/jobs/{id}/result', images.detail),
-                web.post('/v1/images/jobs/{id}/cancel', images.detail),
-            ])
-    elif image_factory:
-        raise ValueError('Images require the workstation text engine')
+    if image_factory:
+        images = image_factory(text_app['gateway'] if text_config is not None else None)
+        app.cleanup_ctx.append(images.lifecycle)
+        app.add_routes([
+            web.post('/v1/images/jobs', images.submit),
+            web.get('/v1/images/jobs/{id}', images.detail),
+            web.get('/v1/images/jobs/{id}/result', images.detail),
+            web.post('/v1/images/jobs/{id}/cancel', images.detail),
+        ])
     if not config.realtime_enabled:
         app.add_routes([
             web.post('/v1/responses', gateway.responses_request),
