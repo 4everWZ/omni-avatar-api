@@ -118,10 +118,16 @@ class Session:
 
     def pcm(self, start, count):
         output = bytearray(count * 2)
+        end = start + count
         for position, data in self.segments:
-            left, right = max(position, start), min(position + len(data) // 2, start + count)
-            if right > left:
-                output[(left-start)*2:(right-start)*2] = data[(left-position)*2:(right-position)*2]
+            # append() keeps segments ordered and non-overlapping.
+            if position >= end:
+                break
+            segment_end = position + len(data) // 2
+            if segment_end <= start:
+                continue
+            left, right = max(position, start), min(segment_end, end)
+            output[(left-start)*2:(right-start)*2] = data[(left-position)*2:(right-position)*2]
         return bytes(output)
 
     def rms(self, start):
