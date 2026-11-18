@@ -1,7 +1,12 @@
 import struct
 import unittest
+from time import monotonic
+from unittest.mock import Mock
 
-from services.avatar.sessions import Session
+from PIL import Image
+
+from services.avatar.media import TimelineTrack, VIDEO_SAMPLES
+from services.avatar.sessions import RATE, Session
 
 
 class TimelineTests(unittest.TestCase):
@@ -13,3 +18,23 @@ class TimelineTests(unittest.TestCase):
                                 (0, (0, 0)), (9, (0,)), (4, ())]:
             self.assertEqual(session.pcm(start, len(expected)),
                              struct.pack(f'<{len(expected)}h', *expected))
+
+
+class LateVideoTests(unittest.IsolatedAsyncioTestCase):
+    async def test_backpressured_rig_reads_current_pcm_and_keeps_rtp_origin(self):
+        renderer = Mock(spec=['render_pcm'])
+        renderer.render_pcm.return_value = Image.new('RGB', (8, 8))
+        session = Session('owner', 'rig', None, renderer, origin=monotonic() - 5)
+        start = RATE
+        current = start + 34 * VIDEO_SAMPLES
+        session.now_sample = lambda: current + 100
+        speech = struct.pack('<480h', *([9000] * 480))
+        session.segments.append((current, speech))
+        video = TimelineTrack(session, 'video', start)
+        self.assertEqual((await video.recv()).pts, 0)
+        self.assertEqual((await video.recv()).pts, 34 * 3600)
+        renderer.render_pcm.assert_called_with(current / RATE, speech)
+        self.assertEqual((await video.recv()).pts, 35 * 3600)
+        audio = TimelineTrack(session, 'audio', start)
+        self.assertEqual((await audio.recv()).pts, 0)
+        self.assertEqual((await audio.recv()).pts, 480)

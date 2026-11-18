@@ -23,7 +23,13 @@ class TimelineTrack(MediaStreamTrack):
         if self.readyState != 'live' or self.session.state == 'closed':
             raise MediaStreamError
         samples_per_packet = 480 if self.kind == 'audio' else VIDEO_SAMPLES
-        position = self.start_sample + self.index * samples_per_packet
+        index = self.index
+        if index and self.kind == 'video' and hasattr(self.session.renderer, 'render_pcm'):
+            # Keep the negotiated first timestamp. When rendering falls behind,
+            # skip expired poses before sampling audio on the session clock.
+            due = (self.session.now_sample() - self.start_sample) // VIDEO_SAMPLES
+            index = max(index, due)
+        position = self.start_sample + index * samples_per_packet
         timestamp = self.session.origin + position / RATE
         await asyncio.sleep(max(0, timestamp - monotonic()))
         if self.kind == 'audio':
@@ -44,6 +50,6 @@ class TimelineTrack(MediaStreamTrack):
                 await self.session.fail('renderer_failed')
                 self.stop()
                 raise MediaStreamError
-            frame.pts, frame.time_base = self.index * 3600, Fraction(1, 90000)
-        self.index += 1
+            frame.pts, frame.time_base = index * 3600, Fraction(1, 90000)
+        self.index = index + 1
         return frame
