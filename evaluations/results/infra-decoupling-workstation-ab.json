@@ -1,0 +1,647 @@
+{
+  "decision": "blocked",
+  "candidate_commit": "4e91589ba4967be0eab7e74473d30532a7a233d9",
+  "server_checkout_at_baseline": "707642b60e4d2ee3cd9eb5dc6123aa0a8693dc29",
+  "baseline_identity": "running containers from the workstation qualification directory; see images",
+  "device": "2 x NVIDIA GeForce RTX 3090",
+  "driver": "595.99.02",
+  "profile": {
+    "portrait": "Ditto TensorRT FP16",
+    "portrait_slots": 1,
+    "llm_mps_percent": 100,
+    "omni_slots": 2,
+    "llm_slots": 4,
+    "media_seconds_per_suite": 90,
+    "temperature": 0,
+    "thinking": true,
+    "tokens_per_short_request": 256
+  },
+  "gates": {
+    "maximum_sustained_regression_percent": 10,
+    "minimum_idle_llm_tps": 45,
+    "minimum_active_tps_each_of_four": 15,
+    "minimum_frames_per_90s": 2250,
+    "max_sampled_media_lag_ms_exclusive": 160
+  },
+  "method": "A1 original warm, B1 candidate newly started, B2 candidate warm, A2 original restarted. Same retained client image, audio, prepared avatar, prompts, seeds, input pictures, model snapshots, volumes and site settings. Each phase runs throughput, omni_throughput, images and concurrency. A1 concurrency overlapped a candidate package download/build. Values are medians within run then medians of run values. Cold and warm first image jobs are compared separately. Positive change is better for TPS and worse for elapsed time or media lag.",
+  "images": {
+    "omni-engine": {
+      "baseline": "sha256:4afc07f62c54e3229ec39ef8c7770e6405b881d810267b33f4c3832e17851759",
+      "candidate": "sha256:2018bf443732d31e969ab857f76c1fc0677edc786f9c6ecddd6f904bd7cca4b8"
+    },
+    "llm-engine": {
+      "baseline": "sha256:144299c749d60c91e35ec49b947ae754973e3164ac72dde483e99d008346064a",
+      "candidate": "sha256:ee8656be28fcce6b5b82c28571b2f06bc69d5ff1ea5fcfeb290580837c25332a"
+    },
+    "gpu-mps": {
+      "baseline": "sha256:2cf3894f0f5029a72263930ad8459fdf5bbf25dc4380badf42fa5f3f04c2c82d",
+      "candidate": "sha256:6b44ee504a0dc3a21eacf72e7dc5da318b7bcc8ed0e349dc928e67278414430c"
+    },
+    "omni-avatar": {
+      "baseline": "sha256:3282fce074c38cacd955cac21e7bac62ccb7ac84f085a7fc6b90f1297be35e1c",
+      "candidate": "sha256:0e54cf4c6b4049e1cb76f337fc1424011b38d64538868613d041646e14560302"
+    },
+    "omni-gateway": {
+      "baseline": "sha256:e316a8a027a0f07a1ab0c0284a6955a466b555eed8b1e52773815ce1152abab3",
+      "candidate": "sha256:3fbe9a78ba0f7f16183f0374721f57d260e31b34e1af57ebfb8c79c002190c57"
+    },
+    "omni-portrait": {
+      "baseline": "sha256:fad4957f779ade4ddb1bdc0c6345d919c384bb28a8b962dc4f582fbde6a6362c",
+      "candidate": "sha256:d896a86b6afb7ac2994c0a5949ac720a8b96fec25dc570b9a87bf1a04aae07f8"
+    },
+    "omni-images": {
+      "baseline": "sha256:033d2201adc74ff540d744c4f7ab46efd6b0c753b5cf6651c399eb779c13aadb",
+      "candidate": "sha256:54396085b4e63c477b1ca41de19ee10e6d134dd23bee1dcaa8f8e2cda30b17b5"
+    }
+  },
+  "comparison": {
+    "throughput/idle_single_request_throughput": {
+      "baseline": 80.419,
+      "candidate": 81.644,
+      "change_percent": 1.52
+    },
+    "throughput/idle_four_request_throughput": {
+      "baseline": 305.16,
+      "candidate": 305.736,
+      "change_percent": 0.19
+    },
+    "throughput/active_single_request_throughput": {
+      "baseline": 39.651,
+      "candidate": 38.044,
+      "change_percent": -4.05
+    },
+    "throughput/four_simultaneous_responses_while_neural_avatar_active": {
+      "baseline": 130.857,
+      "candidate": 120.908,
+      "change_percent": -7.6
+    },
+    "throughput/generated_frames": {
+      "baseline": 2264.5,
+      "candidate": 2266.0,
+      "change_percent": 0.07
+    },
+    "throughput/max_sampled_lag_ms": {
+      "baseline": 62.0,
+      "candidate": 60.0,
+      "change_percent": -3.23
+    },
+    "omni/omni_idle_single_chat_throughput": {
+      "baseline": 65.271,
+      "candidate": 65.243,
+      "change_percent": -0.04
+    },
+    "omni/omni_idle_two_chat_throughput": {
+      "baseline": 129.271,
+      "candidate": 122.423,
+      "change_percent": -5.3
+    },
+    "omni/omni_single_chat_while_native_portrait_and_four_llm_active": {
+      "baseline": 37.177,
+      "candidate": 37.856,
+      "change_percent": 1.83
+    },
+    "omni/four_simultaneous_responses_while_neural_avatar_active": {
+      "baseline": 108.2,
+      "candidate": 107.611,
+      "change_percent": -0.54
+    },
+    "omni/generated_frames": {
+      "baseline": 2266.5,
+      "candidate": 2267.5,
+      "change_percent": 0.04
+    },
+    "omni/max_sampled_lag_ms": {
+      "baseline": 97.0,
+      "candidate": 425.5,
+      "change_percent": 338.66
+    },
+    "images/anime_character_seconds": {
+      "baseline": 10.485,
+      "candidate": 10.888,
+      "change_percent": 3.84
+    },
+    "images/text_only_seconds": {
+      "baseline": 7.35,
+      "candidate": 7.354,
+      "change_percent": 0.05
+    },
+    "concurrency/four_short_requests": {
+      "baseline": 305.079,
+      "candidate": 302.127,
+      "change_percent": -0.97
+    },
+    "concurrency/long_short_mix": {
+      "baseline": 84.646,
+      "candidate": 80.754,
+      "change_percent": -4.6
+    },
+    "images/cold_reference_person_seconds": {
+      "baseline": 18.342,
+      "candidate": 22.7675,
+      "change_percent": 24.13
+    },
+    "images/warm_reference_person_seconds": {
+      "baseline": 10.685,
+      "candidate": 11.0847,
+      "change_percent": 3.74
+    }
+  },
+  "runs": {
+    "before": {
+      "metrics": {
+        "throughput/idle_single_request_throughput": [
+          80.4323
+        ],
+        "throughput/idle_four_request_throughput": [
+          305.3701
+        ],
+        "throughput/active_single_request_throughput": [
+          42.183,
+          40.8292
+        ],
+        "throughput/four_simultaneous_responses_while_neural_avatar_active": [
+          152.8891,
+          147.7786
+        ],
+        "throughput/generated_frames": [
+          2264
+        ],
+        "throughput/max_sampled_lag_ms": [
+          60
+        ],
+        "omni/omni_idle_single_chat_throughput": [
+          65.5043
+        ],
+        "omni/omni_idle_two_chat_throughput": [
+          130.0223
+        ],
+        "omni/omni_single_chat_while_native_portrait_and_four_llm_active": [
+          38.2624,
+          37.5642,
+          35.6101
+        ],
+        "omni/four_simultaneous_responses_while_neural_avatar_active": [
+          113.2426,
+          137.1655,
+          113.3466
+        ],
+        "omni/generated_frames": [
+          2266
+        ],
+        "omni/max_sampled_lag_ms": [
+          86
+        ],
+        "images/reference_person_seconds": [
+          10.685
+        ],
+        "images/anime_character_seconds": [
+          10.2843
+        ],
+        "images/text_only_seconds": [
+          7.2509
+        ],
+        "concurrency/four_short_requests": [
+          307.9175
+        ],
+        "concurrency/long_short_mix": [
+          88.4161
+        ]
+      },
+      "suites": {
+        "throughput": {
+          "state": "passed",
+          "started_utc": "2026-11-18T10:06:37.234643+00:00",
+          "finished_utc": "2026-11-18T10:08:19.530135+00:00",
+          "slowest_concurrent_request_tps": 36.945
+        },
+        "omni": {
+          "state": "passed",
+          "started_utc": "2026-11-18T10:08:20.097580+00:00",
+          "finished_utc": "2026-11-18T10:10:03.596432+00:00",
+          "slowest_concurrent_request_tps": 28.311
+        },
+        "images/report": {
+          "state": "passed",
+          "gpu_job_seconds": {
+            "reference_person": {
+              "prepare": 3.025278503075242,
+              "drain_llm": 6.910320371389389e-05,
+              "queue": 0.25165711250156164,
+              "release_llm": 0.02997701079584658,
+              "load_cpu": 0.02139606000855565,
+              "encode_cpu": 2.7802378041669726,
+              "upload_gpu": 0.6408731047995389,
+              "inference": 5.826313817175105,
+              "cleanup_and_png": 0.38803810183890164,
+              "restore_llm": 0.2408938359003514,
+              "total": 10.498395442962646
+            },
+            "anime_character": {
+              "prepare": 3.027864837087691,
+              "drain_llm": 6.626686081290245e-05,
+              "queue": 0.0005491874180734158,
+              "release_llm": 0.0279218559153378,
+              "load_cpu": 0.018458090955391526,
+              "encode_cpu": 2.8633551991079003,
+              "upload_gpu": 0.6507223828230053,
+              "inference": 5.785681559005752,
+              "cleanup_and_png": 0.39605002012103796,
+              "restore_llm": 0.2385603920556605,
+              "total": 10.212219953536987
+            },
+            "text_only": {
+              "prepare": 3.016818573931232,
+              "drain_llm": 6.485520862042904e-05,
+              "queue": 0.0012013353407382965,
+              "release_llm": 0.027890413999557495,
+              "load_cpu": 1.7329584807157516e-06,
+              "encode_cpu": 2.798451309092343,
+              "upload_gpu": 0.6420944118872285,
+              "inference": 2.7571924331132323,
+              "cleanup_and_png": 0.3465303529519588,
+              "restore_llm": 0.23945162002928555,
+              "total": 7.177019357681274
+            }
+          },
+          "responses_continuation": "passed"
+        },
+        "concurrency": {
+          "state": "passed"
+        }
+      }
+    },
+    "after": {
+      "metrics": {
+        "throughput/idle_single_request_throughput": [
+          81.3549
+        ],
+        "throughput/idle_four_request_throughput": [
+          305.5316
+        ],
+        "throughput/active_single_request_throughput": [
+          40.4942,
+          39.6374
+        ],
+        "throughput/four_simultaneous_responses_while_neural_avatar_active": [
+          111.1636,
+          132.5439
+        ],
+        "throughput/generated_frames": [
+          2265
+        ],
+        "throughput/max_sampled_lag_ms": [
+          46
+        ],
+        "omni/omni_idle_single_chat_throughput": [
+          65.5135
+        ],
+        "omni/omni_idle_two_chat_throughput": [
+          114.9193
+        ],
+        "omni/omni_single_chat_while_native_portrait_and_four_llm_active": [
+          38.3113,
+          38.5162,
+          39.0017
+        ],
+        "omni/four_simultaneous_responses_while_neural_avatar_active": [
+          106.5175,
+          100.8025,
+          122.9318
+        ],
+        "omni/generated_frames": [
+          2268
+        ],
+        "images/reference_person_seconds": [
+          22.7675
+        ],
+        "images/anime_character_seconds": [
+          11.2926
+        ],
+        "images/text_only_seconds": [
+          7.2536
+        ],
+        "concurrency/four_short_requests": [
+          302.5013
+        ],
+        "concurrency/long_short_mix": [
+          81.8325
+        ],
+        "omni/max_sampled_lag_ms": [
+          299
+        ]
+      },
+      "suites": {
+        "throughput": {
+          "state": "passed",
+          "started_utc": "2026-11-18T10:19:57.801052+00:00",
+          "finished_utc": "2026-11-18T10:21:40.790029+00:00",
+          "slowest_concurrent_request_tps": 27.791
+        },
+        "omni": {
+          "state": "failed",
+          "started_utc": "2026-11-18T10:21:41.370670+00:00",
+          "finished_utc": "2026-11-18T10:23:23.518441+00:00",
+          "failure": "AssertionError: 299",
+          "slowest_concurrent_request_tps": 25.201
+        },
+        "images/report": {
+          "state": "passed",
+          "gpu_job_seconds": {
+            "reference_person": {
+              "prepare": 11.132923302939162,
+              "drain_llm": 0.00011992501094937325,
+              "queue": 0.2515152113046497,
+              "release_llm": 0.03564389608800411,
+              "load_cpu": 0.5478057961445302,
+              "encode_cpu": 6.498735876986757,
+              "upload_gpu": 4.5719634420238435,
+              "inference": 6.0675978059880435,
+              "cleanup_and_png": 0.3864755390677601,
+              "restore_llm": 0.24061325495131314,
+              "total": 22.74362277984619
+            },
+            "anime_character": {
+              "prepare": 3.532170251943171,
+              "drain_llm": 7.66341108828783e-05,
+              "queue": 0.0006431953515857458,
+              "release_llm": 0.02826612815260887,
+              "load_cpu": 0.01871423004195094,
+              "encode_cpu": 3.351529828971252,
+              "upload_gpu": 0.9960669069550931,
+              "inference": 5.811461538076401,
+              "cleanup_and_png": 0.40074287401512265,
+              "restore_llm": 0.23942036600783467,
+              "total": 11.088962078094482
+            },
+            "text_only": {
+              "prepare": 3.0199404088780284,
+              "drain_llm": 7.699406705796719e-05,
+              "queue": 0.0011935059446841478,
+              "release_llm": 0.02759810909628868,
+              "load_cpu": 1.69314444065094e-06,
+              "encode_cpu": 2.8139231079258025,
+              "upload_gpu": 0.640383425867185,
+              "inference": 2.7902397371362895,
+              "cleanup_and_png": 0.3459704560227692,
+              "restore_llm": 0.23892182181589305,
+              "total": 7.2073681354522705
+            }
+          },
+          "responses_continuation": "passed"
+        },
+        "concurrency": {
+          "state": "passed"
+        }
+      }
+    },
+    "after2": {
+      "metrics": {
+        "throughput/idle_single_request_throughput": [
+          81.9339
+        ],
+        "throughput/idle_four_request_throughput": [
+          305.9406
+        ],
+        "throughput/active_single_request_throughput": [
+          40.1313,
+          31.9123
+        ],
+        "throughput/four_simultaneous_responses_while_neural_avatar_active": [
+          134.111,
+          105.8126
+        ],
+        "throughput/generated_frames": [
+          2267
+        ],
+        "throughput/max_sampled_lag_ms": [
+          74
+        ],
+        "omni/omni_idle_single_chat_throughput": [
+          64.9728
+        ],
+        "omni/omni_idle_two_chat_throughput": [
+          129.9273
+        ],
+        "omni/omni_single_chat_while_native_portrait_and_four_llm_active": [
+          36.9992,
+          37.1959,
+          37.5644
+        ],
+        "omni/four_simultaneous_responses_while_neural_avatar_active": [
+          117.1601,
+          101.9036,
+          108.7047
+        ],
+        "omni/generated_frames": [
+          2267
+        ],
+        "images/reference_person_seconds": [
+          11.0847
+        ],
+        "images/anime_character_seconds": [
+          10.4842
+        ],
+        "images/text_only_seconds": [
+          7.4541
+        ],
+        "concurrency/four_short_requests": [
+          301.7527
+        ],
+        "concurrency/long_short_mix": [
+          79.6757
+        ],
+        "omni/max_sampled_lag_ms": [
+          552
+        ]
+      },
+      "suites": {
+        "throughput": {
+          "state": "passed",
+          "started_utc": "2026-11-18T10:25:00.871485+00:00",
+          "finished_utc": "2026-11-18T10:26:43.157240+00:00",
+          "slowest_concurrent_request_tps": 26.453
+        },
+        "omni": {
+          "state": "failed",
+          "started_utc": "2026-11-18T10:26:43.741569+00:00",
+          "finished_utc": "2026-11-18T10:28:25.181714+00:00",
+          "failure": "AssertionError: 552",
+          "slowest_concurrent_request_tps": 25.476
+        },
+        "images/report": {
+          "state": "passed",
+          "gpu_job_seconds": {
+            "reference_person": {
+              "prepare": 3.026267202105373,
+              "drain_llm": 6.916001439094543e-05,
+              "queue": 0.5019608237780631,
+              "release_llm": 0.029974028002470732,
+              "load_cpu": 0.021130271023139358,
+              "encode_cpu": 2.786874453071505,
+              "upload_gpu": 0.639446133049205,
+              "inference": 6.138804280897602,
+              "cleanup_and_png": 0.3914400809444487,
+              "restore_llm": 0.2474769540131092,
+              "total": 11.053173065185547
+            },
+            "anime_character": {
+              "prepare": 3.0284874900244176,
+              "drain_llm": 9.990599937736988e-05,
+              "queue": 0.0005716730374842882,
+              "release_llm": 0.028541616862639785,
+              "load_cpu": 0.01862238091416657,
+              "encode_cpu": 2.7976998439989984,
+              "upload_gpu": 0.6333328750915825,
+              "inference": 6.064828498987481,
+              "cleanup_and_png": 0.40054682502523065,
+              "restore_llm": 0.2410821069497615,
+              "total": 10.468262195587158
+            },
+            "text_only": {
+              "prepare": 3.016741449944675,
+              "drain_llm": 0.00010156002826988697,
+              "queue": 0.001224111532792449,
+              "release_llm": 0.028438751120120287,
+              "load_cpu": 1.3229437172412872e-06,
+              "encode_cpu": 2.855544846970588,
+              "upload_gpu": 0.6393123918678612,
+              "inference": 2.8702513920143247,
+              "cleanup_and_png": 0.34582606609910727,
+              "restore_llm": 0.23851757519878447,
+              "total": 7.273171901702881
+            }
+          },
+          "responses_continuation": "passed"
+        },
+        "concurrency": {
+          "state": "passed"
+        }
+      }
+    },
+    "before2": {
+      "metrics": {
+        "throughput/idle_single_request_throughput": [
+          80.4061
+        ],
+        "throughput/idle_four_request_throughput": [
+          304.9495
+        ],
+        "throughput/active_single_request_throughput": [
+          40.8471,
+          34.7466
+        ],
+        "throughput/four_simultaneous_responses_while_neural_avatar_active": [
+          117.9197,
+          104.839
+        ],
+        "throughput/generated_frames": [
+          2265
+        ],
+        "throughput/max_sampled_lag_ms": [
+          64
+        ],
+        "omni/omni_idle_single_chat_throughput": [
+          65.0377
+        ],
+        "omni/omni_idle_two_chat_throughput": [
+          128.519
+        ],
+        "omni/omni_single_chat_while_native_portrait_and_four_llm_active": [
+          37.3411,
+          36.3982,
+          36.7907
+        ],
+        "omni/four_simultaneous_responses_while_neural_avatar_active": [
+          99.1982,
+          111.9335,
+          103.0539
+        ],
+        "omni/generated_frames": [
+          2267
+        ],
+        "omni/max_sampled_lag_ms": [
+          108
+        ],
+        "images/reference_person_seconds": [
+          18.342
+        ],
+        "images/anime_character_seconds": [
+          10.6862
+        ],
+        "images/text_only_seconds": [
+          7.4495
+        ],
+        "concurrency/four_short_requests": [
+          302.2402
+        ],
+        "concurrency/long_short_mix": [
+          80.8764
+        ]
+      },
+      "suites": {
+        "throughput": {
+          "state": "passed",
+          "started_utc": "2026-11-18T10:31:24.622903+00:00",
+          "finished_utc": "2026-11-18T10:33:07.205927+00:00",
+          "slowest_concurrent_request_tps": 26.21
+        },
+        "omni": {
+          "state": "passed",
+          "started_utc": "2026-11-18T10:33:07.721178+00:00",
+          "finished_utc": "2026-11-18T10:34:51.538878+00:00",
+          "slowest_concurrent_request_tps": 24.8
+        },
+        "images/report": {
+          "state": "passed",
+          "gpu_job_seconds": {
+            "reference_person": {
+              "prepare": 9.978598715970293,
+              "drain_llm": 0.00011130794882774353,
+              "queue": 0.2508305625524372,
+              "release_llm": 0.03710535913705826,
+              "load_cpu": 0.5410474359523505,
+              "encode_cpu": 5.451680767117068,
+              "upload_gpu": 0.790977390948683,
+              "inference": 6.468072052113712,
+              "cleanup_and_png": 0.38638938195072114,
+              "restore_llm": 0.2396630549337715,
+              "total": 18.31835651397705
+            },
+            "anime_character": {
+              "prepare": 3.0295418261084706,
+              "drain_llm": 9.816302917897701e-05,
+              "queue": 0.0005464255809783936,
+              "release_llm": 0.028182022972032428,
+              "load_cpu": 0.0202326369471848,
+              "encode_cpu": 2.9777293889783323,
+              "upload_gpu": 0.8255559878889471,
+              "inference": 5.900264149997383,
+              "cleanup_and_png": 0.39723518397659063,
+              "restore_llm": 0.239585034083575,
+              "total": 10.501694440841675
+            },
+            "text_only": {
+              "prepare": 3.0160487731918693,
+              "drain_llm": 9.527802467346191e-05,
+              "queue": 0.0012774327769875526,
+              "release_llm": 0.028596112970262766,
+              "load_cpu": 1.3529788702726364e-06,
+              "encode_cpu": 2.985369043890387,
+              "upload_gpu": 0.6833931051660329,
+              "inference": 2.826808074954897,
+              "cleanup_and_png": 0.34770442987792194,
+              "restore_llm": 0.23899424099363387,
+              "total": 7.273611783981323
+            }
+          },
+          "responses_continuation": "passed"
+        },
+        "concurrency": {
+          "state": "passed"
+        }
+      }
+    }
+  },
+  "blocking_evidence": "Both candidate omni_throughput trials crossed the 160 ms hard limit. Both baseline trials passed. The first restarted Klein reference job was slower; samples per thermal/startup condition are limited.",
+  "raw_reports_on_workstation": "tmp/release-4e91589/{before,after,after2,before2}/"
+}
