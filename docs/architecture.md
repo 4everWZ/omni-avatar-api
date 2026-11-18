@@ -5,11 +5,11 @@ The repository provides shared inference and avatar services. Applications own u
 ```mermaid
 flowchart LR
     Client[Applications and external orchestrators] --> Gateway[Authenticated gateway]
-    Gateway --> Omni[Omni engine - GPU 1]
-    Gateway --> LLM[Text LLM - GPU 0]
+    Gateway --> Omni[Omni engine]
+    Gateway --> LLM[Text LLM]
     Gateway --> Avatar[Avatar sessions and media]
-    Avatar --> Portrait[Optional portrait worker - GPU 0]
-    Gateway --> Images[Optional Klein worker - GPU 0]
+    Avatar --> Portrait[Optional portrait worker]
+    Gateway --> Images[Optional Klein worker]
     Avatar -->|WHEP audio and video| Client
 ```
 
@@ -17,7 +17,7 @@ flowchart LR
 
 | Directory | Owns | Runtime dependencies |
 | --- | --- | --- |
-| `services/gateway/` | Authentication, aliases, admission, Responses/Chat/Realtime transport and the browser demo. | Private HTTP/WebSocket engine APIs; the Avatar Unix socket. |
+| `services/gateway/` | Authentication, aliases, admission, Responses/Chat/Realtime transport and the browser demo. | Private HTTP/WebSocket engine APIs and a configured Avatar origin or Unix socket. |
 | `services/inference/` | Model acquisition, inference launchers, deployment configuration and patches for pinned upstream packages. | Model snapshots and upstream inference libraries. |
 | `services/llm/` | Text model acquisition, launcher, Responses admission, GPU control and reasoning budget patches. | Independently pinned vLLM image and LLM snapshot. |
 | `services/avatar/` | Session ownership, audio generations, playback timeline, renderer protocol and WebRTC tracks. | Optional Portrait HTTP/WS origin or local Unix socket. |
@@ -49,13 +49,15 @@ Omni、LLM、Portrait 与 Klein 各自生成可独立发布的服务镜像。工
 
 磁盘基线取自同一宿主 `docker system df -v`。旧 Klein 镜像显示 35.4 GB、独占 101.5 MB；旧 Portrait TRT 显示 44.4 GB、独占 8.489 GB。旧 TRT 安装步骤在 `docker history` 中占 4.67 GB，位于服务源码之后。新的多阶段 Dockerfile 将其移到源码之前，使仅修改 Python 文件的构建可复用该层。以上宿主数值描述当时保留的镜像与回滚标签；新增配置的磁盘收益须在相同标签集合、同一存储驱动下测量。
 
+在本地 WSL2 的 linux/amd64 Docker 中已分别构建 Omni、LLM、Klein、Portrait CUDA Graph 和 Portrait TensorRT。五个标签同时存在时，LLM 显示 23.4 GB，其中独占 177.1 kB；Klein 独占 86.42 MB。Portrait 两个变体共享 25.25 GB，TRT 变体独占 4.665 GB，标准变体可单独拉取。TRT 容器离线导入 TensorRT 11.4.0.106 成功，Torch 来自基座的系统包目录。这里的独占量取决于本机保留的其他镜像；空节点只部署一个服务时，仍需下载它的全部基础层。
+
 复核时用 `docker exec -i <container> <worker-python> -B - < tools/diagnostics/runtime_dependencies.py` 检查实际解释器，并对照 `docker image inspect` 的 RootFS.Layers、`docker history` 与 `docker system df -v`。随后验证 Omni duplex、LLM Responses、Ditto 真帧和 Klein 图像输出。依赖声明、导入检查与完整 GPU 推理分别记录。
 
 `deploy/compose/` contains the base stack and composable hardware/service layers. `tools/compose.py` selects supported combinations and passes an explicit repository project directory and environment file to Docker Compose. The Compose project remains `tuber-omni-infra`, preserving existing named volumes.
 
-The workstation assigns GPU 1 to Omni and GPU 0 to the LLM. Each inference container sees its assigned GPU as local device 0. The optional portrait worker shares GPU 0 and pools up to two independent Ditto slots for preparation and rendering. The portrait overlay runs a project-scoped CUDA MPS controller. The renderer publishes a private expiring frame clock per slot and the LLM yields to the tightest live deadline. LLM and Omni admission are independent. [Workstation budgets and evidence](deployment/workstation.md)
+The qualified workstation profile defaults to GPU 1 for Omni and GPU 0 for the LLM. Placement is configurable. Each inference container sees its assigned GPU as local device 0. In the colocated profile Portrait shares the LLM device and pools up to two Ditto slots for preparation and rendering. The portrait overlay runs a project-scoped CUDA MPS controller. The renderer publishes a private expiring frame clock per slot and the LLM yields to the tightest live deadline. LLM and Omni admission are independent. [Workstation budgets and evidence](deployment/workstation.md)
 
-The optional image overlay exposes caller-owned jobs through the gateway. Its GPU coordinator fences portrait allocations, drains LLM generation, grants the image worker one GPU lease and restores LLM admission after the worker has drained. The worker receives only image inputs and exposes private preparation, execution and cancellation operations. The engine GPU controls use a separate private credential.
+The optional image overlay exposes caller-owned jobs through the gateway. In the colocated profile its coordinator fences portrait allocations, drains LLM generation, grants the image worker one GPU lease and restores LLM admission after the worker has drained. A dedicated image worker has its own device allocation and accepts private HTTP calls from the gateway. The gateway owns the job queue and results in both modes.
 
 Weights live in ignored `data/` paths. Reference assets, features, control sockets and compiler caches use named volumes. Application credentials live in the ignored root `.env`. The wrapper anchors local paths to the repository root.
 
