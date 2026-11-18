@@ -1,0 +1,118 @@
+import io
+import json
+import math
+import struct
+import tempfile
+import unittest
+from pathlib import Path
+
+from PIL import Image
+
+from services.avatar.inochi import InochiRenderer
+
+
+def node(uid, kind='Node', x=0, y=0, z=0):
+    return {
+        'uuid': uid,
+        'type': kind,
+        'zsort': z,
+        'enabled': True,
+        'transform': {'trans': [x, y, 0], 'rot': [0, 0, 0], 'scale': [1, 1]},
+        'children': [],
+    }
+
+
+def square(uid, texture, **position):
+    return node(uid, 'Part', **position) | {
+        'textures': [texture],
+        'mesh': {
+            'verts': [-4, -4, 4, -4, -4, 4, 4, 4],
+            'uvs': [0, 0, 1, 0, 0, 1, 1, 1],
+            'indices': [0, 1, 2, 2, 1, 3],
+        },
+    }
+
+
+def binding(target, prop, values):
+    return {
+        'node': target,
+        'param_name': prop,
+        'values': [[v] for v in values],
+        'interpolate_mode': 'Linear',
+        'isSet': [[True] for _ in values],
+    }
+
+
+class InochiTest(unittest.TestCase):
+    def load(self, children, bindings=()):
+        root = node(1)
+        root['children'] = children
+        model = {
+            'nodes': root,
+            'param': [
+                {
+                    'name': 'Control',
+                    'axis_points': [[0, 0.22, 1], [0]],
+                    'min': [0, 0],
+                    'max': [1, 1],
+                    'defaults': [0, 0],
+                    'bindings': bindings,
+                }
+            ],
+        }
+        payload = json.dumps(model).encode()
+        file = b'TRNSRTS\0' + struct.pack('>I', len(payload)) + payload + b'TEX_SECT' + struct.pack('>I', 2)
+        for color in ('red', 'blue'):
+            buf = io.BytesIO()
+            Image.new('RGBA', (8, 8), color).save(buf, 'PNG')
+            file += struct.pack('>IB', len(buf.getvalue()), 0) + buf.getvalue()
+        with tempfile.TemporaryDirectory() as name:
+            path = Path(name) / 'model.inp'
+            path.write_bytes(file)
+            return InochiRenderer(path)
+
+    def test_zsort_opacity_and_nonuniform_keys(self):
+        # Reverse traversal order: the more negative z must win regardless.
+        top = square(3, 1, z=-3) | {'opacity': 0.5}
+        rig = self.load([top, square(2, 0)], [binding(3, 'opacity', [0, 1, 0])])
+        for u, blue in ((0, 0), (0.11, 64), (0.22, 128), (0.61, 64), (1, 0)):
+            red, _, b = rig.render_pose({'Control': u}).getpixel((320, 360))
+            self.assertLessEqual(abs(blue - b), 1)
+            self.assertEqual(red + b, 255)
+
+    def test_parent_scale_rotation_and_local_translation(self):
+        parent = node(2, x=10)
+        parent['children'] = [square(3, 0, y=8)]
+        rig = self.load(
+            [parent],
+            [
+                binding(2, 'transform.s.y', [1, 2, 2]),
+                binding(2, 'transform.r.z', [0, math.pi / 2, math.pi / 2]),
+                binding(3, 'transform.t.y', [0, 2, 2]),
+            ],
+        )
+        self.assertEqual(rig.render_pose({}).getpixel((330, 368)), (255, 0, 0))
+        pose = rig.render_pose({'Control': 0.22})
+        self.assertEqual(pose.getpixel((310, 360)), (255, 0, 0))
+        self.assertNotEqual(pose.getpixel((330, 368)), (255, 0, 0))
+
+    def test_reject_unmapped_uvs(self):
+        part = square(2, 0)
+        part['mesh']['uvs'][2] = 0.75
+        with self.assertRaisesRegex(ValueError, 'UV'):
+            self.load([part])
+
+    def test_silence_and_brightness_use_actual_pcm(self):
+        rig = self.load([square(2, 1)])
+        rig.render_pose = lambda values: values
+        self.assertEqual(rig.render_pcm(1, bytes(960))['MouthOpen'], 0)
+
+        def tone(hz):
+            return struct.pack(
+                '<480h', *(round(6000 * math.sin(i * 2 * math.pi * hz / 24000)) for i in range(480))
+            )
+
+        dark = rig.render_pcm(1, tone(200))
+        bright = rig.render_pcm(1, tone(2600))
+        self.assertAlmostEqual(dark['MouthOpen'], bright['MouthOpen'], places=3)
+        self.assertLess(dark['MouthForm'], bright['MouthForm'])

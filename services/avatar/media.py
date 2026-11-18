@@ -33,7 +33,11 @@ class TimelineTrack(MediaStreamTrack):
             frame.pts, frame.time_base = self.index * 480, Fraction(1, RATE)
         else:
             try:
-                image = self.session.renderer.render(position / RATE, self.session.rms(position))
+                renderer = self.session.renderer
+                if render_pcm := getattr(renderer, 'render_pcm', None):
+                    image = await asyncio.to_thread(render_pcm, position / RATE, self.session.pcm(position, 480))
+                else:
+                    image = renderer.render(position / RATE, self.session.rms(position))
                 frame = VideoFrame.from_image(image)
             except Exception:
                 logging.exception('Avatar renderer failed')

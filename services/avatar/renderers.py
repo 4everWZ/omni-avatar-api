@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import Awaitable, Protocol
 
 from PIL import Image
+from .inochi import InochiRenderer
 
 
 class Renderer(Protocol):
@@ -50,4 +51,4 @@ class SpriteRenderer:
         self.poses.clear()
 
 
-DRIVERS = {'sprite2d': SpriteRenderer}
+DRIVERS = {'sprite2d': SpriteRenderer, 'inochi2d': InochiRenderer}

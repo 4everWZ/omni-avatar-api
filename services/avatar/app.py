@@ -95,7 +95,12 @@ class AvatarService:
                 self.creating -= 1
         else:
             registered = self.registry[avatar_id]
-            renderer = DRIVERS[registered['driver']](Path(registered['root']))
+            factory = DRIVERS[registered['driver']]
+            self.creating += 1
+            try:
+                renderer = await asyncio.to_thread(factory, Path(registered['root']))
+            finally:
+                self.creating -= 1
         source_state = self.sources.get(source_id, {})
         session = Session(request['owner'], avatar_id, source_id, renderer,
                           epoch=source_state.get('epoch', -1), response_id=source_state.get('response_id'))
