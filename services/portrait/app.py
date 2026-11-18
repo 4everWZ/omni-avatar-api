@@ -335,11 +335,15 @@ def main():
     finally:
         if guard:
             guard.close()
-    web.run_app(create_app(os.environ.get('PORTRAIT_DATA', '/data'),
-                          os.environ['OMNI_AVATAR_INTERNAL_TOKEN'], backends[0],
-                          additional_backends=backends[1:], gpu_gate=gpu_gate),
-                path=os.environ.get('PORTRAIT_SOCKET', '/run/omni-portrait/control.sock'),
-                access_log=None, handler_cancellation=False)
+    app = create_app(os.environ.get('PORTRAIT_DATA', '/data'),
+                     os.environ['OMNI_AVATAR_INTERNAL_TOKEN'], backends[0],
+                     additional_backends=backends[1:], gpu_gate=gpu_gate)
+    if host := os.environ.get('PORTRAIT_BIND'):
+        web.run_app(app, host=host, port=int(os.environ.get('PORTRAIT_PORT', '8091')),
+                    access_log=None, handler_cancellation=False)
+    else:
+        web.run_app(app, path=os.environ.get('PORTRAIT_SOCKET', '/run/omni-portrait/control.sock'),
+                    access_log=None, handler_cancellation=False)
 
 
 if __name__ == "__main__":

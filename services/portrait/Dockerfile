@@ -1,4 +1,4 @@
-ARG PORTRAIT_BASE_IMAGE=omni-api-engine:0.32.0-workstation
+ARG PORTRAIT_BASE_IMAGE=vllm/vllm-omni:v0.32.0-x86_64@sha256:6b44ee504a0dc3a21eacf72e7dc5da318b7bcc8ed0e349dc928e67278414430c
 FROM ${PORTRAIT_BASE_IMAGE}
 RUN apt-get update && apt-get install -y --no-install-recommends libportaudio2 libgl1 libglib2.0-0 ffmpeg \
     && rm -rf /var/lib/apt/lists/*

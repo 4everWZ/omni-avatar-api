@@ -131,10 +131,10 @@ python tools/compose.py --portrait --vpn -- up -d --wait llm-engine omni-portrai
 
 ## 可选生图
 
-在 `.env` 设置独立的 `OMNI_IMAGE_INTERNAL_TOKEN` 和 `LLM_GPU_CONTROL_TOKEN`。先构建主线引擎，再构建私有 image worker。首次下载使用对宿主模型目录有写权限的 UID。
+在 `.env` 设置独立的 `OMNI_IMAGE_INTERNAL_TOKEN` 和 `LLM_GPU_CONTROL_TOKEN`。各服务独立构建。首次下载使用对宿主模型目录有写权限的 UID。
 
 ```sh
-python tools/compose.py -- build omni-engine
+python tools/compose.py -- build omni-engine llm-engine
 python tools/compose.py --portrait --images -- build omni-gateway omni-portrait omni-images
 python tools/compose.py --portrait --images -- --profile assets run --rm -u "$(id -u):$(id -g)" image-model-fetch
 python tools/compose.py --portrait --images --vpn -- up -d --wait

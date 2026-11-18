@@ -20,7 +20,7 @@ flowchart LR
 | `services/gateway/` | Authentication, aliases, admission, Responses/Chat/Realtime transport and the browser demo. | Private HTTP/WebSocket engine APIs; the Avatar Unix socket. |
 | `services/inference/` | Model acquisition, inference launchers, deployment configuration and patches for pinned upstream packages. | Model snapshots and upstream inference libraries. |
 | `services/llm/` | Text model acquisition, launcher, Responses admission, GPU control and reasoning budget patches. | Independently pinned vLLM image and LLM snapshot. |
-| `services/avatar/` | Session ownership, audio generations, playback timeline, renderer protocol and WebRTC tracks. | The optional portrait Unix socket. |
+| `services/avatar/` | Session ownership, audio generations, playback timeline, renderer protocol and WebRTC tracks. | Optional Portrait HTTP/WS origin or local Unix socket. |
 | `services/portrait/` | Reference preparation, its GPU lease and timestamped neural rendering. | Pinned Ditto code/models, isolated by a worker image. |
 | `services/images/` | CPU prompt encoding, original-precision Klein inference and task-scoped GPU allocation. | Pinned Klein snapshot and Diffusers, isolated by a worker image. |
 

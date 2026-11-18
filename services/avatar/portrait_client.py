@@ -19,7 +19,7 @@ class PortraitClient:
 
     async def forward(self, request):
         try:
-            async with self.http.request(request.method, 'http://portrait' + request.path,
+            async with self.http.request(request.method, request.path,
                     headers=self.headers(request['owner']) | {'Content-Type': request.content_type},
                     data=await request.read(), allow_redirects=False) as response:
                 return web.Response(status=response.status, body=await response.read(),
@@ -30,14 +30,16 @@ class PortraitClient:
 
     async def renderer(self, owner, avatar_id):
         headers = self.headers(owner)
-        url = 'http://portrait/v1/avatar/avatars/' + avatar_id
+        url = '/v1/avatar/avatars/' + avatar_id
         try:
-            async with self.http.get(url + '/preview', headers=headers) as response:
-                if response.status != 200:
+            async with self.http.get(url + '/preview', headers=headers, allow_redirects=False) as response:
+                if response.status == 404:
                     raise web.HTTPNotFound()
+                if response.status != 200:
+                    raise web.HTTPServiceUnavailable(reason='Portrait preview unavailable')
                 with Image.open(io.BytesIO(await response.read())) as image:
                     preview = image.convert('RGB')
-            socket = await self.http.ws_connect('http://portrait/internal/render/' + avatar_id,
+            socket = await self.http.ws_connect('/internal/render/' + avatar_id,
                                                 headers=headers, heartbeat=20, max_msg_size=1024 * 1024)
             try:
                 hello = await socket.receive_json(timeout=30)
@@ -47,7 +49,7 @@ class PortraitClient:
                 await socket.close()
                 raise
             return PortraitRenderer(socket, preview)
-        except ClientError as error:
+        except (ClientError, TimeoutError) as error:
             if getattr(error, 'status', None) == 429:
                 raise web.HTTPTooManyRequests(reason='Neural renderer busy', headers={'Retry-After': '1'}) from error
             raise web.HTTPServiceUnavailable(reason='Portrait worker unavailable') from error

@@ -241,8 +241,14 @@ class AvatarService:
 
     async def lifecycle(self, app):
         client = None
-        if path := os.environ.get('OMNI_PORTRAIT_SOCKET'):
-            client = ClientSession(connector=UnixConnector(path=path), timeout=ClientTimeout(total=40))
+        path = os.environ.get('OMNI_PORTRAIT_SOCKET')
+        origin = os.environ.get('OMNI_PORTRAIT_URL')
+        if path and origin:
+            raise ValueError('Configure one Portrait transport: socket or HTTP origin')
+        if path or origin:
+            client = ClientSession(base_url=origin or 'http://portrait',
+                                   connector=UnixConnector(path=path) if path else None,
+                                   timeout=ClientTimeout(total=40))
             self.portrait = PortraitClient(client, self.token)
         async def reap():
             while True:

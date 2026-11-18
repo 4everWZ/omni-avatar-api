@@ -112,9 +112,6 @@ services:
       retries: 3
 
   omni-avatar:
-    depends_on:
-      omni-portrait:
-        condition: service_healthy
     environment:
       OMNI_PORTRAIT_SOCKET: /run/omni-portrait/control.sock
     volumes:

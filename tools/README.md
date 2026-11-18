@@ -2,7 +2,7 @@
 
 ## 部署入口
 
-`python tools/compose.py -- <Docker Compose 参数>` 默认选择分卡工作站。`--portrait`、`--vpn`、`--media` 开启可选层；`--target` 选择硬件／评估配置，`--env-file` 指定环境文件，`--dry-run` 查看命令。入口选项写在 `--` 之前，Docker 参数放在之后。模型目录和构建上下文以仓库根目录解析。
+`python tools/compose.py -- <Docker Compose 参数>` 默认选择分卡工作站。`--portrait`、`--vpn`、`--media` 开启可选层；`--target` 选择独立服务（llm、portrait）或硬件／评估配置，`--env-file` 指定环境文件，`--dry-run` 查看命令。入口选项写在 `--` 之前，Docker 参数放在之后。模型目录和构建上下文以仓库根目录解析。
 
 ## 工作站实机验证
 
