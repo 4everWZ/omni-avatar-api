@@ -32,6 +32,25 @@ The portrait frame adapter selects CUDA Graph or TensorRT through deployment con
 
 ## Deployment and state
 
+### 工作站 GPU 镜像与依赖收敛
+
+Omni、LLM、Portrait 与 Klein 各自生成可独立发布的服务镜像。工作站 linux/amd64 的 LLM 使用固定 vLLM OpenAI 基座，另三项使用固定 vLLM-Omni 基座。逐层比较 registry manifest，文本基座的 **39 个有序层是 Omni 基座 45 层的完整前缀**。共享部分压缩大小为 9,205,725,001 B，Omni 增量为 749,244,900 B。同一平台和 Docker 内容存储可复用这些块；单独部署 LLM 也可省去 Omni 增量。模型卷、编译缓存及跨机器的独立镜像存储另计。固定摘要见 [LLM Dockerfile](../services/llm/Dockerfile) 和 [工作站清单](../deploy/compose/workstation.yml)。
+
+以下数据来自 2026-11-18 双 3090 工作站四个运行中容器的**当前解释器**。共同版本为 Python 3.12.3、Torch 2.13.0+cu130、Torch CUDA 13.0、CUDA Runtime 13.0.96、Triton 3.7.1。四个进程的 Torch 均来自系统包目录。
+
+| 服务 | 观察到的版本／冲突 | 构建决策 |
+| --- | --- | --- |
+| Omni | vLLM 和 vLLM-Omni 均为 0.32.0，Diffusers 0.40.0，Transformers 5.19.0。MiniCPM 使用服务专属 vocoder 及上游源码补丁。 | 保留固定 Omni 层，仅在该服务镜像中安装 vocoder 和 MiniCPM 补丁。 |
+| LLM | 现行工作站与 Omni 使用同一套 CUDA/Torch；文本服务需要 Qwen 解析、Responses 容量及预算补丁。 | 从共享层前缀派生，补丁直接作用于自己的 vLLM 文件，独立 fetch／serve。 |
+| Portrait | 系统 ONNX Runtime 1.31.1、NumPy 2.2.6；venv 提供 MediaPipe 0.10.32、OpenCV Contrib 4.12.0.88。TRT 变体另含 TensorRT CUDA 13 11.4.0.106。 | venv 读取基座 Torch/ONNX。构建先安装依赖，再复制源码；标准变体跳过 TensorRT。MPS 使用固定上游镜像，不要求先构建 Omni 业务层。 |
+| Klein | Diffusers 0.37.0 与 Omni 精确依赖 0.40.0 冲突；Pillow 12.2.0、aiohttp 3.13.5 分别低于 vLLM 声明的 12.3.0、3.14.3 下限。旧镜像的 aiohttp 还要求 multidict <7，实际为 7.1.0。 | 独立 `/opt/klein-env` 复用 Torch，以私有小包覆盖 Diffusers、Pillow、aiohttp、multidict。此解释器仅用于图像 worker；不以它启动 vLLM。 |
+
+元数据审计还检出共同的 NCCL 差异（Torch 声明 2.29.7，安装 2.30.7）、OpenTelemetry SDK 差异（exporter 要求 ~=1.45.1，安装 1.40.0）。现行 Omni、LLM 和 Klein 镜像中的 step-audio2 声明 librosa，环境中缺少该包；拆出的 LLM 和 Klein 构建没有该 vocoder 安装步骤。上述差异需结合实际使用的运算路径验收，变更共同 ABI 须复测模型与媒体。Orin 的 ARM64、JetPack 和 CUDA 12.9 适配单独固定。
+
+磁盘基线取自同一宿主 `docker system df -v`。旧 Klein 镜像显示 35.4 GB、独占 101.5 MB；旧 Portrait TRT 显示 44.4 GB、独占 8.489 GB。旧 TRT 安装步骤在 `docker history` 中占 4.67 GB，位于服务源码之后。新的多阶段 Dockerfile 将其移到源码之前，使仅修改 Python 文件的构建可复用该层。以上宿主数值描述当时保留的镜像与回滚标签；新增配置的磁盘收益须在相同标签集合、同一存储驱动下测量。
+
+复核时用 `docker exec -i <container> <worker-python> -B - < tools/diagnostics/runtime_dependencies.py` 检查实际解释器，并对照 `docker image inspect` 的 RootFS.Layers、`docker history` 与 `docker system df -v`。随后验证 Omni duplex、LLM Responses、Ditto 真帧和 Klein 图像输出。依赖声明、导入检查与完整 GPU 推理分别记录。
+
 `deploy/compose/` contains the base stack and composable hardware/service layers. `tools/compose.py` selects supported combinations and passes an explicit repository project directory and environment file to Docker Compose. The Compose project remains `tuber-omni-infra`, preserving existing named volumes.
 
 The workstation assigns GPU 1 to Omni and GPU 0 to the LLM. Each inference container sees its assigned GPU as local device 0. The optional portrait worker shares GPU 0 and pools up to two independent Ditto slots for preparation and rendering. The portrait overlay runs a project-scoped CUDA MPS controller. The renderer publishes a private expiring frame clock per slot and the LLM yields to the tightest live deadline. LLM and Omni admission are independent. [Workstation budgets and evidence](deployment/workstation.md)

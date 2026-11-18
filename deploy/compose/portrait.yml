@@ -1,8 +1,7 @@
 # Append after the four-file inference mainline. GPU0 is shared with the LLM.
 services:
   gpu-mps:
-    image: omni-api-engine:0.32.0-workstation
-    pull_policy: never
+    image: vllm/vllm-omni:v0.32.0-x86_64@sha256:6b44ee504a0dc3a21eacf72e7dc5da318b7bcc8ed0e349dc928e67278414430c
     user: '0:0'
     entrypoint: /bin/sh
     command:
@@ -70,6 +69,8 @@ services:
   omni-portrait:
     build:
       context: ./services/portrait
+      args:
+        PORTRAIT_RUNTIME: ${OMNI_PORTRAIT_FRAME_BACKEND:-cuda-graph}
       dockerfile: ${OMNI_PORTRAIT_DOCKERFILE:-Dockerfile}
     image: ${OMNI_PORTRAIT_IMAGE:-omni-api-portrait:ditto}
     pull_policy: never

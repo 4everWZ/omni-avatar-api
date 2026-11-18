@@ -16,7 +16,7 @@ python tools/compose.py --portrait -- --profile assets run --rm portrait-assets
 python tools/compose.py --portrait --vpn -- up -d --wait
 ```
 
-完成标准头像镜像与资产准备后，按下方 TensorRT 配置启用实测帧后端。
+使用 TensorRT 时直接构建对应变体并准备形象资产，配置见下文。
 
 首次配置与共享网络创建见[快速开始](../../README.zh-CN.md#快速开始)。模型使用精确快照和独立目录，服务离线加载。应用、管理和 Avatar 内部令牌在根目录 `.env` 中分别配置；凭据与模型资产由本地忽略目录持有。引擎使用 Docker 私网，Avatar／Portrait 控制使用私有 Unix socket。宿主发布回环及指定 VPN 地址的网关 8000 端口。
 
@@ -183,7 +183,7 @@ ssh -N -L 18080:127.0.0.1:8000 research-2@100.119.17.6
 
 ## TensorRT FP16 对照
 
-工作站选择 `OMNI_PORTRAIT_FRAME_BACKEND=tensorrt`、`OMNI_PORTRAIT_IMAGE=omni-api-portrait:ditto-trt`、`OMNI_PORTRAIT_DOCKERFILE=Dockerfile.tensorrt`。标准部署默认 `cuda-graph`；外部部署通过这三个配置选择帧实现与独立镜像。[构建、预编译与启动](../../services/portrait/README.md#tensorrt-frame-backend)。
+工作站选择 `OMNI_PORTRAIT_FRAME_BACKEND=tensorrt`、`OMNI_PORTRAIT_IMAGE=omni-api-portrait:ditto-trt`、`OMNI_PORTRAIT_DOCKERFILE=Dockerfile`。标准部署默认 `cuda-graph`；外部部署通过这三个配置选择帧实现与独立镜像。[构建、预编译与启动](../../services/portrait/README.md#tensorrt-frame-backend)。
 
 TensorRT CUDA 13 固定为 11.4.0.106，目标为 RTX 3090 SM 8.6；引擎在目标卡构建，缓存到头像卷 `/cache/tensorrt`。warp 和 decoder 合并为一个引擎，卷积 FP16、关键点与坐标 FP32，使用同一十步采样、分辨率、1200 ms 音频预留、MPS 20% 和渲染截止期策略。
 

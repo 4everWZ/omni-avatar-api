@@ -34,16 +34,16 @@ Use `python tools/compose.py --target portrait -- build omni-portrait`, run the 
 
 `OMNI_PORTRAIT_FRAME_BACKEND` selects `cuda-graph` (portable deployment default) or `tensorrt`. The TensorRT backend combines warp and decoder in one target-built engine and captures its enqueue in the existing CUDA graph. Convolutions use FP16; keypoints and coordinate calculations use FP32. Motion prediction, ten diffusion steps, 640×720 delivery and the 1.2-second input lead follow the shared renderer configuration.
 
-Build the standard portrait image first, then select the independent TensorRT image:
+Select the TensorRT runtime stage before building the worker:
 
 ```sh
 export OMNI_PORTRAIT_IMAGE=omni-api-portrait:ditto-trt
-export OMNI_PORTRAIT_DOCKERFILE=Dockerfile.tensorrt
+export OMNI_PORTRAIT_DOCKERFILE=Dockerfile
 export OMNI_PORTRAIT_FRAME_BACKEND=tensorrt
 python tools/compose.py --portrait -- build omni-portrait
 ```
 
-`Dockerfile.tensorrt` pins TensorRT CUDA 13 `11.4.0.106` and ONNX Script `0.7.2` inside the portrait environment. TensorRT 11.2 introduced native rank-5 GridSample, which the warp model uses. [Operator support](https://docs.nvidia.com/deeplearning/tensorrt/latest/getting-started/release-notes-11/11.2.1.html).
+The shared Dockerfile installs the optional TensorRT layer before copying worker source. Older installations selecting `Dockerfile.tensorrt` can switch to `Dockerfile` to use this build layout. The TensorRT requirements pin TensorRT CUDA 13 `11.4.0.106` and ONNX Script `0.7.2` inside the portrait environment. TensorRT 11.2 introduced native rank-5 GridSample, which the warp model uses. [Operator support](https://docs.nvidia.com/deeplearning/tensorrt/latest/getting-started/release-notes-11/11.2.1.html).
 
 For a first engine build, drain GPU 0 work and reserve the card for compilation:
 

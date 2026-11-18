@@ -58,7 +58,7 @@ python tools/compose.py --portrait -- --profile assets run --rm portrait-assets
 python tools/compose.py --portrait -- up -d --wait
 ```
 
-实测 TensorRT FP16 配置在标准头像镜像构建后，按[帧后端说明](services/portrait/README.md#tensorrt-frame-backend)启用。
+实测 TensorRT FP16 配置按[帧后端说明](services/portrait/README.md#tensorrt-frame-backend)启用。
 
 统一入口以仓库根目录解析 `.env`、构建上下文和绑定目录。添加 `--vpn` 可发布到 `OMNI_GATEWAY_VPN_BIND`，添加 `--media` 可启用 MediaMTX。其他硬件／评估配置使用 `--target` 选择。配置与服务更新方式见[工作站指南](docs/deployment/workstation.md)。
 

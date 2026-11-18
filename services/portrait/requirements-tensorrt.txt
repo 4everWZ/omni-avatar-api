@@ -1,0 +1,2 @@
+tensorrt-cu13==11.4.0.106
+onnxscript==0.7.2

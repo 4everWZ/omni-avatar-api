@@ -10,6 +10,8 @@ services:
   omni-portrait:
     build:
       context: ./services/portrait
+      args:
+        PORTRAIT_RUNTIME: ${OMNI_PORTRAIT_FRAME_BACKEND:-cuda-graph}
       dockerfile: ${OMNI_PORTRAIT_DOCKERFILE:-Dockerfile}
     image: ${OMNI_PORTRAIT_IMAGE:-omni-api-portrait:ditto}
     init: true

@@ -58,7 +58,7 @@ python tools/compose.py --portrait -- --profile assets run --rm portrait-assets
 python tools/compose.py --portrait -- up -d --wait
 ```
 
-For the measured TensorRT FP16 profile, follow the [frame backend setup](services/portrait/README.md#tensorrt-frame-backend) after building the standard portrait image.
+For the measured TensorRT FP16 profile, follow the [frame backend setup](services/portrait/README.md#tensorrt-frame-backend).
 
 The entrypoint anchors `.env`, build contexts and bind mounts to the repository root. Add `--vpn` to publish on `OMNI_GATEWAY_VPN_BIND`, or `--media` for optional MediaMTX transport. Alternative hardware/evaluation stacks use `--target`. See the [workstation guide](docs/deployment/workstation.md) for profile configuration and service updates.
 
