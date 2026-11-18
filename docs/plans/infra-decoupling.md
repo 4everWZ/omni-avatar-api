@@ -130,7 +130,9 @@ tools/qualification/                          # 按 endpoint 压测，按节点�
 
 ## 四、锁定资源配额前的验证
 
-**双 RTX 3090 发布验收（2026-11-18）。** 对线上原容器和候选 `4e91589` 按原版、新版、新版、原版的顺序交叉测试。两边沿用单 Ditto、TensorRT、LLM MPS 100% 和同一客户端夹具。空闲四路 LLM 合计吞吐基本持平，通话加头像时四路合计下降 7.6%。加入一路 Omni Chat 后，两轮原版的最大音画采样偏差为 86、108 ms，两轮候选版为 299、552 ms，超过既定的 160 ms 上限。Klein 重启后的首个真人参考作业从 18.34 s 增至 22.77 s，热态同项从 10.69 s 增至 11.08 s。该配置未通过发布验收，工作站已恢复原容器。[逐轮性能与发布判定](../../evaluations/results/infra-decoupling-workstation-ab.json)
+**双 RTX 3090 发布验收（2026-11-18）。** 对线上原容器和候选 `4e91589` 按原版、新版、新版、原版的顺序交叉测试。两边沿用单 Ditto、TensorRT、LLM MPS 100% 和同一客户端夹具。空闲四路 LLM 合计吞吐基本持平，通话加头像时四路合计下降 7.6%。加入一路 Omni Chat 后，两轮原版的最大音画采样偏差为 86、108 ms，两轮候选版为 299、552 ms，超过既定的 160 ms 上限。Klein 重启后的首个真人参考作业从 18.34 s 增至 22.77 s，热态同项从 10.69 s 增至 11.08 s。该轮验收失败后，工作站当时恢复了原容器。[逐轮性能与发布判定](../../evaluations/results/infra-decoupling-workstation-ab.json)
+
+**调优后的正式部署。** 本站把 LLM、Ditto 与按需使用的 Klein 迁到 GPU1，GPU0 运行 Omni。Portrait 的流式 HuBERT 使用 4 个 CPU 线程，Omni 开启可扩展显存段，WHEP 从会话的同一个 PCM 帧边界启动音频和视频。两轮 90 秒全栈混跑各生成 2,270 张真实神经帧，最大音画采样偏差分别为 41、40 ms。原生语音、头像与四路 LLM 混跑时，WHEP 对齐前的两轮最大偏差为 74、71 ms，对齐后为 40、40 ms。加入一路 Omni Chat 后，四路 LLM 合计 155.7 TPS，比旧版提高 43.9%。约 28K 输入与三路短请求混跑合计 87.5 TPS。双路原生语音、超额准入和关闭后继续推理均通过。[逐轮性能、温度和镜像身份](../../evaluations/results/infra-thermal-tuning-workstation.json)
 
 **已有验证。** 本地构建四种引擎和可选 Portrait TensorRT 变体。75 项服务、集成和编排测试通过，包括使用替身渲染器的 TCP 音频输入与帧返回。另行使用固定上游源码运行四项 INT4 测试，PyTorch 基础 CPU 指令路径（`ATEN_CPU_CAPABILITY=default`）全部通过；宿主自动选择的 CPU 路径在窗口重定位测试中有 2/24 个打包 scale 字与参考值不一致，仍需在目标设备复核。保留原有逐位断言。
 

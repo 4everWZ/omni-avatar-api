@@ -1,0 +1,1268 @@
+{
+  "runtime_git_commit": "6d17f49f106ac57eb78ccd3b8c44673d5cbc5023",
+  "baseline_record": "infra-decoupling-workstation-ab.json",
+  "device": "2 x NVIDIA GeForce RTX 3090",
+  "driver": "595.99.02",
+  "method": "Same host, existing client image, fixtures, token budget, 90 seconds per media workload. Two successive tuned runs then a separate cold canonical rollout verification. Relative metrics compare run medians against the two previous same-host production runs. Cold image includes first job after service ready; process startup recorded separately. Thermal records are sampled once per second during each mixed load window. After aligning WHEP track origins to the session frame grid, only the Avatar container was replaced. aligned-a and aligned-b are two complete consecutive runs on the canonical deployment. All warm comparisons use these two runs. The cold Klein result comes from the first job on the same worker after the preceding canonical restart.",
+  "site": {
+    "gpu0": "PCI 01:00.0, Omni",
+    "gpu1": "PCI 05:00.0, LLM, Ditto, MPS and leased Klein",
+    "board_power_limit_w": [
+      350,
+      350
+    ],
+    "voltage_adjusted": false,
+    "portrait_streaming_hubert_cpu_threads": 4,
+    "omni_allocator": "expandable_segments:True",
+    "klein_preload_cpu": true,
+    "llm_mps_percent": 100,
+    "portrait_slots": 1,
+    "llm_slots": 4,
+    "omni_slots": 2
+  },
+  "exploration": {
+    "original_mps85_hot_media_max_lag_ms": 506,
+    "mps75_original_max_lag_ms": 176,
+    "mps75_swapped_repeats": "94 ms first run; avatar.failed on repeat. Long plus three short requests 73.17 and 73.30 aggregate TPS.",
+    "swapped_original_allocator": "Two native audio streams then third WS rejected 429. Code2Wav OOM after close.",
+    "mps100_before_cpu_tuning_max_lag_ms": 273,
+    "before_whep_alignment": "Ordinary voice + Portrait + four LLM clients peaked at 74 and 71 ms on the canonical stack. The peer origin was independent of the generated 25 Hz video grid. Aligned Avatar uses the same PCM sample position for audio, video and the advertised WHEP origin."
+  },
+  "streaming_hubert_fp32_cpu_15_chunks": [
+    {
+      "threads": 0,
+      "p50_ms": 183.91,
+      "p95_ms": 267.72,
+      "cpu_p50_ms": 5110.53,
+      "max_feature_diff": 0
+    },
+    {
+      "threads": 4,
+      "p50_ms": 54.08,
+      "p95_ms": 67.58,
+      "cpu_p50_ms": 215.95,
+      "max_feature_diff": 0.00010904669761657715
+    },
+    {
+      "threads": 8,
+      "p50_ms": 51.81,
+      "p95_ms": 52.55,
+      "cpu_p50_ms": 415.46,
+      "max_feature_diff": 0.00010904669761657715
+    }
+  ],
+  "klein_preload_probe": {
+    "process_start_to_livez_seconds": 7.73
+  },
+  "comparison": {
+    "throughput/idle_single_request_throughput": {
+      "old": 80.419,
+      "new": 80.861,
+      "change_percent": 0.55
+    },
+    "throughput/idle_four_request_throughput": {
+      "old": 305.16,
+      "new": 303.249,
+      "change_percent": -0.63
+    },
+    "throughput/active_single_request_throughput": {
+      "old": 39.651,
+      "new": 42.342,
+      "change_percent": 6.79
+    },
+    "throughput/four_simultaneous_responses_while_neural_avatar_active": {
+      "old": 130.857,
+      "new": 156.558,
+      "change_percent": 19.64
+    },
+    "throughput/generated_frames": {
+      "old": 2264.5,
+      "new": 2270.0,
+      "change_percent": 0.24
+    },
+    "throughput/max_sampled_lag_ms": {
+      "old": 62.0,
+      "new": 40.0,
+      "change_percent": -35.48
+    },
+    "omni/omni_idle_single_chat_throughput": {
+      "old": 65.271,
+      "new": 65.056,
+      "change_percent": -0.33
+    },
+    "omni/omni_idle_two_chat_throughput": {
+      "old": 129.271,
+      "new": 129.596,
+      "change_percent": 0.25
+    },
+    "omni/omni_single_chat_while_native_portrait_and_four_llm_active": {
+      "old": 37.177,
+      "new": 53.869,
+      "change_percent": 44.9
+    },
+    "omni/four_simultaneous_responses_while_neural_avatar_active": {
+      "old": 108.2,
+      "new": 155.688,
+      "change_percent": 43.89
+    },
+    "omni/generated_frames": {
+      "old": 2266.5,
+      "new": 2270.0,
+      "change_percent": 0.15
+    },
+    "omni/max_sampled_lag_ms": {
+      "old": 97.0,
+      "new": 40.5,
+      "change_percent": -58.25
+    },
+    "concurrency/four_short_requests": {
+      "old": 305.079,
+      "new": 309.245,
+      "change_percent": 1.37
+    },
+    "concurrency/long_short_mix": {
+      "old": 84.646,
+      "new": 87.541,
+      "change_percent": 3.42
+    },
+    "images/anime_character_seconds": {
+      "old": 10.485,
+      "new": 10.885,
+      "change_percent": 3.81
+    },
+    "images/text_only_seconds": {
+      "old": 7.35,
+      "new": 8.057,
+      "change_percent": 9.62
+    },
+    "images/warm_reference_person_seconds": {
+      "old": 10.685,
+      "new": 11.488,
+      "change_percent": 7.52
+    },
+    "images/cold_reference_person_seconds": {
+      "old": 18.342,
+      "new": 11.692,
+      "change_percent": -36.26
+    }
+  },
+  "runs": {
+    "qualified-a": {
+      "metrics": {
+        "throughput/idle_single_request_throughput": [
+          82.7087
+        ],
+        "throughput/idle_four_request_throughput": [
+          309.2002
+        ],
+        "throughput/active_single_request_throughput": [
+          42.5734,
+          42.3378,
+          42.4873
+        ],
+        "throughput/four_simultaneous_responses_while_neural_avatar_active": [
+          155.6462,
+          154.7839
+        ],
+        "throughput/generated_frames": [
+          2270
+        ],
+        "throughput/max_sampled_lag_ms": [
+          65
+        ],
+        "omni/omni_idle_single_chat_throughput": [
+          65.7513
+        ],
+        "omni/omni_idle_two_chat_throughput": [
+          131.1979
+        ],
+        "omni/omni_single_chat_while_native_portrait_and_four_llm_active": [
+          54.3709,
+          53.0563,
+          53.5776
+        ],
+        "omni/four_simultaneous_responses_while_neural_avatar_active": [
+          156.5098,
+          155.4604,
+          155.1504
+        ],
+        "omni/generated_frames": [
+          2270
+        ],
+        "omni/max_sampled_lag_ms": [
+          57
+        ],
+        "images/reference_person_seconds": [
+          11.4889
+        ],
+        "images/anime_character_seconds": [
+          10.8859
+        ],
+        "images/text_only_seconds": [
+          8.0544
+        ],
+        "concurrency/four_short_requests": [
+          310.6943
+        ],
+        "concurrency/long_short_mix": [
+          87.5317
+        ]
+      },
+      "suites": {
+        "throughput": {
+          "state": "passed",
+          "started_utc": "2026-11-18T11:33:33.663393+00:00",
+          "finished_utc": "2026-11-18T11:35:15.592463+00:00",
+          "slowest_concurrent_request_tps": 38.696
+        },
+        "omni": {
+          "state": "passed",
+          "started_utc": "2026-11-18T11:35:16.128297+00:00",
+          "finished_utc": "2026-11-18T11:36:59.359510+00:00",
+          "slowest_concurrent_request_tps": 38.788
+        },
+        "images/report": {
+          "state": "passed",
+          "gpu_job_seconds": {
+            "reference_person": {
+              "prepare": 3.024206344038248,
+              "drain_llm": 0.00014994991943240166,
+              "queue": 0.5036731478758156,
+              "release_llm": 0.029985013883560896,
+              "load_cpu": 0.021497094072401524,
+              "encode_cpu": 2.7972746130544692,
+              "upload_gpu": 1.5460774130187929,
+              "inference": 5.480642244918272,
+              "cleanup_and_png": 0.39246567501686513,
+              "restore_llm": 0.2471195999532938,
+              "total": 11.333690404891968
+            },
+            "anime_character": {
+              "prepare": 3.0270089867990464,
+              "drain_llm": 6.937002763152122e-05,
+              "queue": 0.001018795883283019,
+              "release_llm": 0.028627093881368637,
+              "load_cpu": 0.01931134588085115,
+              "encode_cpu": 2.833834190154448,
+              "upload_gpu": 1.5440454939380288,
+              "inference": 5.47597480006516,
+              "cleanup_and_png": 0.3993793660774827,
+              "restore_llm": 0.2364593599922955,
+              "total": 10.814765691757202
+            },
+            "text_only": {
+              "prepare": 3.0157504251692444,
+              "drain_llm": 8.946703746914864e-05,
+              "queue": 0.0004657928366214037,
+              "release_llm": 0.029425495071336627,
+              "load_cpu": 1.9138678908348083e-06,
+              "encode_cpu": 2.8206894679460675,
+              "upload_gpu": 1.5442981398664415,
+              "inference": 2.660477905999869,
+              "cleanup_and_png": 0.3489084329921752,
+              "restore_llm": 0.23731682589277625,
+              "total": 7.9899842739105225
+            }
+          },
+          "responses_continuation": "passed"
+        },
+        "concurrency": {
+          "state": "passed"
+        }
+      }
+    },
+    "qualified-b": {
+      "metrics": {
+        "throughput/idle_single_request_throughput": [
+          82.5522
+        ],
+        "throughput/idle_four_request_throughput": [
+          308.9368
+        ],
+        "throughput/active_single_request_throughput": [
+          42.1171,
+          41.9279,
+          42.2894
+        ],
+        "throughput/four_simultaneous_responses_while_neural_avatar_active": [
+          155.5949,
+          154.3139
+        ],
+        "throughput/generated_frames": [
+          2270
+        ],
+        "throughput/max_sampled_lag_ms": [
+          65
+        ],
+        "omni/omni_idle_single_chat_throughput": [
+          65.534
+        ],
+        "omni/omni_idle_two_chat_throughput": [
+          130.7714
+        ],
+        "omni/omni_single_chat_while_native_portrait_and_four_llm_active": [
+          55.3472,
+          52.7999,
+          53.4635
+        ],
+        "omni/four_simultaneous_responses_while_neural_avatar_active": [
+          155.6912,
+          157.653,
+          156.673
+        ],
+        "omni/generated_frames": [
+          2270
+        ],
+        "omni/max_sampled_lag_ms": [
+          54
+        ],
+        "images/reference_person_seconds": [
+          11.4875
+        ],
+        "images/anime_character_seconds": [
+          10.8854
+        ],
+        "images/text_only_seconds": [
+          8.0538
+        ],
+        "concurrency/four_short_requests": [
+          308.2679
+        ],
+        "concurrency/long_short_mix": [
+          87.6289
+        ]
+      },
+      "suites": {
+        "throughput": {
+          "state": "passed",
+          "started_utc": "2026-11-18T11:37:57.349332+00:00",
+          "finished_utc": "2026-11-18T11:39:39.308593+00:00",
+          "slowest_concurrent_request_tps": 38.578
+        },
+        "omni": {
+          "state": "passed",
+          "started_utc": "2026-11-18T11:39:39.830030+00:00",
+          "finished_utc": "2026-11-18T11:41:23.074658+00:00",
+          "slowest_concurrent_request_tps": 38.923
+        },
+        "images/report": {
+          "state": "passed",
+          "gpu_job_seconds": {
+            "reference_person": {
+              "prepare": 3.0247896530199796,
+              "drain_llm": 6.50119036436081e-05,
+              "queue": 0.5026502560358495,
+              "release_llm": 0.02961683413013816,
+              "load_cpu": 0.021479305112734437,
+              "encode_cpu": 2.8368467069230974,
+              "upload_gpu": 1.5473039241041988,
+              "inference": 5.48008361691609,
+              "cleanup_and_png": 0.39786261110566556,
+              "restore_llm": 0.24691630410961807,
+              "total": 11.331417798995972
+            },
+            "anime_character": {
+              "prepare": 3.027518603950739,
+              "drain_llm": 0.00010942504741251469,
+              "queue": 0.0005294436123222113,
+              "release_llm": 0.028056828072294593,
+              "load_cpu": 0.01857720105908811,
+              "encode_cpu": 2.826739982003346,
+              "upload_gpu": 1.542161087039858,
+              "inference": 5.479419491952285,
+              "cleanup_and_png": 0.41265814285725355,
+              "restore_llm": 0.23627130198292434,
+              "total": 10.81366753578186
+            },
+            "text_only": {
+              "prepare": 3.017494712024927,
+              "drain_llm": 6.771599873900414e-05,
+              "queue": 0.001108607742935419,
+              "release_llm": 0.02831200393848121,
+              "load_cpu": 2.4551991373300552e-06,
+              "encode_cpu": 2.8393548058811575,
+              "upload_gpu": 1.5499707290437073,
+              "inference": 2.658189499983564,
+              "cleanup_and_png": 0.34786377009004354,
+              "restore_llm": 0.23436116892844439,
+              "total": 7.991025924682617
+            }
+          },
+          "responses_continuation": "passed"
+        },
+        "concurrency": {
+          "state": "passed"
+        }
+      }
+    },
+    "production": {
+      "metrics": {
+        "throughput/idle_single_request_throughput": [
+          82.808
+        ],
+        "throughput/idle_four_request_throughput": [
+          310.9732
+        ],
+        "throughput/active_single_request_throughput": [
+          42.8906,
+          42.5475,
+          42.6397
+        ],
+        "throughput/four_simultaneous_responses_while_neural_avatar_active": [
+          157.7211,
+          156.4228
+        ],
+        "throughput/generated_frames": [
+          2270
+        ],
+        "throughput/max_sampled_lag_ms": [
+          74
+        ],
+        "omni/omni_idle_single_chat_throughput": [
+          65.5334
+        ],
+        "omni/omni_idle_two_chat_throughput": [
+          114.7299
+        ],
+        "omni/omni_single_chat_while_native_portrait_and_four_llm_active": [
+          55.3782,
+          52.3033,
+          53.0276
+        ],
+        "omni/four_simultaneous_responses_while_neural_avatar_active": [
+          155.8789,
+          155.68,
+          156.9055
+        ],
+        "omni/generated_frames": [
+          2270
+        ],
+        "omni/max_sampled_lag_ms": [
+          53
+        ],
+        "images/reference_person_seconds": [
+          11.6918
+        ],
+        "images/anime_character_seconds": [
+          10.8842
+        ],
+        "images/text_only_seconds": [
+          8.0533
+        ],
+        "concurrency/four_short_requests": [
+          309.5474
+        ],
+        "concurrency/long_short_mix": [
+          87.548
+        ]
+      },
+      "suites": {
+        "throughput": {
+          "state": "passed",
+          "started_utc": "2026-11-18T11:45:34.097992+00:00",
+          "finished_utc": "2026-11-18T11:47:16.699640+00:00",
+          "slowest_concurrent_request_tps": 39.106
+        },
+        "omni": {
+          "state": "passed",
+          "started_utc": "2026-11-18T11:47:17.220666+00:00",
+          "finished_utc": "2026-11-18T11:49:01.303142+00:00",
+          "slowest_concurrent_request_tps": 38.92
+        },
+        "images/report": {
+          "state": "passed",
+          "gpu_job_seconds": {
+            "reference_person": {
+              "prepare": 3.031184979947284,
+              "drain_llm": 0.00010696006938815117,
+              "queue": 0.5026653029490262,
+              "release_llm": 0.0351682270411402,
+              "load_cpu": 0.030422750860452652,
+              "encode_cpu": 2.7880103611387312,
+              "upload_gpu": 1.5700882400851697,
+              "inference": 5.738106918986887,
+              "cleanup_and_png": 0.3943814169615507,
+              "restore_llm": 0.2393875119742006,
+              "total": 11.62903618812561
+            },
+            "anime_character": {
+              "prepare": 3.025134496856481,
+              "drain_llm": 0.00010213092900812626,
+              "queue": 0.0005087640602141619,
+              "release_llm": 0.028191131073981524,
+              "load_cpu": 0.019598167156800628,
+              "encode_cpu": 2.7706549379508942,
+              "upload_gpu": 1.5435991529375315,
+              "inference": 5.484450294869021,
+              "cleanup_and_png": 0.40127844898961484,
+              "restore_llm": 0.2374891540966928,
+              "total": 10.815169334411621
+            },
+            "text_only": {
+              "prepare": 3.015247347066179,
+              "drain_llm": 7.34569039195776e-05,
+              "queue": 0.001259777694940567,
+              "release_llm": 0.028448861790820956,
+              "load_cpu": 2.254033461213112e-06,
+              "encode_cpu": 2.880497537087649,
+              "upload_gpu": 1.5501643370371312,
+              "inference": 2.6615917540621012,
+              "cleanup_and_png": 0.34388931398279965,
+              "restore_llm": 0.2354009801056236,
+              "total": 7.992673873901367
+            }
+          },
+          "responses_continuation": "passed"
+        },
+        "concurrency": {
+          "state": "passed"
+        }
+      }
+    },
+    "aligned-a": {
+      "metrics": {
+        "throughput/idle_single_request_throughput": [
+          81.045
+        ],
+        "throughput/idle_four_request_throughput": [
+          306.1416
+        ],
+        "throughput/active_single_request_throughput": [
+          43.541,
+          42.379,
+          42.6865
+        ],
+        "throughput/four_simultaneous_responses_while_neural_avatar_active": [
+          159.6354,
+          157.195
+        ],
+        "throughput/generated_frames": [
+          2270
+        ],
+        "throughput/max_sampled_lag_ms": [
+          40
+        ],
+        "omni/omni_idle_single_chat_throughput": [
+          65.4504
+        ],
+        "omni/omni_idle_two_chat_throughput": [
+          130.1445
+        ],
+        "omni/omni_single_chat_while_native_portrait_and_four_llm_active": [
+          54.2404,
+          52.2984,
+          54.084
+        ],
+        "omni/four_simultaneous_responses_while_neural_avatar_active": [
+          156.1927,
+          156.2496,
+          156.6697
+        ],
+        "omni/generated_frames": [
+          2270
+        ],
+        "omni/max_sampled_lag_ms": [
+          41
+        ],
+        "images/reference_person_seconds": [
+          11.4883
+        ],
+        "images/anime_character_seconds": [
+          10.8834
+        ],
+        "images/text_only_seconds": [
+          8.0537
+        ],
+        "concurrency/four_short_requests": [
+          308.5857
+        ],
+        "concurrency/long_short_mix": [
+          87.1853
+        ]
+      },
+      "suites": {
+        "throughput": {
+          "state": "passed",
+          "started_utc": "2026-11-18T11:59:18.396602+00:00",
+          "finished_utc": "2026-11-18T12:01:00.467652+00:00",
+          "slowest_concurrent_request_tps": 39.299
+        },
+        "omni": {
+          "state": "passed",
+          "started_utc": "2026-11-18T12:01:00.991980+00:00",
+          "finished_utc": "2026-11-18T12:02:44.282398+00:00",
+          "slowest_concurrent_request_tps": 39.048
+        },
+        "images/report": {
+          "state": "passed",
+          "gpu_job_seconds": {
+            "reference_person": {
+              "prepare": 3.026989802950993,
+              "drain_llm": 9.89050604403019e-05,
+              "queue": 0.5022548970300704,
+              "release_llm": 0.030029023997485638,
+              "load_cpu": 0.021312406985089183,
+              "encode_cpu": 2.825725887902081,
+              "upload_gpu": 1.5397104069124907,
+              "inference": 5.485668434062973,
+              "cleanup_and_png": 0.38899556500837207,
+              "restore_llm": 0.24617307493463159,
+              "total": 11.332789659500122
+            },
+            "anime_character": {
+              "prepare": 3.0263823431450874,
+              "drain_llm": 9.892508387565613e-05,
+              "queue": 0.00050962227396667,
+              "release_llm": 0.028164146933704615,
+              "load_cpu": 0.018673298880457878,
+              "encode_cpu": 2.8877717421855778,
+              "upload_gpu": 1.5794291018974036,
+              "inference": 5.479102616198361,
+              "cleanup_and_png": 0.39786323299631476,
+              "restore_llm": 0.2381363520398736,
+              "total": 10.851105213165283
+            },
+            "text_only": {
+              "prepare": 3.0165557109285146,
+              "drain_llm": 7.112300954759121e-05,
+              "queue": 0.0031347284093499184,
+              "release_llm": 0.02956516109406948,
+              "load_cpu": 2.8649810701608658e-06,
+              "encode_cpu": 2.8938630050979555,
+              "upload_gpu": 1.540897390106693,
+              "inference": 2.664866226958111,
+              "cleanup_and_png": 0.34485267102718353,
+              "restore_llm": 0.24059795192442834,
+              "total": 7.994067192077637
+            }
+          },
+          "responses_continuation": "passed"
+        },
+        "concurrency": {
+          "state": "passed"
+        }
+      }
+    },
+    "aligned-b": {
+      "metrics": {
+        "throughput/idle_single_request_throughput": [
+          80.6772
+        ],
+        "throughput/idle_four_request_throughput": [
+          300.3562
+        ],
+        "throughput/active_single_request_throughput": [
+          41.997,
+          41.9362,
+          42.26
+        ],
+        "throughput/four_simultaneous_responses_while_neural_avatar_active": [
+          154.5895,
+          154.8103
+        ],
+        "throughput/generated_frames": [
+          2270
+        ],
+        "throughput/max_sampled_lag_ms": [
+          40
+        ],
+        "omni/omni_idle_single_chat_throughput": [
+          64.6618
+        ],
+        "omni/omni_idle_two_chat_throughput": [
+          129.0469
+        ],
+        "omni/omni_single_chat_while_native_portrait_and_four_llm_active": [
+          54.242,
+          53.6538,
+          52.8858
+        ],
+        "omni/four_simultaneous_responses_while_neural_avatar_active": [
+          155.9568,
+          155.1262,
+          154.6601
+        ],
+        "omni/generated_frames": [
+          2270
+        ],
+        "omni/max_sampled_lag_ms": [
+          40
+        ],
+        "images/reference_person_seconds": [
+          11.4878
+        ],
+        "images/anime_character_seconds": [
+          10.8866
+        ],
+        "images/text_only_seconds": [
+          8.0601
+        ],
+        "concurrency/four_short_requests": [
+          309.9049
+        ],
+        "concurrency/long_short_mix": [
+          87.8975
+        ]
+      },
+      "suites": {
+        "throughput": {
+          "state": "passed",
+          "started_utc": "2026-11-18T12:03:43.114043+00:00",
+          "finished_utc": "2026-11-18T12:05:25.316447+00:00",
+          "slowest_concurrent_request_tps": 38.647
+        },
+        "omni": {
+          "state": "passed",
+          "started_utc": "2026-11-18T12:05:25.822403+00:00",
+          "finished_utc": "2026-11-18T12:07:09.212538+00:00",
+          "slowest_concurrent_request_tps": 38.665
+        },
+        "images/report": {
+          "state": "passed",
+          "gpu_job_seconds": {
+            "reference_person": {
+              "prepare": 3.0257545441854745,
+              "drain_llm": 7.058214396238327e-05,
+              "queue": 0.5029202864971012,
+              "release_llm": 0.030057701049372554,
+              "load_cpu": 0.021187559934332967,
+              "encode_cpu": 2.8250290830619633,
+              "upload_gpu": 1.5432047080248594,
+              "inference": 5.483264163136482,
+              "cleanup_and_png": 0.3942372289020568,
+              "restore_llm": 0.24729515588842332,
+              "total": 11.33396863937378
+            },
+            "anime_character": {
+              "prepare": 3.028851534007117,
+              "drain_llm": 8.98588914424181e-05,
+              "queue": 0.0006022453308105469,
+              "release_llm": 0.02788652409799397,
+              "load_cpu": 0.02006247197277844,
+              "encode_cpu": 2.9560981481336057,
+              "upload_gpu": 1.5431316050235182,
+              "inference": 5.476365614915267,
+              "cleanup_and_png": 0.40703317313455045,
+              "restore_llm": 0.2357142260298133,
+              "total": 10.811274766921997
+            },
+            "text_only": {
+              "prepare": 3.0176832638680935,
+              "drain_llm": 9.151105768978596e-05,
+              "queue": 0.0013874031137675047,
+              "release_llm": 0.0284162440802902,
+              "load_cpu": 2.553919330239296e-06,
+              "encode_cpu": 2.8968877859879285,
+              "upload_gpu": 1.547356633003801,
+              "inference": 2.6600136461202055,
+              "cleanup_and_png": 0.3441115990281105,
+              "restore_llm": 0.2355027119629085,
+              "total": 7.991750717163086
+            }
+          },
+          "responses_continuation": "passed"
+        },
+        "concurrency": {
+          "state": "passed"
+        }
+      }
+    }
+  },
+  "thermal_full_mixed_90s": {
+    "tuned75a": {
+      "0": {
+        "samples": 89,
+        "temp_peak_c": 87.0,
+        "temp_median_c": 85.0,
+        "fan_peak_percent": 100.0,
+        "power_mean_w": 290.2,
+        "sm_median_mhz": 1650.0,
+        "sw_thermal_samples": 70,
+        "hw_thermal_samples": 1,
+        "device_memory_peak_mib": 19348.0
+      },
+      "1": {
+        "samples": 89,
+        "temp_peak_c": 64.0,
+        "temp_median_c": 60.0,
+        "fan_peak_percent": 53.0,
+        "power_mean_w": 157.9,
+        "sm_median_mhz": 1695.0,
+        "sw_thermal_samples": 0,
+        "hw_thermal_samples": 0,
+        "device_memory_peak_mib": 21414.0
+      }
+    },
+    "flip75a": {
+      "0": {
+        "samples": 90,
+        "temp_peak_c": 84.0,
+        "temp_median_c": 80.0,
+        "fan_peak_percent": 81.0,
+        "power_mean_w": 193.9,
+        "sm_median_mhz": 1725.0,
+        "sw_thermal_samples": 9,
+        "hw_thermal_samples": 0,
+        "device_memory_peak_mib": 24018.0
+      },
+      "1": {
+        "samples": 90,
+        "temp_peak_c": 74.0,
+        "temp_median_c": 72.0,
+        "fan_peak_percent": 61.0,
+        "power_mean_w": 306.7,
+        "sm_median_mhz": 1770.0,
+        "sw_thermal_samples": 0,
+        "hw_thermal_samples": 0,
+        "device_memory_peak_mib": 18728.0
+      }
+    },
+    "flip75b": {
+      "0": {
+        "samples": 89,
+        "temp_peak_c": 84.0,
+        "temp_median_c": 80.0,
+        "fan_peak_percent": 84.0,
+        "power_mean_w": 176.1,
+        "sm_median_mhz": 1710.0,
+        "sw_thermal_samples": 12,
+        "hw_thermal_samples": 0,
+        "device_memory_peak_mib": 23960.0
+      },
+      "1": {
+        "samples": 89,
+        "temp_peak_c": 74.0,
+        "temp_median_c": 72.0,
+        "fan_peak_percent": 64.0,
+        "power_mean_w": 297.0,
+        "sm_median_mhz": 1785.0,
+        "sw_thermal_samples": 0,
+        "hw_thermal_samples": 0,
+        "device_memory_peak_mib": 19643.0
+      }
+    },
+    "qualified-a": {
+      "0": {
+        "samples": 89,
+        "temp_peak_c": 86.0,
+        "temp_median_c": 81.0,
+        "fan_peak_percent": 88.0,
+        "power_mean_w": 189.6,
+        "sm_median_mhz": 1785.0,
+        "sw_thermal_samples": 25,
+        "hw_thermal_samples": 0,
+        "device_memory_peak_mib": 20130.0
+      },
+      "1": {
+        "samples": 89,
+        "temp_peak_c": 74.0,
+        "temp_median_c": 72.0,
+        "fan_peak_percent": 64.0,
+        "power_mean_w": 306.4,
+        "sm_median_mhz": 1725.0,
+        "sw_thermal_samples": 0,
+        "hw_thermal_samples": 0,
+        "device_memory_peak_mib": 19525.0
+      }
+    },
+    "qualified-b": {
+      "0": {
+        "samples": 89,
+        "temp_peak_c": 86.0,
+        "temp_median_c": 82.0,
+        "fan_peak_percent": 91.0,
+        "power_mean_w": 180.1,
+        "sm_median_mhz": 1710.0,
+        "sw_thermal_samples": 18,
+        "hw_thermal_samples": 0,
+        "device_memory_peak_mib": 20130.0
+      },
+      "1": {
+        "samples": 89,
+        "temp_peak_c": 74.0,
+        "temp_median_c": 71.0,
+        "fan_peak_percent": 65.0,
+        "power_mean_w": 301.9,
+        "sm_median_mhz": 1725.0,
+        "sw_thermal_samples": 0,
+        "hw_thermal_samples": 0,
+        "device_memory_peak_mib": 19525.0
+      }
+    },
+    "production": {
+      "0": {
+        "samples": 90,
+        "temp_peak_c": 85.0,
+        "temp_median_c": 81.0,
+        "fan_peak_percent": 85.0,
+        "power_mean_w": 193.9,
+        "sm_median_mhz": 1785.0,
+        "sw_thermal_samples": 18,
+        "hw_thermal_samples": 0,
+        "device_memory_peak_mib": 20130.0
+      },
+      "1": {
+        "samples": 90,
+        "temp_peak_c": 74.0,
+        "temp_median_c": 72.0,
+        "fan_peak_percent": 62.0,
+        "power_mean_w": 306.2,
+        "sm_median_mhz": 1905.0,
+        "sw_thermal_samples": 0,
+        "hw_thermal_samples": 0,
+        "device_memory_peak_mib": 18820.0
+      }
+    },
+    "aligned-a": {
+      "0": {
+        "samples": 89,
+        "temp_peak_c": 84.0,
+        "temp_median_c": 77.0,
+        "fan_peak_percent": 80.0,
+        "power_mean_w": 189.5,
+        "sm_median_mhz": 1710.0,
+        "sw_thermal_samples": 6,
+        "hw_thermal_samples": 0,
+        "device_memory_peak_mib": 21092.0
+      },
+      "1": {
+        "samples": 89,
+        "temp_peak_c": 74.0,
+        "temp_median_c": 73.0,
+        "fan_peak_percent": 62.0,
+        "power_mean_w": 304.5,
+        "sm_median_mhz": 1725.0,
+        "sw_thermal_samples": 0,
+        "hw_thermal_samples": 2,
+        "device_memory_peak_mib": 19525.0
+      }
+    },
+    "aligned-b": {
+      "0": {
+        "samples": 89,
+        "temp_peak_c": 85.0,
+        "temp_median_c": 82.0,
+        "fan_peak_percent": 90.0,
+        "power_mean_w": 188.7,
+        "sm_median_mhz": 1725.0,
+        "sw_thermal_samples": 27,
+        "hw_thermal_samples": 0,
+        "device_memory_peak_mib": 21092.0
+      },
+      "1": {
+        "samples": 89,
+        "temp_peak_c": 74.0,
+        "temp_median_c": 73.0,
+        "fan_peak_percent": 65.0,
+        "power_mean_w": 308.4,
+        "sm_median_mhz": 1725.0,
+        "sw_thermal_samples": 0,
+        "hw_thermal_samples": 0,
+        "device_memory_peak_mib": 19525.0
+      }
+    }
+  },
+  "two_native_streams": {
+    "qualified": {
+      "two_streams_emitted_native_audio": true,
+      "third_status": 429,
+      "post_close_chat_ok": true,
+      "fatal_log_events": 0,
+      "unchanged_start": true
+    },
+    "production": {
+      "two_streams_emitted_native_audio": true,
+      "third_status": 429,
+      "post_close_chat_ok": true,
+      "fatal_log_events": 0,
+      "unchanged_start": true
+    },
+    "aligned": {
+      "two_streams_emitted_native_audio": true,
+      "third_status": 429,
+      "post_close_chat_ok": true,
+      "fatal_log_events": 0,
+      "unchanged_start": true
+    }
+  },
+  "deployed_image_ids": {
+    "gpu-mps": "sha256:6b44ee504a0dc3a21eacf72e7dc5da318b7bcc8ed0e349dc928e67278414430c",
+    "llm-engine": "sha256:ee8656be28fcce6b5b82c28571b2f06bc69d5ff1ea5fcfeb290580837c25332a",
+    "omni-avatar": "sha256:08c6fe092c0e8ee82e416d6c0bd0fa3ed13ab1e7eb633c2c096dc844bf56b876",
+    "omni-engine": "sha256:2018bf443732d31e969ab857f76c1fc0677edc786f9c6ecddd6f904bd7cca4b8",
+    "omni-gateway": "sha256:3fbe9a78ba0f7f16183f0374721f57d260e31b34e1af57ebfb8c79c002190c57",
+    "omni-images": "sha256:5cfeb3b2f6edb7e854394530a742484173d72e1e12d645a06d3e1b8425b3445a",
+    "omni-portrait": "sha256:05e1fd2c5114eaa0ca45b711abcc382cbbc8f85328b07c5319b992d9daf75156"
+  },
+  "runtime_layer_reuse": {
+    "scope": "Four deployed engine images on the workstation, excluding other tags. Size is the full logical image, not exclusive disk usage.",
+    "common_base_prefix_layers": 40,
+    "per_image": {
+      "omni-engine": {
+        "layers": 52,
+        "logical_size_bytes": 35341312195
+      },
+      "llm-engine": {
+        "layers": 43,
+        "logical_size_bytes": 33097282859
+      },
+      "omni-images": {
+        "layers": 52,
+        "logical_size_bytes": 35454860700
+      },
+      "omni-portrait": {
+        "layers": 56,
+        "logical_size_bytes": 44428120054
+      }
+    }
+  },
+  "station_pcie_sample": {
+    "source": "nvidia-smi during the production validation",
+    "gpu0": "Gen4 x16",
+    "gpu1": "Gen4 x4"
+  },
+  "klein_text_only_timing_seconds": {
+    "before": {
+      "observed": 7.251,
+      "worker_upload": 0.642,
+      "job_total": 7.177
+    },
+    "before2": {
+      "observed": 7.45,
+      "worker_upload": 0.683,
+      "job_total": 7.274
+    },
+    "qualified-a": {
+      "observed": 8.054,
+      "worker_upload": 1.544,
+      "job_total": 7.99
+    },
+    "qualified-b": {
+      "observed": 8.054,
+      "worker_upload": 1.55,
+      "job_total": 7.991
+    },
+    "production": {
+      "observed": 8.053,
+      "worker_upload": 1.55,
+      "job_total": 7.993
+    }
+  },
+  "gates": {
+    "maximum_sustained_regression_percent": 10,
+    "minimum_idle_llm_tps": 45,
+    "minimum_active_tps_each_of_four": 15,
+    "minimum_frames_per_90s": 2250,
+    "max_sampled_media_lag_ms_exclusive": 160
+  },
+  "production_repeat": {
+    "metrics": {
+      "throughput/idle_single_request_throughput": [
+        82.4226
+      ],
+      "throughput/idle_four_request_throughput": [
+        310.2085
+      ],
+      "throughput/active_single_request_throughput": [
+        42.6976,
+        42.19,
+        42.4759
+      ],
+      "throughput/four_simultaneous_responses_while_neural_avatar_active": [
+        156.7966,
+        154.889
+      ],
+      "throughput/generated_frames": [
+        2270
+      ],
+      "throughput/max_sampled_lag_ms": [
+        71
+      ],
+      "omni/omni_idle_single_chat_throughput": [
+        65.1431
+      ],
+      "omni/omni_idle_two_chat_throughput": [
+        129.6833
+      ],
+      "omni/omni_single_chat_while_native_portrait_and_four_llm_active": [
+        54.2418,
+        55.3749,
+        52.7048
+      ],
+      "omni/four_simultaneous_responses_while_neural_avatar_active": [
+        155.543,
+        155.045,
+        155.2466
+      ],
+      "omni/generated_frames": [
+        2270
+      ],
+      "omni/max_sampled_lag_ms": [
+        53
+      ]
+    },
+    "thermal_full_mixed_90s": {
+      "0": {
+        "samples": 89,
+        "temp_peak_c": 86.0,
+        "temp_median_c": 83.0,
+        "fan_peak_percent": 89.0,
+        "power_mean_w": 193.4,
+        "sm_median_mhz": 1740.0,
+        "sw_thermal_samples": 42,
+        "hw_thermal_samples": 0,
+        "device_memory_peak_mib": 21092.0
+      },
+      "1": {
+        "samples": 89,
+        "temp_peak_c": 74.0,
+        "temp_median_c": 72.0,
+        "fan_peak_percent": 63.0,
+        "power_mean_w": 305.2,
+        "sm_median_mhz": 1725.0,
+        "sw_thermal_samples": 0,
+        "hw_thermal_samples": 0,
+        "device_memory_peak_mib": 19525.0
+      }
+    }
+  },
+  "omni_two_chat_first_delta_seconds": {
+    "before": [
+      0.053,
+      0.053
+    ],
+    "before2": [
+      0.073,
+      0.073
+    ],
+    "qualified-a": [
+      0.052,
+      0.052
+    ],
+    "qualified-b": [
+      0.052,
+      0.052
+    ],
+    "production": [
+      0.573,
+      0.573
+    ],
+    "production-repeat": [
+      0.054,
+      0.054
+    ]
+  },
+  "decision": "accepted after two full canonical mixed workload and image/concurrency runs, plus native duplex recovery",
+  "pre_alignment_runtime_git_commit": "bcd2be03d95c259e1b0b49812dfc0b086a3564c9",
+  "pre_alignment_comparison": {
+    "throughput/idle_single_request_throughput": {
+      "old": 80.419,
+      "new": 82.63,
+      "change_percent": 2.75
+    },
+    "throughput/idle_four_request_throughput": {
+      "old": 305.16,
+      "new": 309.068,
+      "change_percent": 1.28
+    },
+    "throughput/active_single_request_throughput": {
+      "old": 39.651,
+      "new": 42.302,
+      "change_percent": 6.69
+    },
+    "throughput/four_simultaneous_responses_while_neural_avatar_active": {
+      "old": 130.857,
+      "new": 155.085,
+      "change_percent": 18.51
+    },
+    "throughput/generated_frames": {
+      "old": 2264.5,
+      "new": 2270.0,
+      "change_percent": 0.24
+    },
+    "throughput/max_sampled_lag_ms": {
+      "old": 62.0,
+      "new": 65.0,
+      "change_percent": 4.84
+    },
+    "omni/omni_idle_single_chat_throughput": {
+      "old": 65.271,
+      "new": 65.643,
+      "change_percent": 0.57
+    },
+    "omni/omni_idle_two_chat_throughput": {
+      "old": 129.271,
+      "new": 130.985,
+      "change_percent": 1.33
+    },
+    "omni/omni_single_chat_while_native_portrait_and_four_llm_active": {
+      "old": 37.177,
+      "new": 53.521,
+      "change_percent": 43.96
+    },
+    "omni/four_simultaneous_responses_while_neural_avatar_active": {
+      "old": 108.2,
+      "new": 156.067,
+      "change_percent": 44.24
+    },
+    "omni/generated_frames": {
+      "old": 2266.5,
+      "new": 2270.0,
+      "change_percent": 0.15
+    },
+    "omni/max_sampled_lag_ms": {
+      "old": 97.0,
+      "new": 55.5,
+      "change_percent": -42.78
+    },
+    "concurrency/four_short_requests": {
+      "old": 305.079,
+      "new": 309.481,
+      "change_percent": 1.44
+    },
+    "concurrency/long_short_mix": {
+      "old": 84.646,
+      "new": 87.58,
+      "change_percent": 3.47
+    },
+    "images/anime_character_seconds": {
+      "old": 10.485,
+      "new": 10.886,
+      "change_percent": 3.82
+    },
+    "images/text_only_seconds": {
+      "old": 7.35,
+      "new": 8.054,
+      "change_percent": 9.58
+    },
+    "images/warm_reference_person_seconds": {
+      "old": 10.685,
+      "new": 11.488,
+      "change_percent": 7.52
+    },
+    "images/cold_reference_person_seconds": {
+      "old": 18.342,
+      "new": 11.692,
+      "change_percent": -36.26
+    }
+  },
+  "duplex_and_post_close_thermal": {
+    "0": {
+      "samples": 47,
+      "peak_c": 80,
+      "mean_w": 149.9,
+      "memory_peak_mib": 21092,
+      "sw_thermal_samples": 0,
+      "hw_thermal_samples": 0
+    },
+    "1": {
+      "samples": 47,
+      "peak_c": 70,
+      "mean_w": 71.7,
+      "memory_peak_mib": 19523,
+      "sw_thermal_samples": 0,
+      "hw_thermal_samples": 0
+    }
+  },
+  "gpu_memory_junction_temperature": "N/A from the installed driver"
+}

@@ -1,6 +1,6 @@
 # Reference-driven talking portrait worker
 
-The optional `deploy/compose/portrait.yml` overlay runs this worker on physical GPU 0 alongside the long-context LLM. It uses pinned [Ditto code](https://github.com/antgroup/ditto-talkinghead/tree/c3e47eee2e626500017a0556b470d6d4182f85e8) and [PyTorch models](https://huggingface.co/digital-avatar/ditto-talkinghead/tree/e4a2f60328ee7c32af585ac4b3cce299e4c8e254). Model assets stay outside Git. Control and frame transport use a private Unix socket in a network-isolated container. Public API and ownership are defined in [docs/api.md](../../docs/api.md#参考图与会议式头像).
+The optional `deploy/compose/portrait.yml` overlay runs this worker on the GPU selected by `LLM_GPU_DEVICE` alongside the long-context LLM. It uses pinned [Ditto code](https://github.com/antgroup/ditto-talkinghead/tree/c3e47eee2e626500017a0556b470d6d4182f85e8) and [PyTorch models](https://huggingface.co/digital-avatar/ditto-talkinghead/tree/e4a2f60328ee7c32af585ac4b3cce299e4c8e254). Model assets stay outside Git. Control and frame transport use a private Unix socket in a network-isolated container. Public API and ownership are defined in [docs/api.md](../../docs/api.md#参考图与会议式头像).
 
 Build the Portrait image directly from its pinned upstream runtime. Additional dependencies live in `/opt/portrait-env`, separate from the inference environment. `portrait-assets` fetches pinned code and the selected PyTorch/Hubert assets; serving mounts them read-only and offline. Uploaded references and locally generated feature caches live in the `portrait-data` volume. The upload contract accepts PNG/JPEG; model files come from pinned downloads and serialized features are created by the server. Internal feature caches are trusted server-created pickle files.
 
@@ -10,7 +10,7 @@ A captured CUDA graph combines GPU-resident warp and decode; channels-last convo
 
 Compilation caches persist separately from user assets. Compilation and graph capture finish before the worker listens, including when reusing avatars after a restart.
 
-Motion prediction uses FP16 autocast and compiled CUDA graphs, retaining the checkpoint, diffusion sampler and ten steps. Startup compares three fixed-seed input scales with the FP32 reference (`rtol=0.01`, `atol=0.005`); the private generator keeps validation sampling independent of live RNG state. Graph replay still must match the compiled forward at the original tighter tolerance. The isolated motion-step measurement is about 2.06 ms; full-session throughput is measured by generated frame counts and timeline checks. The portrait overlay shares GPU 0 through CUDA MPS, with normal renderer priority and a 20% active-thread limit on the LLM; see [deployment](../../docs/deployment/workstation.md#四路并发与计算预算).
+Motion prediction uses FP16 autocast and compiled CUDA graphs, retaining the checkpoint, diffusion sampler and ten steps. Startup compares three fixed-seed input scales with the FP32 reference (`rtol=0.01`, `atol=0.005`); the private generator keeps validation sampling independent of live RNG state. Graph replay still must match the compiled forward at the original tighter tolerance. The isolated motion-step measurement is about 2.06 ms; full-session throughput is measured by generated frame counts and timeline checks. The portrait overlay shares the selected device through CUDA MPS, with normal renderer priority and a configurable LLM active-thread limit (default 20%); see [deployment](../../docs/deployment/workstation.md#四路并发与计算预算).
 
 The SDK's exact worker threads warm up before a render session is ready. The driver generates 25 fps, normalized 640×720 output, using 75-frame overlap and 10 diffusion steps. Hubert and face auxiliaries use CPU; core motion/warp/decode use GPU and the provider's mixed precision. PCM is mono 24 kHz, resampled with a continuous timeline into the provider's 16 kHz streaming windows. A 1.2-second Avatar input lead covers feature lookahead and rendering; native Omni output remains separately available.
 
@@ -45,7 +45,7 @@ python tools/compose.py --portrait -- build omni-portrait
 
 The shared Dockerfile installs the optional TensorRT layer before copying worker source. Older installations selecting `Dockerfile.tensorrt` can switch to `Dockerfile` to use this build layout. The TensorRT requirements pin TensorRT CUDA 13 `11.4.0.106` and ONNX Script `0.7.2` inside the portrait environment. TensorRT 11.2 introduced native rank-5 GridSample, which the warp model uses. [Operator support](https://docs.nvidia.com/deeplearning/tensorrt/latest/getting-started/release-notes-11/11.2.1.html).
 
-For a first engine build, drain GPU 0 work and reserve the card for compilation:
+For a first engine build, drain work on the selected GPU and reserve the card for compilation:
 
 ```sh
 python tools/compose.py --portrait -- stop llm-engine omni-portrait

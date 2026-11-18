@@ -86,7 +86,7 @@ LLM 单请求上限保留 262144 tokens，引擎和网关默认允许 4 个生�
 
 `LLM_MAX_NUM_SEQS` 同时配置引擎和网关（默认 4）；`LLM_TOKEN_BUDGET` 控制全局活跃预留，模型窗口由 `max_model_len` 独立配置。`LLM_QUEUE_LIMIT`、`LLM_QUEUE_TIMEOUT`、`LLM_REQUEST_TIMEOUT` 可独立设置后台排队和总期限，默认继承现有 16／5 秒／1200 秒；Omni 的实时通道保持独立。提高并发或预算必须重新验证显存和头像共驻表现。
 
-启用神经头像覆盖时，GPU 0 的 LLM 与 Ditto 通过 CUDA MPS 共驻；LLM 活跃线程上限默认 20%，并启用批次 1／2／4 的解码 CUDA Graph、关闭异步调度。派发前读取实际帧进度，渲染余量低于 240 ms 时主动让出最多 18 ms，余量恢复后提前派发；反馈空闲或失效时正常派发，SSE 即时转发。计算资源上限与 token 显存预算分别生效；当前吞吐和重启流程见[工作站部署](deployment/workstation.md#四路并发与计算预算)。
+启用神经头像覆盖时，LLM 与 Ditto 通过 CUDA MPS 共驻站点选择的 GPU；LLM 活跃线程上限默认 20%，并启用批次 1／2／4 的解码 CUDA Graph、关闭异步调度。派发前读取实际帧进度，渲染余量低于 240 ms 时主动让出最多 18 ms，余量恢复后提前派发；反馈空闲或失效时正常派发，SSE 即时转发。计算资源上限与 token 显存预算分别生效；当前吞吐和重启流程见[工作站部署](deployment/workstation.md#四路并发与计算预算)。
 
 当前验收范围是 provider API，具体 Antigravity／agent-orchestrator 客户端接入留在应用项目。[provider 约定](../services/gateway/README.md#external-orchestration-clients)。
 

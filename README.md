@@ -24,7 +24,7 @@ Applications own their users, conversation memory, agent orchestration and tool 
 | Avatar service | Owned sessions, audio timeline, renderer lifecycle and WHEP media. |
 | Portrait worker | Optional GPU-backed reference preparation and neural frame generation. |
 
-The validated workstation layout uses **two RTX 3090s**: GPU 1 runs Omni; GPU 0 runs the text LLM and the optional portrait worker. Ava 2D rendering uses the host CPU. AGX Orin profiles provide a separate hardware evaluation path. See [architecture](docs/architecture.md) and [deployment profiles](docs/deployment/workstation.md).
+The validated workstation layout uses **two RTX 3090s**: Omni runs on one selected device. The text LLM and optional portrait worker share the other. Ava 2D rendering uses the host CPU. AGX Orin profiles provide a separate hardware evaluation path. See [architecture](docs/architecture.md) and [deployment profiles](docs/deployment/workstation.md).
 
 ## Quick start
 
@@ -127,7 +127,7 @@ Recorded checks cover 8K Omni recall, Responses continuation, about 22K tokens o
 
 Omni Chat and LLM Chat/Responses default to CoT, with upstream thinking-budget defaults. Native duplex retains the official model policy. Realtime defaults to `basic` (8000/6000); applications can override window policy at session creation and text reasoning budgets per request. See the [API](docs/api.md#cot-默认与调用方预算).
 
-Current dual-3090 measurements use the TensorRT FP16 frame backend and CoT, at most 256 generated tokens per request and temperature 0. Rendered inputs are 25 tokens for Omni and 27 for the LLM. TPS includes reasoning and answer tokens, prefill and waiting.
+Earlier dual-3090 measurements used the TensorRT FP16 frame backend and CoT, at most 256 generated tokens per request and temperature 0. Rendered inputs are 25 tokens for Omni and 27 for the LLM. TPS includes reasoning and answer tokens, prefill and waiting.
 
 | Service | Generating requests | Other active work | Per-request total TPS | Aggregate TPS |
 | --- | --- | --- | --- | --- |
@@ -139,7 +139,7 @@ Current dual-3090 measurements use the TensorRT FP16 frame backend and CoT, at m
 | LLM | 4 | Native voice + portrait | 21.20–21.56 | 84.81–86.04 |
 | LLM | 4 | Native voice + portrait + one Omni Chat request | 19.47–21.47 | 77.89–85.33 |
 
-The single-portrait mixed-load baseline produced 2,265 real neural frames in 90 seconds at 25 fps, with a maximum sampled timeline lag of 57 ms. The split workstation has two shared Omni slots. Ditto has two implementation slots and runs with one enabled pending dual-render frame-rate qualification. CUDA MPS and per-slot frame deadlines allocate GPU 0 compute. [Workstation deployment](docs/deployment/workstation.md)
+The single-portrait mixed-load baseline produced 2,265 real neural frames in 90 seconds at 25 fps, with a maximum sampled timeline lag of 57 ms. The split workstation has two shared Omni slots. Ditto has two implementation slots and runs with one enabled pending dual-render frame-rate qualification. CUDA MPS and per-slot frame deadlines coordinate compute on the shared device. [Workstation deployment](docs/deployment/workstation.md)
 
 The 256-token fixture measures total generation throughput and can spend its budget on reasoning. Separate checks cover completed CoT answers, budgets, JSON Schema and tool continuation. See the [workstation guide](docs/deployment/workstation.md#四路并发与计算预算) for formulas, raw records and validation coverage. The [acceptance plan](docs/plans/avatar-workstation.md) tracks full 262K quality, sustained load and physical speaker/microphone playback.
 

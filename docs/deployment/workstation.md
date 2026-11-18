@@ -1,10 +1,20 @@
 # 双 RTX 3090 工作站部署
 
-GPU 1 承载 MiniCPM-o 的 Thinker、Talker、Code2Wav；GPU 0 承载后台长上下文 LLM 和 Ditto；Ava 2D 使用 CPU。网关统一暴露推理与 Avatar API，应用负责身份、历史、长期记忆、Agent 编排及工具执行。
+由 OMNI_GPU_DEVICE 选择 MiniCPM-o 的 Thinker、Talker、Code2Wav 所用的卡，LLM_GPU_DEVICE 选择后台长上下文 LLM 和 Ditto 共享的卡；Ava 2D 使用 CPU。网关统一暴露推理与 Avatar API，应用负责身份、历史、长期记忆、Agent 编排及工具执行。
 
 ## 主线组合
 
-统一入口组合 `deploy/compose/base.yml`、`workstation.yml`、`avatar.yml`、`llm.yml` 和 `inference.yml`；`--portrait` 添加神经头像与 GPU 0 MPS，`--vpn` 添加私网监听。
+### 双卡放置与热降频
+
+本机 GPU0（PCI 01:00.0）散热余量较小。相同的 90 秒混跑、LLM MPS 75% 下，将 LLM、Ditto 和按租约运行的 Klein 放到 GPU1，把 Omni 放到 GPU0 后，GPU0 温度中位数从 85°C 降至 80°C，平均板卡功耗从 290 W 降至 176–194 W。软件热降频从 89 次采样中的 70 次降至 9/90、12/89；GPU1 两轮峰值均为 74°C。设备通过站点环境变量按 UUID 选择。换机时应根据两张卡的实际散热和工作负载重测。
+
+本站调优使用 LLM MPS 100%、`OMNI_PORTRAIT_HUBERT_THREADS=4` 和 `OMNI_PYTORCH_ALLOC_CONF=expandable_segments:True`。前者保留长预填充与短请求混跑吞吐。四个 CPU 线程运行 Portrait 的流式 HuBERT 后，单个音频块计算 p95 从 268 ms 降至 68 ms，低于 200 ms 的块间隔。可扩展显存段用于 Omni 双路语音解码。两张卡的功耗上限均为原厂 350 W，电压保持原设定。该机账户无修改功耗上限的权限。
+
+正式部署按 24 kHz PCM 采样序号对齐 WHEP 两条轨道与 25 fps 的渲染帧。两轮 90 秒全栈混跑各生成 2,270 张真实神经帧，最大音画采样偏差分别为 41、40 ms。原生语音、头像与四路 LLM 混跑时，WHEP 对齐前的两轮最大偏差为 74、71 ms，对齐后为 40、40 ms。全栈混跑中 GPU0 的峰值分别为 84、85°C，软件热降频采样为 6/89、27/89；GPU1 的峰值为 74、74°C，硬件热降频标志出现 2/89、0/89。该驱动未提供显存温度读数。Klein 服务就绪后的首个真人参考作业为 11.69 s（旧版 18.34 s）。纯文生图端到端中位数为 8.06 s（旧版 7.35 s），变化 +9.62%。此前同机对照中，该作业的权重上传由约 0.66 s 增至 1.55 s，宿主采到两张卡的 PCIe 链路分别为 Gen4 ×16、×4。[逐轮性能、温度和镜像身份](../../evaluations/results/infra-thermal-tuning-workstation.json)
+
+### 组合启动
+
+统一入口组合 `deploy/compose/base.yml`、`workstation.yml`、`avatar.yml`、`llm.yml` 和 `inference.yml`；`--portrait` 添加神经头像与共享卡 MPS，`--vpn` 添加私网监听。
 
 ```sh
 python tools/compose.py --portrait --vpn -- config --quiet
@@ -83,7 +93,7 @@ Qwen3.5 的启动空闲显存检查使用整卡的 75%，支持两个 Ditto 槽�
 
 `LLM_MAX_NUM_SEQS=4` 同时配置引擎与网关；`LLM_TOKEN_BUDGET=262144` 控制活跃请求的完整模板输入加最大输出预留。Chat、Responses、后台任务和续接共享预算，长短请求按 FIFO 等待可用序列与 token，完成或取消后释放。调用方显式设置短请求输出额度可释放并发空间。单请求 262144 与四路短请求分别验收；多路满窗口作为后续独立容量评估。[准入语义](../api.md#外部-swarmorchestrator-调用)。
 
-GPU 0 使用项目内 `gpu-mps` 服务。覆盖层的基线 LLM 活跃线程上限为 20%，实机可见 16 个 SM。LLM 使用较低客户端优先级，Ditto 使用正常优先级。LLM 采用同步调度与 `FULL_DECODE_ONLY` CUDA Graph，捕获批次 1、2、4。MPS 分配计算资源，token 预算保护显存，两个机制分别生效。
+共享卡使用项目内 `gpu-mps` 服务。覆盖层的基线 LLM 活跃线程上限为 20%，实机可见 16 个 SM。LLM 使用较低客户端优先级，Ditto 使用正常优先级。LLM 采用同步调度与 `FULL_DECODE_ONLY` CUDA Graph，捕获批次 1、2、4。MPS 分配计算资源，token 预算保护显存，两个机制分别生效。
 
 当前工作站启用 TensorRT FP16 warp＋decoder，CoT 开启，思考预算采用上游默认；温度 0，每路总输出上限 256 tokens，预热 32 tokens。固定短提示按模板实报输入为 Omni 25、LLM 27 tokens，前缀缓存关闭。以下统计端到端思考＋正文总生成 TPS；通话场景列出两轮测量范围。
 
@@ -119,7 +129,7 @@ Ditto 使用 FP16、十步采样、640×720 和 1200 ms 音频输入预留。全
 
 ### MPS 生命周期与更新
 
-`gpu-mps` 使用镜像内 NVIDIA 控制程序和多用户模式；GPU 0 客户端共享 PID／IPC 命名空间及控制 socket 卷，并依赖控制服务健康。GPU 1 专用于 Omni。参见 [NVIDIA MPS 文档](https://docs.nvidia.com/deploy/mps/latest/appendix-environment-variables.html)。
+`gpu-mps` 使用镜像内 NVIDIA 控制程序和多用户模式；同卡客户端共享 PID／IPC 命名空间及控制 socket 卷，并依赖控制服务健康。Omni 单独使用另一张卡。参见 [NVIDIA MPS 文档](https://docs.nvidia.com/deploy/mps/latest/appendix-environment-variables.html)。
 
 重建控制服务时，先排空请求并停止客户端，再按顺序恢复：
 
@@ -135,13 +145,15 @@ python tools/compose.py --portrait --vpn -- up -d --wait llm-engine omni-portrai
 
 ## 会议式神经头像
 
-`--portrait` 启用私有 `omni-portrait`，与 LLM 共驻 GPU 0；`omni-avatar` 持有会话、媒体与权限。参考图上传 → 异步准备 → avatar_id → 音频／自有 Realtime 绑定 → WHEP。模型只读挂载，参考图、特征和编译缓存分别持久化。已启用的神经 GPU 槽由通话和参考图准备共享，2D 会话由 CPU 渲染。
+`--portrait` 启用私有 `omni-portrait`，与 LLM 共用所选设备；`omni-avatar` 持有会话、媒体与权限。参考图上传 → 异步准备 → avatar_id → 音频／自有 Realtime 绑定 → WHEP。模型只读挂载，参考图、特征和编译缓存分别持久化。已启用的神经 GPU 槽由通话和参考图准备共享，2D 会话由 CPU 渲染。
 
 服务启动时完成编译和 Graph 捕获，会话就绪前预热实际线程并填充初始视频缓冲。输出 640×720、25 fps，输入预留 1200 ms。驱动扩展沿用同一音频、代次与媒体契约。[在线接口](../api.md#参考图与会议式头像) · [驱动与资产](../../services/portrait/README.md)。
 
 ## 可选生图
 
 在 `.env` 设置独立的 `OMNI_IMAGE_INTERNAL_TOKEN` 和 `LLM_GPU_CONTROL_TOKEN`。各服务独立构建。首次下载使用对宿主模型目录有写权限的 UID。
+
+设置 `OMNI_IMAGE_PRELOAD_CPU=1` 时，Klein 在启动期间加载 CPU 权重、预热文本编码器，完成后才监听 HTTP。首个实际作业仍按调用方的提示编码，并在取得 GPU 租约后上传权重。该选项也适用于独立图像节点。默认值 0 将 CPU 初始化推迟到首个作业。
 
 ```sh
 python tools/compose.py -- build omni-engine llm-engine
@@ -150,7 +162,7 @@ python tools/compose.py --portrait --images -- --profile assets run --rm -u "$(i
 python tools/compose.py --portrait --images --vpn -- up -d --wait
 ```
 
-Klein 4B 蒸馏快照使用原精度 BF16。加载和文本编码在 CPU 上进行，再申请 GPU 0。协调器等神经头像空闲并排空 LLM。当前空闲量加 KV 预算预计能满足 `OMNI_IMAGE_MIN_FREE_MIB` 时先仅释放 KV；预计空间不足时直接一级休眠，将 LLM 权重备份到 CPU。释放后以整卡空闲显存复核。阈值默认 13312 MiB。GPU 清理完成后先恢复 LLM，再开放生成。
+Klein 4B 蒸馏快照使用原精度 BF16。加载和文本编码在 CPU 上进行，再申请共享 GPU。协调器等神经头像空闲并排空 LLM。当前空闲量加 KV 预算预计能满足 `OMNI_IMAGE_MIN_FREE_MIB` 时先仅释放 KV；预计空间不足时直接一级休眠，将 LLM 权重备份到 CPU。释放后以整卡空闲显存复核。阈值默认 13312 MiB。GPU 清理完成后先恢复 LLM，再开放生成。
 
 双 Ditto 槽空闲驻留时，首轮只释放 KV 的样本中 GPU 0 峰值达到 24,044 MiB。提高余量并用 CPU 原权重恢复图像模块后，实测真人参考冷任务 15.89 秒、动漫参考热任务 9.28 秒、文生图热任务 7.78 秒。三项整卡峰值均为 21,206 MiB，LLM 恢复约 0.75 秒，已有 Responses 历史可续接。真人样本保留了可见脸部特征，徽章文字有失真。动漫样本保持发型和服装辨识度，眼睛和饰品细节有变化。 [记录与样图](../../evaluations/results/klein4b-workstation/)
 

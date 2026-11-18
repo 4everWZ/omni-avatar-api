@@ -24,7 +24,7 @@
 | Avatar 服务 | 会话归属、音频时间线、渲染生命周期和 WHEP 音画。 |
 | Portrait 工作器 | 可选的 GPU 参考图准备与神经视频生成。 |
 
-已验证的工作站布局使用**双 RTX 3090**：GPU 1 运行 Omni；GPU 0 运行文本 LLM 和可选的神经头像工作器。Ava 2D 使用宿主 CPU 渲染。AGX Orin 配置提供独立硬件评估路径。详见[架构](docs/architecture.md)与[部署配置](docs/deployment/workstation.md)。
+已验证的工作站布局使用**双 RTX 3090**：Omni 使用一张卡，文本 LLM 和可选的神经头像工作器共享另一张卡。Ava 2D 使用宿主 CPU 渲染。AGX Orin 配置提供独立硬件评估路径。详见[架构](docs/architecture.md)与[部署配置](docs/deployment/workstation.md)。
 
 ## 快速开始
 
@@ -117,7 +117,7 @@ docs/                     架构、API、开发和部署指南
 evaluations/              共享测试输入和保留的实机证据
 ```
 
-`data/`、`runtime/`、`tmp/` 和 `.env` 属于本地忽略内容。各服务依赖由自己的镜像隔离；服务间通过 HTTP、WebSocket 和 Unix socket 契约通信；GPU 0 另用私有帧截止期信号协调计算预算。
+`data/`、`runtime/`、`tmp/` 和 `.env` 属于本地忽略内容。各服务依赖由自己的镜像隔离；服务间通过 HTTP、WebSocket 和 Unix socket 契约通信；同卡服务另用私有帧截止期信号协调计算预算。
 
 ## 开发与验证
 
@@ -127,7 +127,7 @@ evaluations/              共享测试输入和保留的实机证据
 
 当前 Omni Chat 和后台 Chat／Responses 默认开启 CoT，思考预算沿用上游默认；原生双工保留官方模型策略。实时窗口默认 `basic`（8000／6000），外部应用可在创建会话时调整窗口与文本推理预算，见 [API](docs/api.md#cot-默认与调用方预算)。
 
-当前双 3090 实测使用 TensorRT FP16 帧后端。CoT 开启，每路最多生成 256 tokens，温度 0；输入按模板实报为 Omni 25／LLM 27 tokens。TPS 统计思考＋正文，包含预填充与等待。
+此前双 3090 基线使用 TensorRT FP16 帧后端。CoT 开启，每路最多生成 256 tokens，温度 0；输入按模板实报为 Omni 25／LLM 27 tokens。TPS 统计思考＋正文，包含预填充与等待。
 
 | 服务 | 生成请求数 | 其他负载 | 每路总生成 TPS | 合计 TPS |
 | --- | --- | --- | --- | --- |
@@ -139,7 +139,7 @@ evaluations/              共享测试输入和保留的实机证据
 | LLM | 4 | 原生语音＋头像 | 21.20–21.56 | 84.81–86.04 |
 | LLM | 4 | 原生语音＋头像＋一路 Omni Chat | 19.47–21.47 | 77.89–85.33 |
 
-单头像基线的全栈混跑在 90 秒内生成 2,265 张真实神经帧，最大采样时间线偏差 57 ms。双卡工作站启用两个 Omni 共享槽，Ditto 已接入双槽，双路帧率通过验收前启用一个。GPU 0 通过 CUDA MPS 和各槽帧截止期分配算力。 [工作站部署](docs/deployment/workstation.md)
+单头像基线的全栈混跑在 90 秒内生成 2,265 张真实神经帧，最大采样时间线偏差 57 ms。双卡工作站启用两个 Omni 共享槽，Ditto 已接入双槽，双路帧率通过验收前启用一个。共享卡通过 CUDA MPS 和各槽帧截止期分配算力。 [工作站部署](docs/deployment/workstation.md)
 
 256-token 夹具覆盖思考＋正文总生成吞吐，额度可用于思考阶段；完整 CoT 答案、预算、JSON Schema 和工具续接由独立功能夹具验证。计算方式、原始数据和验证范围见[工作站指南](docs/deployment/workstation.md#四路并发与计算预算)。完整 262K 质量、持续负载与实物播放由[后续验收计划](docs/plans/avatar-workstation.md)跟进。
 
