@@ -1,6 +1,9 @@
 import asyncio
 import base64
+import hashlib
+import hmac
 import io
+import json
 import os
 import unittest
 import wave
@@ -158,7 +161,7 @@ class GatewayTest(unittest.IsolatedAsyncioTestCase):
                     await ws.send_json(event)
                     self.assertEqual(await ws.receive_json(), event)
                 await echo(mic | {"audio": "AAAA"})
-                await ws.send_json({"type":PREFIX+"start"})
+                await ws.send_json({"event_id":"x"*192, "type":PREFIX+"start"})
                 started = await ws.receive_json()
                 self.assertEqual(started["type"], PREFIX+"started")
                 capture = started["capture_id"]
@@ -168,7 +171,9 @@ class GatewayTest(unittest.IsolatedAsyncioTestCase):
                 self.assertFalse(hasattr(self, "chat_payload"))
                 await ws.send_json({"type":PREFIX+"finish", "capture_id":capture})
                 result = await ws.receive_json()
-                self.assertRegex(result.pop("receipt"), r"^[a-f0-9]{64}$")
+                fields = ["omni.mic.v1", hashlib.sha256(ticket.encode()).hexdigest(), capture, 2, "ok"]
+                signed = json.dumps(fields, ensure_ascii=False, separators=(",", ":")).encode()
+                self.assertEqual(result.pop("receipt"), hmac.digest(b"fixture-client", signed, "sha256").hex())
                 self.assertEqual(result, {"type":PREFIX+"completed", "capture_id":capture,
                                  "samples":2, "source":"explicit_user_audio", "transcript":"ok"})
                 message = self.chat_payload["messages"][-1]
@@ -182,7 +187,8 @@ class GatewayTest(unittest.IsolatedAsyncioTestCase):
                 self.assertNotEqual(second, capture)
                 await ws.send_json({"type":PREFIX+"finish", "capture_id":second})
                 self.assertEqual((await ws.receive_json())["reason"], "empty_audio")
-        for query, auth in [("", SERVICE_AUTH), ("&program=1&input_transcription=explicit", MEDIA_AUTH)]:
+        for query, auth in [("", SERVICE_AUTH), ("&input_transcription=explicit", SERVICE_AUTH),
+                            ("&program=1&input_transcription=explicit", MEDIA_AUTH)]:
             async with self.client.ws_connect("/v1/realtime?duplex=1"+query, headers=auth) as ws:
                 self.assertNotIn("gateway_input_transcription", (await ws.receive_json())["session"]["capabilities"])
 

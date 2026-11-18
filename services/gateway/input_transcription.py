@@ -92,7 +92,7 @@ class InputTranscription:
 
     async def consume(self, raw):
         # Normal duplex frames pass through. Never retain an upstream/assistant frame.
-        if self.identity is None and PREFIX not in raw[:160]:
+        if self.identity is None and PREFIX not in raw:
             return False
         try:
             event = json.loads(raw)
