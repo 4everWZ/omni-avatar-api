@@ -14,6 +14,7 @@ from .media import TimelineTrack, VIDEO_SAMPLES
 from .renderers import DRIVERS
 from .sessions import RATE, Session
 from .portrait_client import PortraitClient
+from .registered import RegisteredRigs
 
 ROOT = Path(__file__).parent
 
@@ -29,6 +30,7 @@ class AvatarService:
             registry = {name: item | {'root': registry_path.parent / item['root']}
                         for name, item in registry.items()}
         self.registry = registry
+        self.rigs = RegisteredRigs()
         self.capacity, self.idle_timeout = capacity, idle_timeout
         self.sessions, self.sources = {}, {}
         self.portrait = None
@@ -280,6 +282,13 @@ class AvatarService:
             await client.close()
 
     async def portrait_api(self, request):
+        identity = request.match_info.get('id', '')
+        if request.method == 'GET' and request.path == '/v1/avatar/avatars/' + identity:
+            if not re.fullmatch(r'portrait_[a-f0-9]{32}', identity):
+                entry = self.registry.get(identity)
+                if not entry or entry['driver'] != 'inochi2d' or 'inochi2d' not in DRIVERS:
+                    raise web.HTTPNotFound()
+                return await self.rigs.describe(identity, entry, DRIVERS['inochi2d'])
         if self.portrait is None:
             raise web.HTTPServiceUnavailable(reason='Portrait worker is not configured')
         return await self.portrait.forward(request)

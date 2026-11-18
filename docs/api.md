@@ -131,7 +131,11 @@ Realtime 客户端仍使用原协议。客户端以 `?avatar=1` 选择 Avatar �
 
 ### 可插拔渲染与后续数字人
 
-`services/avatar/avatars.json` 登记 `avatar_id`、驱动和素材目录；`OMNI_AVATAR_REGISTRY` 可指定替代登记文件。驱动接收带采样起点和代次的原始 PCM，按会话时间戳提供画面，并实现能力声明、代次清除和关闭；音频入队与取帧应保持非阻塞，神经驱动可在独立 worker 推理。媒体与权限不依赖具体驱动。`sprite2d` 使用 Ava 四状态素材和共享时间线的音量；`ditto` 提供参考图会议式说话头像。两个驱动共用媒体和会话契约，未来 3D 多视角驱动沿用该接口。后续验收见[当前计划](plans/avatar-workstation.md)。
+`services/avatar/avatars.json` 登记 `avatar_id`、驱动和素材目录；`OMNI_AVATAR_REGISTRY` 可指定替代登记文件。驱动接收带采样起点和代次的原始 PCM，按会话时间戳提供画面，并实现能力声明、代次清除和关闭；音频入队与取帧应保持非阻塞，神经驱动可在独立 worker 推理。媒体与权限不依赖具体驱动。`sprite2d` 使用 Ava 四状态素材和共享时间线的音量；`ditto` 提供参考图会议式说话头像。已登记驱动共用媒体和会话契约，未来 3D 多视角驱动沿用该接口。后续验收见[当前计划](plans/avatar-workstation.md)。
+
+`inochi2d` 在媒体服务 CPU 上读取 Inochi2D 0.8 的 INP1 文件。在私有登记文件中加入例如 `{"my-avatar":{"driver":"inochi2d","root":"rigs/my-avatar/model.inp"}}`，并将文件及模型只读挂载到服务。相对路径以登记文件所在目录为准。通过原有 `POST /v1/avatar/sessions` 传入 `{"avatar_id":"my-avatar","source":{"type":"audio"}}`，向返回的 `audio_url` 提交 PCM，并在 `media_url` 订阅 WHEP。实时会话可沿用 `source.type=realtime`。返回的 `format.driver` 为 `inochi2d`。
+
+该子集在 640×720 画布上支持 Node 与 Part、完整纹理的轴向矩形网格、Normal 混合和线性标量参数。局部平移、缩放与平面旋转依次沿节点树合成，按累计 zsort 递减绘制。平移与角度绑定采用加法，缩放和 Part 不透明度绑定采用乘法；关键点从参数声明的归一化 `axis_points` 读取。画面取同一播放位置的 20 ms PCM，以响度驱动 MouthOpen、频谱明亮度近似值驱动 MouthForm，眼睑、视线、头部和呼吸使用会话时钟。口型控制提供连续形变，音素辨识精度需独立验收。
 
 ## 参考图与会议式头像
 
@@ -146,7 +150,7 @@ Realtime 客户端仍使用原协议。客户端以 `?avatar=1` 选择 Avatar �
 | `POST /v1/avatar/generations` | `{"reference_asset_id":"...","driver":"ditto"}`，返回 202 和任务 `id`。准备人脸、外观和运动特征，输出参考图驱动的说话头像。 |
 | `GET /v1/avatar/generations/{id}` | 状态 `queued → preparing → ready`；失败为 `failed`，取消为 `cancelled`。仅 `ready` 返回可用 `avatar_id`。 |
 | `DELETE /v1/avatar/generations/{id}` | 活跃准备任务标为 cancelled，GPU 工作实际退出前继续占用配额；再次删除可清理记录。就绪任务删除形象及特征，若形象正在通话则返回 409。 |
-| `GET /v1/avatar/avatars/{avatar_id}` | 查询已准备形象和驱动能力。`/preview` 返回规范化参考图预览。 |
+| `GET /v1/avatar/avatars/{avatar_id}` | 查询已准备形象和驱动能力。已注册的 Inochi2D 原画使用部署方提供的 ID，容器及纹理可加载时返回同一 `id`、`driver: inochi2d` 和 `state: ready`。未知 ID 返回 404，损坏或缺失的注册文件返回 503。神经形象的 `/preview` 返回规范化参考图预览。 |
 | `POST /v1/avatar/sessions` | 将就绪的 `portrait_...` 作为 `avatar_id`，仍按上述方式绑定 `audio` 或自有 `realtime` 源；返回同一套音频、事件及 WHEP 入口。 |
 
 每次登记可在 `infra.portrait.calibration` 指定当前参考图的 `face_box`、`eyes` 或两者，坐标以规范化后的 640×720 资产为准。省略的阶段继续使用 Ditto 自动检测。GET 任务时可读回 `crop.calibration`；失败保留原错误码，并通过 `diagnostic.stage` 定位准备阶段。[按形象校准、两份原稿标注与隔离复测](ditto-calibration.md)
