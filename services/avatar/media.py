@@ -10,20 +10,22 @@ from av import AudioFrame, VideoFrame
 
 from .sessions import RATE
 
+VIDEO_SAMPLES = RATE // 25
+
 
 class TimelineTrack(MediaStreamTrack):
-    def __init__(self, session, kind, origin):
+    def __init__(self, session, kind, start_sample):
         super().__init__()
-        self.session, self.kind, self.origin = session, kind, origin
+        self.session, self.kind, self.start_sample = session, kind, start_sample
         self.index = 0
 
     async def recv(self):
         if self.readyState != 'live' or self.session.state == 'closed':
             raise MediaStreamError
-        period = .02 if self.kind == 'audio' else .04
-        timestamp = self.origin + self.index * period
+        samples_per_packet = 480 if self.kind == 'audio' else VIDEO_SAMPLES
+        position = self.start_sample + self.index * samples_per_packet
+        timestamp = self.session.origin + position / RATE
         await asyncio.sleep(max(0, timestamp - monotonic()))
-        position = round((timestamp - self.session.origin) * RATE)
         if self.kind == 'audio':
             frame = AudioFrame(format='s16', layout='mono', samples=480)
             frame.planes[0].update(self.session.pcm(position, 480))
@@ -31,7 +33,7 @@ class TimelineTrack(MediaStreamTrack):
             frame.pts, frame.time_base = self.index * 480, Fraction(1, RATE)
         else:
             try:
-                image = self.session.renderer.render(timestamp - self.session.origin, self.session.rms(position))
+                image = self.session.renderer.render(position / RATE, self.session.rms(position))
                 frame = VideoFrame.from_image(image)
             except Exception:
                 logging.exception('Avatar renderer failed')

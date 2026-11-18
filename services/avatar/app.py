@@ -10,9 +10,9 @@ from time import monotonic
 from aiohttp import ClientSession, ClientTimeout, UnixConnector, WSMsgType, web
 from aiortc import RTCConfiguration, RTCPeerConnection, RTCSessionDescription
 
-from .media import TimelineTrack
+from .media import TimelineTrack, VIDEO_SAMPLES
 from .renderers import DRIVERS
-from .sessions import Session
+from .sessions import RATE, Session
 from .portrait_client import PortraitClient
 
 ROOT = Path(__file__).parent
@@ -234,16 +234,17 @@ class AvatarService:
                 await pc.setRemoteDescription(RTCSessionDescription(sdp=offer, type='offer'))
                 if {t.kind for t in pc.getTransceivers()} != {'audio', 'video'}:
                     raise ValueError('Offer must request both audio and video')
-                origin = monotonic()
-                pc.addTrack(TimelineTrack(session, 'audio', origin))
-                pc.addTrack(TimelineTrack(session, 'video', origin))
+                # Start both tracks on the next neural frame's exact PCM boundary.
+                start_sample = ((session.now_sample() + VIDEO_SAMPLES - 1) // VIDEO_SAMPLES) * VIDEO_SAMPLES
+                pc.addTrack(TimelineTrack(session, 'audio', start_sample))
+                pc.addTrack(TimelineTrack(session, 'video', start_sample))
                 await pc.setLocalDescription(await pc.createAnswer())
                 sdp = pc.localDescription.sdp
                 # Host networking exposes routable host ICE candidates, no Docker bridge addresses.
                 return web.Response(status=201, text=sdp, content_type='application/sdp', headers={
                     'Location': f'/v1/avatar/sessions/{session.id}/whep/{peer_id}',
                     'Cache-Control': 'no-store',
-                    'X-Avatar-Timeline-Origin-Ms': str(round((origin - session.origin) * 1000)),
+                    'X-Avatar-Timeline-Origin-Ms': str(start_sample * 1000 // RATE),
                 })
         except BaseException:
             session.peers.pop(peer_id, None)

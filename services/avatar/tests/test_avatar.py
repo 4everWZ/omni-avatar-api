@@ -157,7 +157,7 @@ class AvatarTest(unittest.IsolatedAsyncioTestCase):
                                     data=peer.localDescription.sdp) as response:
             self.assertEqual(response.status, 201, await response.text())
             location = response.headers['Location']
-            self.assertIn('X-Avatar-Timeline-Origin-Ms', response.headers)
+            self.assertEqual(int(response.headers['X-Avatar-Timeline-Origin-Ms']) % 40, 0)
             await peer.setRemoteDescription(RTCSessionDescription(type='answer', sdp=await response.text()))
         async with asyncio.timeout(15):
             while peer.connectionState != 'connected':
