@@ -58,9 +58,11 @@ Qwen3.5 的启动空闲显存检查使用整卡的 75%，支持两个 Ditto 槽�
 
 实机双路 Omni 和 Qwen 测量记录见 [容量验收](../../evaluations/results/workstation-dual-capacity.json)。
 
+单 Ditto 运行配置可显式使用 `LLM_MPS_ACTIVE_THREAD_PERCENTAGE=100`。工作站用直接音频输入和 WHEP 连续跑了 90 秒，最大采样时间线偏差 64 ms。四轮四路 Qwen 实际生成重叠，最慢一路为 25.72 TPS。工作站当前使用该单 Ditto 配置。
+
 `LLM_MAX_NUM_SEQS=4` 同时配置引擎与网关；`LLM_TOKEN_BUDGET=262144` 控制活跃请求的完整模板输入加最大输出预留。Chat、Responses、后台任务和续接共享预算，长短请求按 FIFO 等待可用序列与 token，完成或取消后释放。调用方显式设置短请求输出额度可释放并发空间。单请求 262144 与四路短请求分别验收；多路满窗口作为后续独立容量评估。[准入语义](../api.md#外部-swarmorchestrator-调用)。
 
-GPU 0 使用项目内 `gpu-mps` 服务。LLM 活跃线程上限 20%、较低客户端优先级，实机可见 16 个 SM；Ditto 使用正常优先级。LLM 采用同步调度与 `FULL_DECODE_ONLY` CUDA Graph，捕获批次 1、2、4。MPS 分配计算资源，token 预算保护显存，两个机制分别生效。
+GPU 0 使用项目内 `gpu-mps` 服务。覆盖层的基线 LLM 活跃线程上限为 20%，实机可见 16 个 SM。LLM 使用较低客户端优先级，Ditto 使用正常优先级。LLM 采用同步调度与 `FULL_DECODE_ONLY` CUDA Graph，捕获批次 1、2、4。MPS 分配计算资源，token 预算保护显存，两个机制分别生效。
 
 当前工作站启用 TensorRT FP16 warp＋decoder，CoT 开启，思考预算采用上游默认；温度 0，每路总输出上限 256 tokens，预热 32 tokens。固定短提示按模板实报输入为 Omni 25、LLM 27 tokens，前缀缓存关闭。以下统计端到端思考＋正文总生成 TPS；通话场景列出两轮测量范围。
 

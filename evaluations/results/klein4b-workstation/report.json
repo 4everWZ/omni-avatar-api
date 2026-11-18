@@ -201,5 +201,11 @@
         "finished_at": 1794972441.827528
       }
     ]
+  },
+  "running_cancellation": {
+    "cancel_response": "cancelling",
+    "terminal_state": "cancelled",
+    "llm_state": "ready",
+    "responses_continuation": "passed"
   }
 }

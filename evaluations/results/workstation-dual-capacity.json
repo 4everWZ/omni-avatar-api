@@ -284,5 +284,50 @@
         }
       ]
     }
+  },
+  "single_ditto_mps100": {
+    "scope": "one Ditto on GPU 0 with direct PCM input, WHEP and Qwen; one render slot configured",
+    "state": "passed",
+    "media": {
+      "generated_frames": 2365,
+      "max_sampled_lag_ms": 64,
+      "native_audio_chunks": 0
+    },
+    "duration_seconds": 90.25,
+    "measurements": [
+      {
+        "single_e2e_tps": 34.49205066023944,
+        "single_decode_interval_tps": 37.172011661883275,
+        "single_first_delta_seconds": 0.5620000000053551,
+        "four_aggregate_e2e_tps": 102.88355269759005,
+        "four_slowest_e2e_tps": 25.720888174397512,
+        "four_outputs_overlap_seconds": 6.64100000000326
+      },
+      {
+        "single_e2e_tps": 29.257142857142856,
+        "single_decode_interval_tps": 145.71428571428572,
+        "single_first_delta_seconds": 6.953000000008615,
+        "four_aggregate_e2e_tps": 141.55377384579228,
+        "four_slowest_e2e_tps": 35.38844346144807,
+        "four_outputs_overlap_seconds": 6.687000000005355
+      },
+      {
+        "single_e2e_tps": 34.85838779950791,
+        "single_decode_interval_tps": 40.29709228837321,
+        "single_first_delta_seconds": 0.2970000000204891,
+        "four_aggregate_e2e_tps": 124.58936610319341,
+        "four_slowest_e2e_tps": 31.147341525798353,
+        "four_outputs_overlap_seconds": 6.73399999999674
+      },
+      {
+        "single_e2e_tps": 35.23743977969824,
+        "single_decode_interval_tps": 36.35067712038378,
+        "single_first_delta_seconds": 0.25,
+        "four_aggregate_e2e_tps": 135.39600687567435,
+        "four_slowest_e2e_tps": 33.849001718918586,
+        "four_outputs_overlap_seconds": 6.5
+      }
+    ],
+    "realtime_binding_run": "Generation and WHEP continued for about 65 seconds before an upstream Realtime disconnect."
   }
 }

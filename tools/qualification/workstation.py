@@ -6,7 +6,7 @@ Credentials are read from a private environment file and never written to the re
 import argparse
 import asyncio
 import base64
-from contextlib import AsyncExitStack
+from contextlib import AsyncExitStack, suppress
 import io
 import json
 import math
@@ -20,7 +20,7 @@ from datetime import datetime, timezone
 from time import monotonic
 
 import av
-from aiohttp import ClientSession, ClientTimeout
+from aiohttp import ClientError, ClientSession, ClientTimeout
 from aiortc import RTCConfiguration, RTCPeerConnection, RTCSessionDescription
 from PIL import Image
 from evaluations.fixtures.long_context import DOCUMENTS, NEEDLE
@@ -379,7 +379,9 @@ class Qualification:
         if self.events:
             await self.events.close()
         if self.voice:
-            await self.voice.send_json({'type': 'session.close'})
+            if not self.voice.closed:
+                with suppress(ClientError):
+                    await self.voice.send_json({'type': 'session.close'})
             await self.voice.close()
         if self.avatar:
             path = '/v1/avatar/sessions/' + self.avatar['id']
