@@ -10,6 +10,7 @@ services:
         device_ids: ["${OMNI_GPU_DEVICE:-1}"]
     environment:
       OMNI_MAX_MODEL_LEN: '8192'
+      PYTORCH_ALLOC_CONF: ${OMNI_PYTORCH_ALLOC_CONF:-}
       OMNI_WORKSTATION_CAP: ${OMNI_WORKSTATION_CAP:-2}
       OMNI_DEPLOY_CONFIG: /opt/tuber-omni/configs/minicpmo-assistant.yaml
     volumes:

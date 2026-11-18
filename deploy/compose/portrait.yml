@@ -96,6 +96,7 @@ services:
       CUDA_MPS_CLIENT_PRIORITY: '0'
       OMNI_GPU_RENDER_CLOCK: /run/omni-mps/render-clock-{slot}.json
       OMNI_PORTRAIT_CAP: ${OMNI_PORTRAIT_CAP:-1}
+      OMNI_PORTRAIT_HUBERT_THREADS: ${OMNI_PORTRAIT_HUBERT_THREADS:-0}
       OMNI_GPU_SWITCH_ROOT: /run/omni-gpu
       OMNI_PORTRAIT_FRAME_BACKEND: ${OMNI_PORTRAIT_FRAME_BACKEND:-cuda-graph}
     volumes:

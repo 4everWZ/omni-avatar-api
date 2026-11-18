@@ -9,6 +9,7 @@ import queue
 import sys
 import threading
 import time
+from contextlib import contextmanager
 from pathlib import Path
 
 import numpy as np
@@ -18,6 +19,34 @@ from scipy.signal import resample_poly
 CODE_REVISION = 'c3e47eee2e626500017a0556b470d6d4182f85e8'
 MODEL_REVISION = 'e4a2f60328ee7c32af585ac4b3cce299e4c8e254'
 setup_writer = threading.local()
+
+
+@contextmanager
+def hubert_cpu_threads(count):
+    if count < 0:
+        raise ValueError('OMNI_PORTRAIT_HUBERT_THREADS must be nonnegative')
+    if count == 0:
+        yield
+        return
+    import onnxruntime as ort
+    from core.aux_models import modules
+
+    # The pinned SDK resolves this constructor from its modules package.
+    # Slots are constructed sequentially before the worker accepts sessions.
+    original = modules.HubertStreamingONNX
+
+    class CPUHubert(original):
+        def __init__(self, model_file, **kwargs):
+            options = ort.SessionOptions()
+            options.intra_op_num_threads = count
+            self.session = ort.InferenceSession(model_file, sess_options=options,
+                                                providers=['CPUExecutionProvider'])
+
+    modules.HubertStreamingONNX = CPUHubert
+    try:
+        yield
+    finally:
+        modules.HubertStreamingONNX = original
 
 
 class DittoBackend:
@@ -44,8 +73,9 @@ class DittoBackend:
             if isinstance(item, dict) and (str(item.get('model_path', '')).endswith('.onnx')
                                           or item.get('force_ori_type')):
                 item['device'] = 'cpu'
-        self.sdk = self.pipeline.StreamSDK(str(cfg_path), str(models / 'ditto_pytorch'),
-                                           base_cfg=cfg['base_cfg'])
+        with hubert_cpu_threads(int(os.environ.get('OMNI_PORTRAIT_HUBERT_THREADS', '0'))):
+            self.sdk = self.pipeline.StreamSDK(str(cfg_path), str(models / 'ditto_pytorch'),
+                                               base_cfg=cfg['base_cfg'])
         motion = self.sdk.audio2motion.lmdm.model
         motion.model_predictions = CudaPrediction(motion, torch)
         # One graph keeps warp/decode intermediates on CUDA and removes the
