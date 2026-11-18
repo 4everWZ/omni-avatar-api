@@ -8,6 +8,9 @@ import sys
 ROOT = Path(__file__).resolve().parents[1]
 COMPOSE = ROOT / 'deploy' / 'compose'
 TARGETS = {
+    'omni': ('omni-node',),
+    'gateway': ('gateway-node',),
+    'avatar': ('avatar-node',),
     'images': ('image-node',),
     'portrait': ('portrait-node',),
     'llm': ('llm', 'llm-endpoint'),
@@ -28,8 +31,10 @@ def command(target, compose_args, *, portrait=False, images=False, remote_images
         raise ValueError('The images overlay requires the split workstation target')
     if images and remote_images:
         raise ValueError('Choose either shared or dedicated image placement')
-    if remote_images and target in ('images', 'llm', 'portrait'):
-        raise ValueError('Remote image routing needs a gateway target')
+    if (remote_images or vpn or media) and target in ('images', 'llm', 'portrait', 'avatar', 'omni'):
+        raise ValueError('Gateway overlays require a deployment target containing the gateway')
+    if media and target == 'gateway':
+        raise ValueError('The program media overlay requires the shared stack network')
     files = list(TARGETS[target])
     files.extend(name for name, enabled in [('portrait', portrait), ('images', images), ('remote-images', remote_images),
                                           ('vpn', vpn), ('media', media)] if enabled)

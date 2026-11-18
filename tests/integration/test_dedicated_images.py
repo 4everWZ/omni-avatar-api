@@ -1,13 +1,13 @@
 import asyncio
 import base64
+import os
 import tempfile
 import unittest
+from unittest.mock import patch
 
 from aiohttp.test_utils import TestClient, TestServer
 
 from services.gateway.app import create_app as gateway_app
-from services.gateway.config import Config
-from services.gateway.image_jobs import DedicatedImageJobs
 from services.images.app import create_app as worker_app
 
 
@@ -23,13 +23,17 @@ class DedicatedImagesTest(unittest.IsolatedAsyncioTestCase):
 
         with tempfile.TemporaryDirectory() as root:
             async with TestServer(worker_app(Backend(), 'private', None)) as worker:
-                def factory(text):
-                    self.assertIsNone(text)
-                    return DedicatedImageJobs(root, str(worker.make_url('')).rstrip('/'), 'private', 3)
-
-                config = Config('http://unused', 'model', 'revision', ('one', 'two'), 'admin')
-                async with TestClient(TestServer(gateway_app(config, image_factory=factory))) as client:
+                env = {'OMNI_GATEWAY_OMNI_ENABLED': '0', 'OMNI_GATEWAY_TOKEN': 'one',
+                       'OMNI_GATEWAY_TOKENS': '{"other":"two"}', 'OMNI_GATEWAY_ADMIN_TOKEN': 'admin',
+                       'OMNI_IMAGE_PLACEMENT': 'dedicated', 'OMNI_IMAGE_DATA': root,
+                       'OMNI_IMAGE_WORKER_URL': str(worker.make_url('')).rstrip('/'),
+                       'OMNI_IMAGE_INTERNAL_TOKEN': 'private'}
+                with patch.dict(os.environ, env, clear=True):
+                    app = gateway_app()
+                async with TestClient(TestServer(app)) as client:
                     auth = {'Authorization': 'Bearer one'}
+                    self.assertEqual((await client.get('/livez')).status, 200)
+                    self.assertEqual((await client.get('/healthz', headers=auth)).status, 503)
                     reply = await client.post('/v1/images/jobs', headers=auth, json={'prompt': 'test'})
                     self.assertEqual(reply.status, 202)
                     path = reply.headers['Location']

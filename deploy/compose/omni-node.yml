@@ -1,0 +1,45 @@
+name: omni-inference-node
+x-model: &model
+  OMNI_MODEL_ID: ${OMNI_MODEL_ID:-openbmb/MiniCPM-o-4_5-awq}
+  OMNI_CHECKPOINT: ${OMNI_CHECKPOINT:-927faefa0bce96e557945e106f3b3d8b4d39f4b2}
+services:
+  model-fetch:
+    profiles: [assets]
+    image: ${OMNI_IMAGE:-omni-api-engine:0.32.0-workstation}
+    pull_policy: never
+    command: [python3, /opt/tuber-omni/model.py, fetch]
+    environment: *model
+    volumes:
+      - ${OMNI_MODEL_DATA:-./data/models}:/models
+  omni-engine:
+    build:
+      context: ./services/inference
+      args:
+        OMNI_BASE_IMAGE: vllm/vllm-omni:v0.32.0-x86_64@sha256:6b44ee504a0dc3a21eacf72e7dc5da318b7bcc8ed0e349dc928e67278414430c
+    platform: linux/amd64
+    image: ${OMNI_IMAGE:-omni-api-engine:0.32.0-workstation}
+    init: true
+    restart: unless-stopped
+    runtime: nvidia
+    gpus:
+      - driver: nvidia
+        device_ids: ["${OMNI_GPU_DEVICE:?select the Omni device}"]
+    shm_size: 2gb
+    command: [python3, /opt/tuber-omni/model.py, serve]
+    ports:
+      - '${OMNI_ENGINE_BIND:-127.0.0.1}:${OMNI_ENGINE_PORT:-8102}:8000'
+    environment:
+      <<: *model
+      OMNI_DEPLOY_CONFIG: /opt/tuber-omni/configs/minicpmo-assistant.yaml
+      OMNI_MAX_MODEL_LEN: ${OMNI_MAX_MODEL_LEN:-8192}
+      OMNI_WORKSTATION_CAP: ${OMNI_WORKSTATION_CAP:-2}
+      HF_HUB_OFFLINE: '1'
+      TRANSFORMERS_OFFLINE: '1'
+    volumes:
+      - ${OMNI_MODEL_DATA:-./data/models}:/models:ro
+    healthcheck:
+      test: [CMD, python3, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3).close()"]
+      interval: 15s
+      timeout: 5s
+      start_period: 8m
+      retries: 4

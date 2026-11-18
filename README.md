@@ -48,6 +48,8 @@ python tools/compose.py -- --profile assets run --rm llm-model-fetch
 python tools/compose.py -- up -d --wait
 ```
 
+For independent nodes, the Compose entrypoint also supports `--target gateway|omni|llm|avatar|portrait|images` (select one). Configure private endpoints and device placement in the [workstation guide](docs/deployment/workstation.md).
+
 The default stack includes Omni, the text LLM, the gateway and Ava 2D. The API listens on **`http://127.0.0.1:8000`**. The browser demo is served at `/`. WHEP media requires direct LAN/VPN connectivity; remote microphone and screen capture need a trusted browser context.
 
 To add neural portraits:

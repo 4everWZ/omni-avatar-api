@@ -8,6 +8,13 @@ from urllib.parse import urlsplit
 MODEL_ALIAS = "omni-default"
 
 
+def validate_origin(value, name):
+    parsed = urlsplit(value)
+    if (parsed.scheme not in {'http', 'https'} or not parsed.hostname or parsed.username
+            or parsed.password or parsed.path or parsed.query or parsed.fragment):
+        raise ValueError(f'{name} must be an HTTP(S) origin')
+
+
 def positive(name, default, convert=float):
     value = convert(os.environ.get(name, default))
     if not math.isfinite(value) or value <= 0:
@@ -49,11 +56,13 @@ class Config:
                 return value
             raise ValueError(f"Missing {name}")
 
-        engine_url = os.environ.get("OMNI_ENGINE_URL", "http://omni-engine:8000").rstrip("/")
-        parsed = urlsplit(engine_url)
-        if (parsed.scheme not in {"http", "https"} or not parsed.hostname or parsed.username
-                or parsed.password or parsed.path or parsed.query or parsed.fragment):
-            raise ValueError("OMNI_ENGINE_URL must be an HTTP(S) origin")
+        omni_enabled = os.environ.get('OMNI_GATEWAY_OMNI_ENABLED', '1')
+        if omni_enabled not in ('0', '1'):
+            raise ValueError('OMNI_GATEWAY_OMNI_ENABLED must be 0 or 1')
+        engine_url = ''
+        if omni_enabled == '1':
+            engine_url = os.environ.get('OMNI_ENGINE_URL', 'http://omni-engine:8000').rstrip('/')
+            validate_origin(engine_url, 'OMNI_ENGINE_URL')
         primary = required("OMNI_GATEWAY_TOKEN")
         admin = required("OMNI_GATEWAY_ADMIN_TOKEN")
         additional = json.loads(os.environ.get("OMNI_GATEWAY_TOKENS", "{}") or "{}")
@@ -69,10 +78,10 @@ class Config:
                     else positive("OMNI_BATCH_CAP", 1, int))
         if shared_capacity and capacity not in (1, 2):
             raise ValueError("OMNI_WORKSTATION_CAP must be 1 or 2")
-        checkpoint = required("OMNI_CHECKPOINT")
+        checkpoint = required("OMNI_CHECKPOINT") if engine_url else ""
         model_root = f"/models/{checkpoint}" if os.environ.get("OMNI_REQUIRE_CHECKPOINT_ROOT") == "1" else ""
         return cls(
-            engine_url=engine_url, model=required("OMNI_MODEL_ID"), checkpoint=checkpoint,
+            engine_url=engine_url, model=required("OMNI_MODEL_ID") if engine_url else "", checkpoint=checkpoint,
             tokens=tokens, admin_token=admin, engine_token=os.environ.get("OMNI_ENGINE_TOKEN", ""),
             program_token=additional.get("media", ""),
             engine_version=os.environ.get("OMNI_ENGINE_VERSION", ""),
@@ -92,10 +101,7 @@ class Config:
         def override(name, default, convert=float):
             return positive(name, default, convert) if os.environ.get(name) else default
         origin = os.environ["LLM_ENGINE_URL"].rstrip("/")
-        parsed = urlsplit(origin)
-        if (parsed.scheme not in {"http", "https"} or not parsed.hostname or parsed.username
-                or parsed.password or parsed.path or parsed.query or parsed.fragment):
-            raise ValueError("LLM_ENGINE_URL must be an HTTP(S) origin")
+        validate_origin(origin, 'LLM_ENGINE_URL')
         model, revision = os.environ["LLM_MODEL_ID"].strip(), os.environ["LLM_CHECKPOINT"].strip()
         if not model or not revision:
             raise ValueError("LLM model and checkpoint are required")

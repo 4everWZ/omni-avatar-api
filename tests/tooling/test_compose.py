@@ -30,6 +30,11 @@ class ComposeEntrypointTests(unittest.TestCase):
                     if item == '-f':
                         self.assertTrue(Path(args[i+1]).is_file())
 
+    def test_dedicated_image_routing_does_not_deploy_text_or_gpu_services(self):
+        args = command('gateway', ['up'], remote_images=True)
+        files = [Path(args[i+1]).stem for i, item in enumerate(args) if item == '-f']
+        self.assertEqual(files, ['gateway-node', 'remote-images'])
+
     def test_optional_layers_do_not_replace_base_stack_or_consume_docker_arguments(self):
         args = command('workstation', ['--profile', 'assets', 'run', '--rm', 'portrait-assets'],
                        portrait=True, vpn=True, media=True)

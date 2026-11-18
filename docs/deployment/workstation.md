@@ -31,6 +31,16 @@ python tools/compose.py --target llm -- up -d --wait
 python tools/compose.py --target llm -- stop llm-engine
 ```
 
+### 独立 Omni 节点
+
+`--target omni` 提供单独的 amd64 三阶段引擎与 model-fetch。选择 `OMNI_GPU_DEVICE`，依次执行 `build omni-engine`、`--profile assets run --rm model-fetch`、`up -d --wait`。引擎私有端口默认回环 8102；Gateway 的 `OMNI_ENGINE_URL` 指向客户端节点可达的私有地址。JetPack／ARM64 沿用各自的构建目标。
+
+### 独立 Gateway 和 Avatar
+
+`--target gateway` 单独启动 CPU 网关，只需应用／管理凭据即可存活。配置 `LLM_ENGINE_URL`、`LLM_MODEL_ID`、`LLM_CHECKPOINT` 连接私有文本引擎，或加 `--remote-images` 连接专用图像池。启用远端 Omni 时设 `OMNI_GATEWAY_OMNI_ENABLED=1`，填写引擎 origin、模型 ID 和 revision。未启用 Omni 时 `/livez` 仍可用，`/healthz` 及 Omni 推理路径报告 503；LLM 使用自己的 `/llm/healthz`。
+
+`--target avatar` 可单独提供 2D 与显式音频会话，设置私有监听地址 `OMNI_AVATAR_BIND` 后让 Gateway 的 `OMNI_AVATAR_URL` 指向它。连接 Portrait 仅需在 Avatar 侧配置 `OMNI_PORTRAIT_URL`。跨机时为控制平面提供受保护的网络，媒体 ICE 候选需能从实际客户端访问。
+
 ## API 与上下文
 
 | 入口 | 职责与配置 |
@@ -154,7 +164,7 @@ Klein 4B 蒸馏快照使用原精度 BF16。加载和文本编码在 CPU 上进�
 python tools/compose.py --target images -- build omni-images
 python tools/compose.py --target images -- --profile assets run --rm image-model-fetch
 python tools/compose.py --target images -- up -d --wait
-python tools/compose.py --target workstation-omni --remote-images -- up -d --wait
+python tools/compose.py --target gateway --remote-images -- up -d --wait
 ```
 
 ## Avatar 与访问

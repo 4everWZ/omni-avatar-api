@@ -48,6 +48,8 @@ python tools/compose.py -- --profile assets run --rm llm-model-fetch
 python tools/compose.py -- up -d --wait
 ```
 
+独立节点可用 `--target` 选择 gateway、omni、llm、avatar、portrait 或 images。私有端点与设备选择见[工作站指南](docs/deployment/workstation.md)。
+
 默认组合包含 Omni、文本 LLM、网关和 Ava 2D。API 默认监听 **`http://127.0.0.1:8000`**，浏览器示例位于 `/`。WHEP 媒体需要 LAN／VPN 直达；远程麦克风和屏幕采集需要可信的浏览器上下文。
 
 启用神经头像：

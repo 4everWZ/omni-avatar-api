@@ -84,7 +84,7 @@ class Gateway:
     async def session_context(self, app):
         headers = {"Authorization": f"Bearer {self.config.engine_token}"} if self.config.engine_token else {}
         async with ClientSession(
-            base_url=self.config.engine_url, headers=headers, cookie_jar=DummyCookieJar(),
+            base_url=self.config.engine_url or None, headers=headers, cookie_jar=DummyCookieJar(),
             timeout=ClientTimeout(total=None, connect=self.config.health_timeout), trust_env=False,
         ) as session:
             self.engine = session
@@ -374,11 +374,16 @@ def create_app(config=None, text_config=None, *, image_factory=None):
     async def livez(request):
         return web.json_response({"state": "running"})
 
+    async def unavailable(request):
+        return failure(503, "model_unavailable", "Omni inference is disabled on this gateway.")
+
+    inference = bool(config.engine_url)
     app.add_routes([
-        web.get("/livez", livez), web.get("/healthz", gateway.health),
+        web.get("/livez", livez), web.get("/healthz", gateway.health if inference else unavailable),
         web.get("/api/mode", gateway.mode), web.put("/api/mode", gateway.mode),
-        web.get("/v1/models", gateway.aliased_models), web.post("/v1/chat/completions", gateway.chat),
-        web.post("/v1/chat/prompt_tokens", gateway.prompt_tokens),
+        web.get("/v1/models", gateway.aliased_models if inference else unavailable),
+        web.post("/v1/chat/completions", gateway.chat if inference else unavailable),
+        web.post("/v1/chat/prompt_tokens", gateway.prompt_tokens if inference else unavailable),
     ])
     if text_config is not None:
         text_app = create_app(text_config)
@@ -400,7 +405,7 @@ def create_app(config=None, text_config=None, *, image_factory=None):
         ])
         return app
     app.add_routes([
-        web.get("/v1/realtime", gateway.realtime),
+        web.get("/v1/realtime", gateway.realtime if inference else unavailable),
         web.post('/v1/browser-tickets', gateway.browser_ticket),
         web.route('*', '/v1/avatar/{tail:.*}', gateway.avatar.handle),
     ])
