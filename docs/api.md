@@ -135,6 +135,8 @@ Realtime 客户端仍使用原协议。客户端以 `?avatar=1` 选择 Avatar �
 
 ## 参考图与会议式头像
 
+准备形象时可向 `POST /v1/avatar/generations` 添加 `"infra":{"version":1,"portrait":{"crop_scale":2.3,"crop_vx_ratio":0,"crop_vy_ratio":-0.125,"crop_flag_do_rot":true}}`。前三项为有限 FP32 范围的数值，比例 crop_scale 为正，旋转开关为布尔值。示例取值即原有 registrar 默认值；准备任务绑定参考图及裁剪，修改需创建新形象。创建 Ditto 会话可声明 `"infra":{"version":1,"portrait":{"online":true}}`，返回 format.online=true。当前 Ditto 驱动仅提供在线渲染，显式 false 或未知选项返回 400。
+
 参考图驱动的会议式说话头像采用可插拔 Ditto 驱动，生成参考图身份的会议式音画。启用 `deploy/compose/portrait.yml` 后，所有请求沿用应用 Bearer，通过网关进入私有准备／渲染服务；未启用时返回 503。参考图和生成结果仅原调用方可访问，其他调用方得到 404。
 
 | 接口 | 行为 |

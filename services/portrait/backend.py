@@ -85,9 +85,9 @@ class DittoBackend:
         # Bound queued decoded-frame memory instead of the SDK's hundred items.
         self.sdk.decode_f3d_queue.maxsize = 2
 
-    def prepare(self, image, output):
-        data = self.registrar(str(image), max_dim=720, crop_scale=2.3,
-                              crop_vx_ratio=0, crop_vy_ratio=-.125, crop_flag_do_rot=True)
+    def prepare(self, image, output, *, crop_scale=2.3, crop_vx_ratio=0, crop_vy_ratio=-.125, crop_flag_do_rot=True):
+        data = self.registrar(str(image), max_dim=720, crop_scale=crop_scale,
+                              crop_vx_ratio=crop_vx_ratio, crop_vy_ratio=crop_vy_ratio, crop_flag_do_rot=crop_flag_do_rot)
         if not self.warmed:
             self.setup(data, NullWriter())
             try:

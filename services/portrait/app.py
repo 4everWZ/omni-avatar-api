@@ -19,6 +19,27 @@ ID = r'[a-f0-9]{32}'
 MAX_IMAGE = 4 * 1024 * 1024
 
 
+def reference_crop(body):
+    if 'infra' not in body:
+        return {}
+    infra = body['infra']
+    if (not isinstance(infra, dict) or type(infra.get('version')) is not int or infra['version'] != 1
+            or infra.keys() - {'version', 'portrait'}):
+        raise ValueError('Invalid infra extension')
+    crop = infra.get('portrait', {})
+    if not isinstance(crop, dict) or crop.keys() - {'crop_scale', 'crop_vx_ratio', 'crop_vy_ratio', 'crop_flag_do_rot'}:
+        raise ValueError('Unsupported reference crop option')
+    for key, value in crop.items():
+        if key == 'crop_flag_do_rot':
+            if type(value) is not bool:
+                raise ValueError(key)
+        elif type(value) not in (int, float) or not -3.4028234e38 <= value <= 3.4028234e38:
+            raise ValueError(key)
+        elif key == 'crop_scale' and value <= 0:
+            raise ValueError(key)
+    return crop
+
+
 class PortraitService:
     def __init__(self, root, token, backends, gpu_gate=None):
         if not token:
@@ -112,6 +133,7 @@ class PortraitService:
         body = await request.json()
         if not isinstance(body, dict):
             raise ValueError('Expected object')
+        crop = reference_crop(body)
         identifier = body['reference_asset_id']
         if body.get('driver', 'ditto') != 'ditto' or not re.fullmatch(ID, identifier):
             raise ValueError('Unknown driver or reference')
@@ -127,6 +149,8 @@ class PortraitService:
         path = jobs / (job_id + '.json')
         job = {'id': job_id, 'state': 'queued', 'driver': 'ditto',
                'reference_asset_id': identifier, 'avatar_id': None, 'error': None}
+        if crop:
+            job['crop'] = crop
         self.save(path, job)
         self.tasks[job_id] = asyncio.create_task(self.prepare(path, job, image))
         self.tasks[job_id].portrait_job = job
@@ -142,7 +166,7 @@ class PortraitService:
                 self.save(path, job)
                 # Cancelling an asyncio task cannot cancel CUDA/to_thread. The
                 # lease stays held until preparation actually leaves the GPU.
-                await asyncio.to_thread(backend.prepare, image, prepared)
+                await asyncio.to_thread(backend.prepare, image, prepared, **job.get('crop', {}))
                 if job['state'] != 'cancelled':
                     job.update(state='ready', avatar_id='portrait_' + job['id'])
                     self.save(path, job)

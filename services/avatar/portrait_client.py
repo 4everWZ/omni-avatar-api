@@ -56,7 +56,7 @@ class PortraitClient:
 
 
 class PortraitRenderer:
-    capabilities = {'video': '640x720', 'fps': 25, 'alpha': False, 'driver': 'ditto', 'input_lead_ms': 1200}
+    capabilities = {'video': '640x720', 'fps': 25, 'alpha': False, 'driver': 'ditto', 'online': True, 'input_lead_ms': 1200}
 
     def __init__(self, socket, preview):
         self.socket, self.preview = socket, preview

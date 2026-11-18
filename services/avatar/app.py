@@ -64,6 +64,17 @@ class AvatarService:
         neural = isinstance(avatar_id, str) and re.fullmatch(r'portrait_[a-f0-9]{32}', avatar_id)
         if avatar_id not in self.registry and not neural:
             raise ValueError('Unknown avatar_id')
+        if 'infra' in body:
+            infra = body['infra']
+            if (not isinstance(infra, dict) or type(infra.get('version')) is not int
+                    or infra['version'] != 1 or infra.keys() - {'version', 'portrait'}):
+                raise ValueError('Invalid infra extension')
+            if 'portrait' in infra:
+                options = infra['portrait']
+                if not neural or not isinstance(options, dict) or options.keys() - {'online'}:
+                    raise ValueError('Invalid portrait session options')
+                if options.get('online', True) is not True:
+                    raise ValueError('Ditto supports online=true')
         source = body.get('source')
         if not isinstance(source, dict) or source.get('type') not in ('realtime', 'audio'):
             raise ValueError('source.type must be realtime or audio')

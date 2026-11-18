@@ -22,7 +22,9 @@ class PortraitTransportTest(unittest.IsolatedAsyncioTestCase):
         class Backend:
             failure = None
 
-            def prepare(self, reference, output):
+            def prepare(self, reference, output, *, crop_scale, crop_vy_ratio):
+                if (crop_scale, crop_vy_ratio) != (2.2, 0):
+                    raise ValueError("Expected caller crop options")
                 output.write_bytes(b'features')
 
             def start(self, path, emit):
@@ -46,18 +48,24 @@ class PortraitTransportTest(unittest.IsolatedAsyncioTestCase):
                             'mime_type': 'image/jpeg', 'image_base64': base64.b64encode(image.getvalue()).decode()})
                         self.assertEqual(asset.status, 201)
                         job = await client.post('/v1/avatar/generations', headers=headers, json={
-                            'reference_asset_id': (await asset.json())['id']})
+                            'reference_asset_id': (await asset.json())['id'],
+                            'infra': {'version': 1, 'portrait': {'crop_scale': 2.2, 'crop_vy_ratio': 0}}})
                         path = '/v1/avatar/generations/' + (await job.json())['id']
                         async with asyncio.timeout(5):
                             while (record := await (await client.get(path, headers=headers)).json())['state'] != 'ready':
                                 await asyncio.sleep(.01)
                         params = {'avatar_id': record['avatar_id'], 'source': {'type': 'audio'}}
+                        offline = await client.post('/v1/avatar/sessions', headers=headers, json=params | {
+                            'infra': {'version': 1, 'portrait': {'online': False}}})
+                        self.assertEqual(offline.status, 400)
+                        params['infra'] = {'version': 1, 'portrait': {'online': True}}
                         forbidden = await client.post('/v1/avatar/sessions', json=params,
                                                       headers=headers | {'X-Omni-Owner': 'b' * 64})
                         self.assertEqual(forbidden.status, 404)
                         response = await client.post('/v1/avatar/sessions', json=params, headers=headers)
                         self.assertEqual(response.status, 201)
                         session = await response.json()
+                        self.assertTrue(session['format']['online'])
                         audio = await client.post(session['audio_url'], headers=headers,
                                                   json={'generation': 0, 'audio': 'AAA='})
                         self.assertEqual(audio.status, 200)
