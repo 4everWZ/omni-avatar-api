@@ -152,7 +152,7 @@ Realtime 客户端仍使用原协议。客户端以 `?avatar=1` 选择 Avatar �
 
 `inochi2d` 在媒体服务 CPU 上读取 Inochi2D 0.8 的 INP1 文件。在私有登记文件中加入例如 `{"my-avatar":{"driver":"inochi2d","root":"rigs/my-avatar/model.inp"}}`，并将文件及模型只读挂载到服务。相对路径以登记文件所在目录为准。通过原有 `POST /v1/avatar/sessions` 传入 `{"avatar_id":"my-avatar","source":{"type":"audio"}}`，向返回的 `audio_url` 提交 PCM，并在 `media_url` 订阅 WHEP。实时会话可沿用 `source.type=realtime`。返回的 `format.driver` 为 `inochi2d`。
 
-该子集在 640×720 画布上支持 Node 与 Part、完整纹理的轴向矩形网格、Normal 混合和线性标量参数。局部平移、缩放与平面旋转依次沿节点树合成，按累计 zsort 递减绘制。平移与角度绑定采用加法，缩放和 Part 不透明度绑定采用乘法；关键点从参数声明的归一化 `axis_points` 读取。画面取同一播放位置的 20 ms PCM，以响度驱动 MouthOpen、频谱明亮度近似值驱动 MouthForm，眼睑、视线、头部和呼吸使用会话时钟。口型控制提供连续形变，音素辨识精度需独立验收。
+该子集在 640×720 画布上支持 Node 与 Part、完整纹理的轴向矩形网格、Normal 混合和线性标量参数。局部平移、缩放与平面旋转依次沿节点树合成，按累计 zsort 递减绘制。平移与角度绑定采用加法，缩放和 Part 不透明度绑定采用乘法；关键点从参数声明的归一化 `axis_points` 读取。口形读取当前播放位置的 20 ms PCM，以及两侧各 60 ms 已入队的音频作局部响度参照。MouthOpen 使用相对能量和鼻音闭合线索，MouthForm 使用上下共振频带的比例；当前窗静音时闭嘴，缺少邻窗时直接使用可用样本。眼睑、视线、头部和呼吸沿用会话时钟。两条嘴部控制量是声学估计；姿态驱动和浏览器实呈分别验收。
 
 ## 参考图与会议式头像
 

@@ -11,6 +11,8 @@ from pathlib import Path
 
 from PIL import Image, ImageOps
 
+from .speech_mouth import CONTEXT, HOP, mouth_controls
+
 CANVAS = (640, 720)
 PROPERTIES = ('transform.t.x', 'transform.t.y', 'transform.s.x', 'transform.s.y', 'transform.r.z', 'opacity')
 
@@ -185,6 +187,8 @@ class Node:
 
 class InochiRenderer:
     capabilities = {'video': '640x720', 'fps': 25, 'alpha': False, 'driver': 'inochi2d'}
+    # Offsets are in playback samples. Context affects the local gain only.
+    pcm_window = (-CONTEXT, HOP + 2 * CONTEXT)
 
     def __init__(self, root: Path):
         model, textures = read_inp(root / 'model.inp' if root.is_dir() else root)
@@ -268,11 +272,11 @@ class InochiRenderer:
         return frame
 
     @staticmethod
-    def speech_pose(timestamp, rms, form):
+    def speech_pose(timestamp, opening, form):
         phase = timestamp % 4.1
         blink = max(0, 1 - abs(phase - 3.7) / 0.12)
         return {
-            'MouthOpen': max(0, min(1, (rms - 0.008) * 8)),
+            'MouthOpen': opening,
             'MouthForm': form,
             'BlinkL': blink,
             'BlinkR': blink,
@@ -284,17 +288,10 @@ class InochiRenderer:
         }
 
     def render_pcm(self, timestamp, pcm):
-        samples = struct.unpack('<480h', pcm)
-        power = sum(v * v for v in samples)
-        rms = math.sqrt(power / len(samples)) / 32768
-        # Difference energy follows spectral brightness independently of loudness.
-        diff = sum((a - b) ** 2 for a, b in zip(samples, samples[1:]))
-        brightness = math.sqrt(diff / power) if rms > 0.008 else 0
-        form = max(-1, min(1, (brightness - 0.28) * 4)) if rms > 0.008 else 0
-        return self.render_pose(self.speech_pose(timestamp, rms, form))
+        return self.render_pose(self.speech_pose(timestamp, *mouth_controls(pcm)))
 
     def render(self, timestamp, rms):
-        return self.render_pose(self.speech_pose(timestamp, rms, 0))
+        return self.render_pose(self.speech_pose(timestamp, max(0, min(1, (rms - 0.008) * 8)), 0))
 
     def push_audio(self, pcm, sample_rate, start_sample, generation):
         pass  # PCM is read from the session timeline at presentation time.

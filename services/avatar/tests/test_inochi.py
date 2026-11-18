@@ -102,17 +102,29 @@ class InochiTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'UV'):
             self.load([part])
 
-    def test_silence_and_brightness_use_actual_pcm(self):
+    def test_pcm_controls_follow_local_voicing_and_resonance(self):
         rig = self.load([square(2, 1)])
         rig.render_pose = lambda values: values
-        self.assertEqual(rig.render_pcm(1, bytes(960))['MouthOpen'], 0)
 
-        def tone(hz):
-            return struct.pack(
-                '<480h', *(round(6000 * math.sin(i * 2 * math.pi * hz / 24000)) for i in range(480))
-            )
+        def packet(components, gain=1.):
+            return struct.pack('<480h', *(round(gain * sum(
+                amplitude * math.sin(i * 2 * math.pi * hz / 24000) for hz, amplitude in components
+            )) for i in range(480)))
 
-        dark = rig.render_pcm(1, tone(200))
-        bright = rig.render_pcm(1, tone(2600))
-        self.assertAlmostEqual(dark['MouthOpen'], bright['MouthOpen'], places=3)
-        self.assertLess(dark['MouthForm'], bright['MouthForm'])
+        def pose(center, neighbor=None):
+            neighbor = center if neighbor is None else neighbor
+            return rig.render_pcm(1, neighbor * 3 + center + neighbor * 3)
+
+        front = [(200, 3000), (400, 1500), (2400, 1100)]
+        back = [(200, 3000), (400, 1500), (800, 1100)]
+        wide, rounded = pose(packet(front)), pose(packet(back))
+        self.assertGreater(wide['MouthForm'], rounded['MouthForm'])
+        self.assertGreater(min(wide['MouthOpen'], rounded['MouthOpen']), .2)
+        self.assertAlmostEqual(wide['MouthForm'], pose(packet(front, .6))['MouthForm'], places=3)
+        murmur = packet([(200, 1200), (400, 400), (1200, 60)])
+        self.assertEqual(pose(murmur, packet(front))['MouthOpen'], 0)
+        self.assertEqual(pose(bytes(960), packet(front))['MouthOpen'], 0)
+        self.assertEqual(pose(struct.pack('<h', 3500) * 480)['MouthOpen'], 0)
+        self.assertEqual(rig.render_pcm(1, bytes(960))['MouthForm'], 0)
+        # No state from a previous generation, peer or render order.
+        self.assertEqual(wide, pose(packet(front)))

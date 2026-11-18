@@ -41,7 +41,9 @@ class TimelineTrack(MediaStreamTrack):
             try:
                 renderer = self.session.renderer
                 if render_pcm := getattr(renderer, 'render_pcm', None):
-                    image = await asyncio.to_thread(render_pcm, position / RATE, self.session.pcm(position, 480))
+                    offset, size = getattr(renderer, 'pcm_window', (0, 480))
+                    audio = self.session.pcm(position + offset, size)
+                    image = await asyncio.to_thread(render_pcm, position / RATE, audio)
                 else:
                     image = renderer.render(position / RATE, self.session.rms(position))
                 frame = VideoFrame.from_image(image)
