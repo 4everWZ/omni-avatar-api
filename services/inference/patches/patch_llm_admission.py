@@ -10,7 +10,9 @@ def patch_api_source(source):
         raise RuntimeError('vLLM Responses router no longer matches the pinned hook')
     return source.replace(anchor, anchor + (
         '    from vllm.entrypoints.openai.llm_admission import router as admission_router\n'
-        '    app.include_router(admission_router)\n'))
+        '    app.include_router(admission_router)\n'
+        '    from vllm.entrypoints.openai.llm_gpu_control import attach_gpu_control\n'
+        '    attach_gpu_control(app)\n'))
 
 
 def patch_core_source(source):
@@ -33,6 +35,9 @@ def main():
     helper = Path(__file__).with_name('llm_admission.py')
     compile(helper.read_text(), str(helper), 'exec')
     shutil.copyfile(helper, target.parent.parent / 'llm_admission.py')
+    helper = helper.with_name('llm_gpu_control.py')
+    compile(helper.read_text(), str(helper), 'exec')
+    shutil.copyfile(helper, target.parent.parent / helper.name)
     target.write_text(source)
     core = package.locate_file('vllm/v1/engine/core.py')
     source = patch_core_source(core.read_text())

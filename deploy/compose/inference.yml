@@ -10,6 +10,7 @@ services:
         device_ids: ['1']
     environment:
       OMNI_MAX_MODEL_LEN: '8192'
+      OMNI_WORKSTATION_CAP: ${OMNI_WORKSTATION_CAP:-2}
       OMNI_DEPLOY_CONFIG: /opt/tuber-omni/configs/minicpmo-assistant.yaml
     volumes:
       - ./services/inference/configs/minicpmo-assistant.yaml:/opt/tuber-omni/configs/minicpmo-assistant.yaml:ro
@@ -41,6 +42,8 @@ services:
       TRANSFORMERS_OFFLINE: '1'
       VLLM_ENABLE_RESPONSES_API_STORE: '1'
       LLM_MAX_NUM_SEQS: ${LLM_MAX_NUM_SEQS:-4}
+      LLM_MAX_NUM_BATCHED_TOKENS: ${LLM_MAX_NUM_BATCHED_TOKENS:-2048}
+      LLM_KV_CACHE_BYTES: ${LLM_KV_CACHE_BYTES:-9663676416}
     volumes:
       - ${OMNI_MODEL_DATA:-./data/models}:/models:ro
     networks: [engine-private]
@@ -53,6 +56,8 @@ services:
 
   omni-gateway:
     environment:
+      OMNI_SHARED_CAPACITY: '1'
+      OMNI_WORKSTATION_CAP: ${OMNI_WORKSTATION_CAP:-2}
       <<: *llm
       LLM_ENGINE_URL: http://llm-engine:8000
       LLM_QUEUE_LIMIT: ${LLM_QUEUE_LIMIT:-}

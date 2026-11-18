@@ -73,6 +73,7 @@ python tools/compose.py --portrait -- up -d --wait
 | `/llm/v1/responses` | `llm-default` | 长上下文推理和 Responses 增量 SSE。 |
 | `/llm/v1/chat/completions` | `llm-default` | 兼容 Chat 的客户端。 |
 | `/v1/avatar/*` | — | 参考图上传、准备任务、会话、音频与 WHEP。 |
+| `/v1/images/jobs` | Klein 4B | 可选生图队列，支持参考图。 |
 | `/healthz`、`/llm/healthz` | — | 需要鉴权的后端身份、就绪与准入查询。 |
 
 使用 OpenAI Python SDK，在客户端环境设置应用令牌后：
@@ -135,7 +136,7 @@ evaluations/              共享测试输入和保留的实机证据
 | LLM | 4 | 原生语音＋头像 | 21.20–21.56 | 84.81–86.04 |
 | LLM | 4 | 原生语音＋头像＋一路 Omni Chat | 19.47–21.47 | 77.89–85.33 |
 
-头像维持 25 fps：全栈混跑 90 秒生成 2,265 张真实神经帧，最大采样时间线偏差 57 ms。GPU 0 通过 CUDA MPS 和真实帧截止期反馈分配算力。前台普通 Chat 使用单路准入和 FIFO 排队，两个短请求同时提交时实测合计 65.47 TPS。
+单头像基线的全栈混跑在 90 秒内生成 2,265 张真实神经帧，最大采样时间线偏差 57 ms。双卡工作站启用两个 Omni 共享槽，Ditto 已接入双槽，双路帧率通过验收前启用一个。GPU 0 通过 CUDA MPS 和各槽帧截止期分配算力。 [工作站部署](docs/deployment/workstation.md)
 
 256-token 夹具覆盖思考＋正文总生成吞吐，额度可用于思考阶段；完整 CoT 答案、预算、JSON Schema 和工具续接由独立功能夹具验证。计算方式、原始数据和验证范围见[工作站指南](docs/deployment/workstation.md#四路并发与计算预算)。完整 262K 质量、持续负载与实物播放由[后续验收计划](docs/plans/avatar-workstation.md)跟进。
 

@@ -75,6 +75,13 @@ def serve(model_id, revision, path):
     if not 4096 <= window <= native_window:
         raise ValueError("OMNI_MAX_MODEL_LEN must be within the checkpoint window and at least 4096")
     thinker["max_model_len"] = window
+    if os.environ.get("OMNI_WORKSTATION_CAP"):
+        capacity = int(os.environ["OMNI_WORKSTATION_CAP"])
+        if capacity not in (1, 2):
+            raise ValueError("OMNI_WORKSTATION_CAP must be 1 or 2")
+        overlay["duplex_session"]["max_sessions"] = capacity
+        for stage in overlay["stages"]:
+            stage["max_num_seqs"] = capacity
     with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", suffix=".yaml", delete=False) as deploy:
         yaml.safe_dump(overlay, deploy)
     cmd = [

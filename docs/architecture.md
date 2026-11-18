@@ -9,6 +9,7 @@ flowchart LR
     Gateway --> LLM[Text LLM - GPU 0]
     Gateway --> Avatar[Avatar sessions and media]
     Avatar --> Portrait[Optional portrait worker - GPU 0]
+    Gateway --> Images[Optional Klein worker - GPU 0]
     Avatar -->|WHEP audio and video| Client
 ```
 
@@ -20,6 +21,7 @@ flowchart LR
 | `services/inference/` | Model acquisition, inference launchers, deployment configuration and patches for pinned upstream packages. | Model snapshots and upstream inference libraries. |
 | `services/avatar/` | Session ownership, audio generations, playback timeline, renderer protocol and WebRTC tracks. | The optional portrait Unix socket. |
 | `services/portrait/` | Reference preparation, its GPU lease and timestamped neural rendering. | Pinned Ditto code/models, isolated by a worker image. |
+| `services/images/` | CPU prompt encoding, original-precision Klein inference and task-scoped GPU allocation. | Pinned Klein snapshot and Diffusers, isolated by a worker image. |
 
 Gateway, Avatar and Portrait are Python packages with importable `app.py` factories and separate `__main__.py` process entrypoints. Imports inside a service are relative. Gateway separates environment/model policy (`config.py`), resource admission (`admission.py`), HTTP application wiring (`app.py`) and backend-specific transport clients. Cross-service communication uses the [API contract](api.md); cross-service Python imports belong in `tests/integration/` only.
 
@@ -31,7 +33,9 @@ The portrait frame adapter selects CUDA Graph or TensorRT through deployment con
 
 `deploy/compose/` contains the base stack and composable hardware/service layers. `tools/compose.py` selects supported combinations and passes an explicit repository project directory and environment file to Docker Compose. The Compose project remains `tuber-omni-infra`, preserving existing named volumes.
 
-The workstation target assigns physical GPU 1 to Omni and GPU 0 to the LLM. Each inference container sees its assigned GPU as local device 0. The optional portrait worker shares physical GPU 0; its preparation and rendering use one lease. The portrait overlay adds a project-scoped CUDA MPS controller, with shared PID/IPC and control sockets for GPU 0 clients. The LLM uses a 20% active-thread limit and lower client priority, while the renderer uses normal priority. GPU 1 is outside MPS. GPU 0 clients additionally exchange a private, expiring render-deadline clock in the MPS control volume: the renderer publishes frame progress, and the text engine yields only when deadline headroom is low. That channel carries monotonic frame timing. LLM and Omni admission remain independent. See [deployment](deployment/workstation.md) for the budgets and evidence.
+The workstation assigns GPU 1 to Omni and GPU 0 to the LLM. Each inference container sees its assigned GPU as local device 0. The optional portrait worker shares GPU 0 and pools up to two independent Ditto slots for preparation and rendering. The portrait overlay runs a project-scoped CUDA MPS controller. The renderer publishes a private expiring frame clock per slot and the LLM yields to the tightest live deadline. LLM and Omni admission are independent. [Workstation budgets and evidence](deployment/workstation.md)
+
+The optional image overlay exposes caller-owned jobs through the gateway. Its GPU coordinator fences portrait allocations, drains LLM generation, grants the image worker one GPU lease and restores LLM admission after the worker has drained. The worker receives only image inputs and exposes private preparation, execution and cancellation operations. The engine GPU controls use a separate private credential.
 
 Weights live in ignored `data/` paths. Reference assets, features, control sockets and compiler caches use named volumes. Application credentials live in the ignored root `.env`. The wrapper anchors local paths to the repository root.
 

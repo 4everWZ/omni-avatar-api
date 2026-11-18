@@ -58,8 +58,7 @@ async def stream_chat(http, gateway, token, concurrency=1, max_tokens=256, think
                 'output_excerpt': ''.join(output)[:96]}
     rows = await asyncio.gather(*(one(i) for i in range(concurrency)))
     overlap = min(r['last_delta_seconds'] for r in rows) - max(r['first_delta_seconds'] for r in rows)
-    # Omni's ordinary Chat path may serialize requests even with spare sequence slots.
-    # Report that behavior rather than treating two submissions as parallel decode.
+    # Record actual overlap across deployment profiles.
     return {'requests': rows, 'concurrency': concurrency, 'outputs_overlap': overlap > 0,
             'output_intervals_overlap_seconds': max(0, overlap),
             'aggregate_end_to_end_output_tps': sum(r['usage']['completion_tokens'] for r in rows)

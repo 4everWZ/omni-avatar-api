@@ -40,6 +40,7 @@ class Config:
     realtime_enabled: bool = True
     prompt_tokens_path: str = "/v1/chat/prompt_tokens"
     token_budget: int = 0
+    shared_capacity: bool = False
 
     @classmethod
     def from_env(cls):
@@ -61,8 +62,13 @@ class Config:
         tokens = (primary, *additional.values())
         if len(set((*tokens, admin))) != len(tokens) + 1:
             raise ValueError("Gateway service and admin tokens must be distinct")
-        if positive("OMNI_LIVE_CAP", 1, int) != 1:
+        shared_capacity = os.environ.get("OMNI_SHARED_CAPACITY") == "1"
+        if not shared_capacity and positive("OMNI_LIVE_CAP", 1, int) != 1:
             raise ValueError("OMNI_LIVE_CAP is fixed at one pending mixed-load verification")
+        capacity = (positive("OMNI_WORKSTATION_CAP", 2, int) if shared_capacity
+                    else positive("OMNI_BATCH_CAP", 1, int))
+        if shared_capacity and capacity not in (1, 2):
+            raise ValueError("OMNI_WORKSTATION_CAP must be 1 or 2")
         checkpoint = required("OMNI_CHECKPOINT")
         model_root = f"/models/{checkpoint}" if os.environ.get("OMNI_REQUIRE_CHECKPOINT_ROOT") == "1" else ""
         return cls(
@@ -71,7 +77,8 @@ class Config:
             program_token=additional.get("media", ""),
             engine_version=os.environ.get("OMNI_ENGINE_VERSION", ""),
             model_root=os.environ.get("OMNI_EXPECTED_MODEL_ROOT", model_root),
-            batch_cap=positive("OMNI_BATCH_CAP", 1, int), queue_limit=positive("OMNI_QUEUE_LIMIT", 16, int),
+            batch_cap=capacity, shared_capacity=shared_capacity,
+            queue_limit=positive("OMNI_QUEUE_LIMIT", 16, int),
             queue_timeout=positive("OMNI_QUEUE_TIMEOUT", 5),
             request_timeout=positive("OMNI_REQUEST_TIMEOUT", cls.request_timeout),
             health_timeout=positive("OMNI_HEALTH_TIMEOUT", 3),

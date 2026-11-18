@@ -17,6 +17,8 @@ Omni 的边界夹具显式关闭 CoT，已验证 20 条消息、7,928 个输入 
 
 Bearer 鉴权、排队、取消、超时和管理接口由[网关规范](../services/gateway/README.md)维护。原生模型服务的协议和 Avatar 能力独立发布，调用应用根据各自会话实际协商。
 
+双卡工作站默认共享两个 Omni 槽位，Chat 和 Realtime 每次各使用一个。两路可任意组合。第三路按 FIFO 等待，超时或满队列返回 `429` 和 `Retry-After`。活动槽位由 `/api/mode` 报告，Chat 与 Realtime 分别计数。
+
 ## CoT 默认与调用方预算
 
 Omni Chat、后台 LLM Chat／Responses 默认 `chat_template_kwargs.enable_thinking=true`。网关在模板计量与推理前应用相同默认值，保留调用方显式覆盖。模型按问题选择直接回答或先生成思考段。
@@ -112,7 +114,7 @@ Avatar 由独立服务持有，所有外部请求通过共享网关鉴权。用�
 
 创建返回 201，包含 `id`、`generation`、`state`、`format`、`media_url`、`events_url` 和 `audio_url`。显式音频通过 `POST audio_url` 提交 `{ "audio":"<base64>", "generation":0, "format":"pcm16", "sample_rate_hz":24000 }`，仅接受单声道 PCM16。每块最多五秒，未播缓冲最多三十秒。`{"type":"clear"}` 清除未播媒体并递增代次；旧代次输入返回 400。
 
-Realtime 客户端仍使用原协议。客户端以 `?avatar=1` 选择 Avatar 后，网关额外发送 `gateway.session.created`，提供 `source_session_id` 和 `avatar_available`。将创建参数的 `source` 改为 `{"type":"realtime","session_id":"<source_session_id>"}`，只允许同一应用凭据绑定。内部复用同一路推理的音频和控制事件。`?avatar=1` 在连接期间自动进入 live 准入模式，以便另一个调用方同时发普通请求；原有 `program=1` 仍要求媒体专用凭据。未选择 Avatar 的 Realtime 连接保持原事件流。
+Realtime 客户端仍使用原协议。客户端以 `?avatar=1` 选择 Avatar 后，网关额外发送 `gateway.session.created`，提供 `source_session_id` 和 `avatar_available`。将创建参数的 `source` 改为 `{"type":"realtime","session_id":"<source_session_id>"}`，只允许同一应用凭据绑定。内部复用同一路推理的音频和控制事件。`?avatar=1` 在连接期间自动进入 live 模式，工作站仍按共享总容量准入。原有 `program=1` 仍要求媒体专用凭据。未选择 Avatar 的 Realtime 连接保持原事件流。
 
 ### 音画与事件
 
@@ -145,10 +147,25 @@ Realtime 客户端仍使用原协议。客户端以 `?avatar=1` 选择 Avatar �
 | `GET /v1/avatar/avatars/{avatar_id}` | 查询已准备形象和驱动能力。`/preview` 返回规范化参考图预览。 |
 | `POST /v1/avatar/sessions` | 将就绪的 `portrait_...` 作为 `avatar_id`，仍按上述方式绑定 `audio` 或自有 `realtime` 源；返回同一套音频、事件及 WHEP 入口。 |
 
-最多一路神经渲染与参考图准备共享 GPU 配额；忙时创建神经会话返回 429，准备任务可以排队。每调用方最多保留 16 张图、16 个任务，总量各 64；客户端按需回收资产。准备形象持久化，重启后由客户端新建活跃会话。不同驱动返回各自实际能力，未来的 3D 驱动沿用同一接口。
+Ditto 支持两个渲染和参考图准备共享的 GPU 槽位，工作站默认启用一个，双路帧率待验收。准备任务等待空闲槽，忙时创建神经会话返回 `429`。CPU Avatar 的服务总会话上限是四路。每调用方最多保留 16 张图、16 个任务，总量各 64；客户端按需回收资产。准备形象持久化，重启后由客户端新建活跃会话。不同驱动返回各自实际能力，未来的 3D 驱动沿用同一接口。
 
 神经会话创建时先完成实际渲染线程的预热再就绪；等待创建成功后再向绑定源发送需要形象播放的音频。输出 640×720、25 fps；音频播放预留 1200 ms 推理时间，`format.input_lead_ms` 明示。音画共用时间线，原生 Omni 音频仍独立输出。清空立即停播旧音频并丢弃旧代次视频，神经运动状态允许自然过渡。落后或停滞会发出 `avatar.failed`，调用方继续消费原生语音。会话 `renderer` 字段报告实际 `generated_frames`、最新生成及已显示帧时间，可用于检查是否真正达到实时生成速度。
 
-当前 CoT 全栈混跑覆盖 90 秒、四路 LLM 和额外一路 Omni Chat，生成 2,265 张真实神经帧、维持 25 fps，最大采样时间线偏差 57 ms；取消、恢复和重启复用通过。[混跑证据](../evaluations/results/omni-throughput-tensorrt-workstation.json) · [生命周期证据](../evaluations/results/portrait-lifecycle-workstation.json)。持续满载 QoS 和主观口型由后续验收计划维护。
+单头像基线在 90 秒内生成 2,265 张真实神经帧，最大采样时间线偏差 57 ms。双头像的实机状态见工作站指南。 [混跑证据](../evaluations/results/omni-throughput-tensorrt-workstation.json) · [生命周期证据](../evaluations/results/portrait-lifecycle-workstation.json) · [工作站指南](deployment/workstation.md)。
+
+## 生图任务
+
+可选工作站生图服务沿用应用 Bearer。生图任务和 PNG 结果按提交凭据隔离。其他凭据访问同一 ID 返回 `404`。
+
+| 接口 | 行为 |
+| --- | --- |
+| `POST /v1/images/jobs` | 提交 JSON，字段为 `prompt`（1–4096 字符）、可选 `reference_image_base64`（PNG/JPEG，最大 4 MiB 和 800 万像素）和可选整数 `seed`（0–4294967295）。返回 `202`、`id`、实际种子和 `Location`。一次生成一张 1024×1024 PNG。 |
+| `GET /v1/images/jobs/{id}` | 返回 `queued`、`running`、`cancelling`、`completed`、`cancelled` 或 `failed`。成功时提供 `result_url`，失败时提供 `error`。 |
+| `GET /v1/images/jobs/{id}/result` | 完成后获取 `image/png`，其他状态返回 `409`。 |
+| `POST /v1/images/jobs/{id}/cancel` | 取消等待任务或请求运行任务协作停止，返回当前状态。安全释放 GPU 并恢复后进入终态。重复调用返回当前状态。 |
+
+服务依次执行任务，最多额外排队八个。满队列返回 `429`，等待时限为 1200 秒，终态记录保留 24 小时，上限 256 条。协调进程重启时，未完成任务标为失败。运行中的神经头像和参考图准备优先于等待中的生图。
+
+切换开始后，已准入的 LLM 生成正常完成，新的 Chat／Responses 生成按现有 FIFO 和等待时限准入，超时返回 `429` 和 `Retry-After`。已有 Responses 查询和取消可用，已存储的历史在正常切换后可用原 `previous_response_id` 续接。`/llm/healthz` 在切换时返回 `busy`，恢复状态不明时返回 `503`。
 
 实现与实机验收进度见[当前计划](plans/avatar-workstation.md)；驱动、资产和资源生命周期见 [services/portrait/README.md](../services/portrait/README.md)。

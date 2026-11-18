@@ -17,17 +17,19 @@ from scipy.signal import resample_poly
 
 CODE_REVISION = 'c3e47eee2e626500017a0556b470d6d4182f85e8'
 MODEL_REVISION = 'e4a2f60328ee7c32af585ac4b3cce299e4c8e254'
+setup_writer = threading.local()
 
 
 class DittoBackend:
     """One SDK, one GPU lease. Prepared data is created locally, never uploaded."""
-    def __init__(self, root):
+    def __init__(self, root, slot=0):
         import torch
         self.torch = torch
+        self.slot = slot
         root = Path(root)
         sys.path.insert(0, str(root / 'code' / CODE_REVISION))
         self.pipeline = importlib.import_module('stream_pipeline_online')
-        self.pipeline.VideoWriterByImageIO = lambda _: self.writer
+        self.pipeline.VideoWriterByImageIO = lambda _: setup_writer.value
         # Progress bars are unsuitable for a continuously running API worker.
         self.pipeline.tqdm = lambda **_: type('Progress', (), {'update': lambda *a: None,
                                                               'close': lambda *a: None})()
@@ -55,16 +57,31 @@ class DittoBackend:
         # prepared avatars. No caller's first session pays a compilation timeout.
         self.frame.prepare({'f_s_lst': [np.zeros((1, 32, 16, 64, 64), dtype=np.float32)],
                             'x_s_info_lst': [{'kp': np.zeros((1, 63), dtype=np.float32)}]})
+        # The SDK hands CPU arrays across these stage queues. Give each GPU
+        # stage its own stream so synchronous copies cannot drain other slots.
+        self.sdk.audio2motion_worker = self.cuda_worker(self.sdk.audio2motion_worker)
+        self.sdk.warp_f3d_worker = self.cuda_worker(self.sdk.warp_f3d_worker)
         self.registrar = self.sdk.avatar_registrar
-        self.writer = None
         self.warmed = False
 
+    def cuda_worker(self, worker):
+        stream = self.torch.cuda.Stream()
+
+        def run():
+            with self.torch.cuda.stream(stream):
+                worker()
+
+        return run
+
     def setup(self, prepared, writer):
-        self.writer = writer
         self.frame.prepare(prepared)
         self.sdk.avatar_registrar = lambda *args, **kwargs: prepared
-        self.sdk.setup('', '/tmp/unused.mp4', online_mode=True, overlap_v2=75,
-                       sampling_timesteps=10, max_size=720)
+        setup_writer.value = writer
+        try:
+            self.sdk.setup('', f'/tmp/portrait-slot-{self.slot}.mp4', online_mode=True, overlap_v2=75,
+                           sampling_timesteps=10, max_size=720)
+        finally:
+            del setup_writer.value
         # Bound queued decoded-frame memory instead of the SDK's hundred items.
         self.sdk.decode_f3d_queue.maxsize = 2
 
@@ -218,28 +235,29 @@ class CudaFrame:
     def prepare(self, prepared):
         torch = self.torch
         source = prepared['f_s_lst'][0]
-        if self.graph is None:
-            layout = torch.contiguous_format if self.trt_frame is not None else torch.channels_last_3d
-            self.feature = torch.from_numpy(source).to(self.device).contiguous(memory_format=layout)
-            self.kp_source = torch.from_numpy(prepared['x_s_info_lst'][0]['kp']).reshape(1, 21, 3).to(self.device)
-            self.kp_driving = self.kp_source.clone()
-            stream = torch.cuda.Stream()
-            stream.wait_stream(torch.cuda.current_stream())
-            with torch.cuda.stream(stream):
-                for _ in range(3):
-                    eager = self.forward().clone()
-            torch.cuda.current_stream().wait_stream(stream)
-            graph = torch.cuda.CUDAGraph()
-            with torch.cuda.graph(graph):
-                self.output = self.forward()
-            graph.replay()
-            torch.testing.assert_close(self.output, eager, rtol=1e-3, atol=1e-4)
-            self.graph = graph
-        else:
+        self.source = source
+        if self.graph is not None:
             self.feature.copy_(torch.from_numpy(source))
-        self.kp_source.copy_(torch.from_numpy(prepared['x_s_info_lst'][0]['kp']).reshape(1, 21, 3))
-        self.kp_driving.copy_(self.kp_source)
-        self.graph.replay()
+            self.kp_source.copy_(torch.from_numpy(prepared['x_s_info_lst'][0]['kp']).reshape(1, 21, 3))
+            self.kp_driving.copy_(self.kp_source)
+            return
+
+        layout = torch.contiguous_format if self.trt_frame is not None else torch.channels_last_3d
+        self.feature = torch.from_numpy(source).to(self.device).contiguous(memory_format=layout)
+        self.kp_source = torch.from_numpy(prepared['x_s_info_lst'][0]['kp']).reshape(1, 21, 3).to(self.device)
+        self.kp_driving = self.kp_source.clone()
+        stream = torch.cuda.Stream()
+        stream.wait_stream(torch.cuda.current_stream())
+        with torch.cuda.stream(stream):
+            for _ in range(3):
+                eager = self.forward().clone()
+        torch.cuda.current_stream().wait_stream(stream)
+        graph = torch.cuda.CUDAGraph()
+        with torch.cuda.graph(graph):
+            self.output = self.forward()
+        graph.replay()
+        torch.testing.assert_close(self.output, eager, rtol=1e-3, atol=1e-4)
+        self.graph = graph
         with torch.device(self.device), torch.no_grad(), torch.autocast('cuda', dtype=torch.float16):
             reference = self.eager_warp(self.feature, self.kp_source, self.kp_driving).float()
             reference = self.eager_decoder(reference.contiguous(memory_format=torch.channels_last)).float()
@@ -250,8 +268,11 @@ class CudaFrame:
         logging.warning('Portrait %s/eager FP16 difference: max=%g mean=%g',
                         'TensorRT' if self.trt_frame is not None else 'compiled',
                         difference.max().item(), difference.mean().item())
-        self.source = source
         del reference, difference
+        if self.trt_frame is not None:
+            # TensorRT retains its own engine weights. Do not keep separate
+            # PyTorch weights or run the eager check when creating a session.
+            self.warp = self.decoder = self.eager_warp = self.eager_decoder = None
         # Eager comparison/autotuning scratch is disposable. Graph-owned pools
         # and model tensors remain live; return unused global cache to the LLM.
         torch.cuda.empty_cache()
@@ -276,7 +297,8 @@ class PortraitRun:
         self.fences = [(0, 0)]
         self.segments = []
         self.origin = 0
-        self.clock = Path(os.environ['OMNI_GPU_RENDER_CLOCK']) if os.environ.get('OMNI_GPU_RENDER_CLOCK') else None
+        clock = os.environ.get('OMNI_GPU_RENDER_CLOCK')
+        self.clock = Path(clock.replace('{slot}', str(self.backend.slot))) if clock else None
         self.frame_index = 0
         self.base_time = 0
         self.failure = None

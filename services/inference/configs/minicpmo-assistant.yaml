@@ -1,7 +1,7 @@
 # Omni assistant on physical GPU 1 (container-local device 0); Avatar stays on this workstation.
 session_mode: duplex
 duplex_session:
-  max_sessions: 1
+  max_sessions: 2
 
 connectors:
   connector_of_shared_memory:

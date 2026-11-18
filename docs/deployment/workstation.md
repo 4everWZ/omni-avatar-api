@@ -29,6 +29,7 @@ python tools/compose.py --portrait --vpn -- up -d --wait
 | `/llm/v1`，`llm-default` | 长上下文 Responses HTTP／增量 SSE，兼容 Chat，支持结构化与 function 输出；单请求窗口 262144。 |
 | `/healthz`、`/llm/healthz` | 各自后端的身份、根目录校验、就绪和准入状态。 |
 | `/v1/avatar/*` | 参考图、准备任务、形象、音频绑定、WHEP、字幕与会话生命周期。 |
+| `/v1/images/jobs` | 可选 Klein 生图任务，提交、查询、下载、取消。 |
 
 Chat 调用方每次提交 messages 和所选记忆；Realtime 引擎维护活跃近期历史并按窗口策略滑动。两个模型由路径和别名显式选择。实时窗口沿用官方 `basic`；通过 `autostart=0` 和首条 `session.update.session.extra_body` 可配置新会话。可选 `context` 保留 24 个近期输入单元与最多 500 tokens 的较早模型生成文本，并重建窗口。长期历史由应用持有并按需选入提示。[窗口参数](../api.md#omni-实时历史窗口)。
 
@@ -36,7 +37,26 @@ Omni Chat 和后台 Chat／Responses 默认开启 CoT，思考预算沿用固定
 
 ## 四路并发与计算预算
 
+`OMNI_WORKSTATION_CAP=2` 同时配置网关、Omni duplex 活跃窗口和三个阶段。Chat 与 Realtime 共用两个槽位。Ditto 用 `OMNI_PORTRAIT_CAP=2` 配置两个独立执行槽。下面的历史 TPS 与帧时来自单路 Ditto 和单路 Omni Chat 准入的基线部署。
+
+双路 Omni 已实测两个 Chat 同时输出、两个 Realtime 的语音区间重叠，以及 Chat 和 Realtime 混跑。两个 Realtime 占用期间，第三个连接收到 `429`。
+
+Ditto 双槽可打开两个独立会话，25 fps 的双路验收仍未通过。GPU 0 上的隔离测量中，Qwen 空闲且无 WHEP 订阅时，单会话为 24.8 fps，两个同时运行的会话分别为 11.5 和 16.7 fps。当前工作站以 `OMNI_PORTRAIT_CAP=1` 运行，双槽用于继续验收。
+
 LLM 固定为 `axteam/Qwen3.5-9B-AWQ-4bit@5577b5b71e6f06b9f6a1f3743ef6ba6dc4ecd2df`，格式 compressed-tensors W4A16、非对称 group 32，使用 9 GiB BF16 KV 与 FP32 SSM。Omni 固定 OpenBMB AWQ 快照 `927faefa0bce96e557945e106f3b3d8b4d39f4b2`。每个引擎容器将分配的物理 GPU 映射为本地设备 0。
+
+Qwen3.5 的启动空闲显存检查使用整卡的 75%，支持两个 Ditto 槽常驻时单独重启 LLM。KV 仍通过固定字节配置分配。
+
+同一客户端空闲三轮实测的中位数如下。单路提速与四路总吞吐均在同一 256-token、CoT 开启的夹具下测量。
+
+| LLM MPS 上限 | 单路端到端 TPS | 四路端到端合计 TPS |
+| --- | ---: | ---: |
+| 20% | 41.8 | 139.1 |
+| 40% | 63.8 | 212.1 |
+| 60% | 70.0 | 234.1 |
+| 100% | 71.9 | 269.7 |
+
+实机双路 Omni 和 Qwen 测量记录见 [容量验收](../../evaluations/results/workstation-dual-capacity.json)。
 
 `LLM_MAX_NUM_SEQS=4` 同时配置引擎与网关；`LLM_TOKEN_BUDGET=262144` 控制活跃请求的完整模板输入加最大输出预留。Chat、Responses、后台任务和续接共享预算，长短请求按 FIFO 等待可用序列与 token，完成或取消后释放。调用方显式设置短请求输出额度可释放并发空间。单请求 262144 与四路短请求分别验收；多路满窗口作为后续独立容量评估。[准入语义](../api.md#外部-swarmorchestrator-调用)。
 
@@ -54,7 +74,7 @@ GPU 0 使用项目内 `gpu-mps` 服务。LLM 活跃线程上限 20%、较低客�
 | LLM | 4 | 原生语音＋头像 | 21.20–21.56 | 84.81–86.04 |
 | LLM | 4 | 原生语音＋头像＋一路 Omni Chat | 19.47–21.47 | 77.89–85.33 |
 
-前台普通 Chat 使用单路准入和 FIFO 排队。两个同时提交的短请求每路为 65.34／32.74 TPS，合计 65.47 TPS，后者计入排队时间。后台四路以实际输出区间重叠验证同时生成。
+单路 Chat 准入的基线中，同时提交的两个短请求每路为 65.34／32.74 TPS，合计 65.47 TPS，包含排队时间。后台四路以实际输出区间重叠验证同时生成。
 
 每路 TPS = `usage.completion_tokens`（Omni Chat）或 `usage.output_tokens`（Responses）÷ 从本组请求发起到该路完成的秒数；合计 TPS = 本组全部生成 tokens ÷ 最晚完成时间。计量包含思考、预填充、传输和准入／GPU 等待。原始记录另存 `(tokens - 1) / (末增量 - 首增量)` 的生成区间参考值，精度受流式分块与控制 tokens 影响。
 
@@ -64,7 +84,7 @@ Ditto 使用 FP16、十步采样、640×720 和 1200 ms 音频输入预留。全
 
 ### 渲染截止期反馈
 
-头像在 MPS 控制卷原子发布单调时钟帧进度，LLM 在 GPU 批次派发前读取有效反馈，按实际渲染余量分配算力。该私有信号仅包含帧时间信息，通过文件契约连接两个服务。
+每个头像槽在 MPS 控制卷原子发布单调时钟帧进度。LLM 在 GPU 批次派发前读取各槽有效反馈，按最紧迫的实际渲染余量分配算力。该私有信号仅包含帧时间信息。
 
 | 反馈状态 | 派发行为 |
 | --- | --- |
@@ -92,9 +112,26 @@ python tools/compose.py --portrait --vpn -- up -d --wait llm-engine omni-portrai
 
 ## 会议式神经头像
 
-`--portrait` 启用私有 `omni-portrait`，与 LLM 共驻 GPU 0；`omni-avatar` 持有会话、媒体与权限。参考图上传 → 异步准备 → avatar_id → 音频／自有 Realtime 绑定 → WHEP。模型只读挂载，参考图、特征和编译缓存分别持久化。准备与通话共用一个神经 GPU 配额，2D 会话独立运行。
+`--portrait` 启用私有 `omni-portrait`，与 LLM 共驻 GPU 0；`omni-avatar` 持有会话、媒体与权限。参考图上传 → 异步准备 → avatar_id → 音频／自有 Realtime 绑定 → WHEP。模型只读挂载，参考图、特征和编译缓存分别持久化。已启用的神经 GPU 槽由通话和参考图准备共享，2D 会话由 CPU 渲染。
 
 服务启动时完成编译和 Graph 捕获，会话就绪前预热实际线程并填充初始视频缓冲。输出 640×720、25 fps，输入预留 1200 ms。驱动扩展沿用同一音频、代次与媒体契约。[在线接口](../api.md#参考图与会议式头像) · [驱动与资产](../../services/portrait/README.md)。
+
+## 可选生图
+
+在 `.env` 设置独立的 `OMNI_IMAGE_INTERNAL_TOKEN` 和 `LLM_GPU_CONTROL_TOKEN`。先构建主线引擎，再构建私有 image worker。首次下载使用对宿主模型目录有写权限的 UID。
+
+```sh
+python tools/compose.py -- build omni-engine
+python tools/compose.py --portrait --images -- build omni-gateway omni-portrait omni-images
+python tools/compose.py --portrait --images -- --profile assets run --rm -u "$(id -u):$(id -g)" image-model-fetch
+python tools/compose.py --portrait --images --vpn -- up -d --wait
+```
+
+Klein 4B 蒸馏快照使用原精度 BF16。加载和文本编码在 CPU 上进行，再申请 GPU 0。协调器等神经头像空闲并排空 LLM。当前空闲量加 KV 预算预计能满足 `OMNI_IMAGE_MIN_FREE_MIB` 时先仅释放 KV；预计空间不足时直接一级休眠，将 LLM 权重备份到 CPU。释放后以整卡空闲显存复核。阈值默认 13312 MiB。GPU 清理完成后先恢复 LLM，再开放生成。
+
+双 Ditto 槽空闲驻留时，首轮只释放 KV 的样本中 GPU 0 峰值达到 24,044 MiB。提高余量并用 CPU 原权重恢复图像模块后，实测真人参考冷任务 15.89 秒、动漫参考热任务 9.28 秒、文生图热任务 7.78 秒。三项整卡峰值均为 21,206 MiB，LLM 恢复约 0.75 秒，已有 Responses 历史可续接。真人样本保留了可见脸部特征，徽章文字有失真。动漫样本保持发型和服装辨识度，眼睛和饰品细节有变化。 [记录与样图](../../evaluations/results/klein4b-workstation/)
+
+停用生图前先取消或等待图片任务进入终态，并确认 `/llm/healthz` 为 `ready`，再停掉 `omni-images` 并在去掉 `--images` 后重建网关和 LLM。恢复失败时保留 GPU 保护标记，确认图像 worker 已退出 GPU 工作后恢复 LLM 引擎，协调器会在恢复确认后清除标记。模型和结果卷可复用。 [生图 API](../api.md#生图任务)
 
 ## Avatar 与访问
 

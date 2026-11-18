@@ -94,6 +94,8 @@ class PortraitQualification(InferenceQualification):
         assert lag and max(lag) < 160, max(lag) if lag else None
         self.check('video_matches_audio_timeline', max_sampled_lag_ms=max(lag),
                    audio_input_lead_ms=self.avatar['format']['input_lead_ms'])
+        if self.voice is None:
+            return
         previous = self.generation
         await self.voice.send_json({'type': 'response.cancel'})
         async with asyncio.timeout(5):

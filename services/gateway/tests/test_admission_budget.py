@@ -2,6 +2,7 @@ import asyncio
 import unittest
 from services.gateway.admission import Admission, Busy, BudgetExceeded
 from services.gateway.config import Config
+from dataclasses import replace
 
 
 class TokenBudgetTests(unittest.IsolatedAsyncioTestCase):
@@ -59,6 +60,18 @@ class TokenBudgetTests(unittest.IsolatedAsyncioTestCase):
         async with asyncio.timeout(1):
             while not condition():
                 await asyncio.sleep(.001)
+
+    async def test_omni_two_slots_are_shared_in_batch_and_live_modes(self):
+        for lanes in [('chat', 'chat'), ('realtime', 'realtime'), ('chat', 'realtime')]:
+            admission = Admission(replace(self.admission.config, token_budget=0,
+                                          batch_cap=2, shared_capacity=True, queue_timeout=.01))
+            async with admission.program(True), admission.hold(lanes[0]), admission.hold(lanes[1]):
+                self.assertEqual(sum(admission.active.values()), 2)
+                with self.assertRaises(Busy):
+                    async with admission.hold('chat'):
+                        self.fail('Third request entered a two-slot engine')
+            async with admission.hold('realtime'):
+                self.assertEqual(admission.active['realtime'], 1)
 
     async def test_impossible_request_and_multiple_choices_cannot_bypass_limits(self):
         for options in ({'tokens': 1001}, {'tokens': 0}, {'tokens': 1, 'slots': 5}):

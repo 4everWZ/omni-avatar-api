@@ -25,6 +25,10 @@ python -m tools.qualification.portrait --env .env --reference /path/to/portrait.
 
 `concurrency --engine-metrics http://<引擎私网地址>:8000/metrics` 可采样实际运行序列并要求达到 4；采样通过引擎私网进行。`portrait --seconds 90 --concurrent-llm 4` 在原生通话期间执行四路各 256-token SSE，检查输出区间重叠、25 fps 真实生成、采样偏差小于 160 ms 及取消恢复。
 
+`qualification.workstation_capacity --mps-percent 20 --avatar-id <id>` 测两路 Chat、Chat 与双工混跑、两个绑定 Ditto 的双工会话，以及双头像运行期间单路／四路 Qwen。更改 MPS 上限后使用相同输入重复执行。
+
+`qualification.images --reference <portrait.png> --anime-reference <character.png>` 在工作站生成真人参考、动漫参考和文生图，保存 PNG、各阶段耗时、100 ms 间隔的整卡与主机内存峰值和 Responses 续接结果。按相同种子和输入进行目视对比。
+
 `portrait`、`throughput` 和 `omni_throughput` 支持 `--avatar-id <已有形象ID>` 或 `--reference <PNG>`。准备新形象时使用清楚的单人正面图片。神经帧计数来自 `renderer.generated_frames`，WHEP 解码帧另行统计；诊断图片保存在报告旁。
 
 ## TPS 与混跑
@@ -35,7 +39,7 @@ python -m tools.qualification.omni_throughput --env .env --avatar-id <id> --seco
 python -m tools.qualification.thinking --env .env --report tmp/thinking.json
 ```
 
-`throughput` 测量后台空闲单路／四路，以及原生语音和 25 fps 头像期间的单路／四路。空闲单路至少 45 TPS、通话四路每路至少 15 TPS 为对应负载的回归检查线。`omni_throughput` 测量前台空闲单路、两个同时提交请求，以及原生通话、头像、四路 LLM 共驻期间的额外一路 Omni Chat；前台普通 Chat 按单路准入和 FIFO 排队计量。
+`throughput` 测量后台空闲单路／四路，以及原生语音和 25 fps 头像期间的单路／四路。空闲单路至少 45 TPS、通话四路每路至少 15 TPS 为对应负载的回归检查线。`omni_throughput` 测量前台空闲单路、两个同时提交请求，以及原生通话、头像、四路 LLM 共驻期间的额外一路 Omni Chat。报告记录输出区间是否实际重叠。
 
 两个工具默认 `--thinking enabled`，温度 0、相同短提示、每路 256-token 总输出，先预热 32 tokens；`--thinking disabled` 供显式策略对照。端到端 TPS 按引擎 usage 的思考＋正文 tokens 计量，包含预填充、传输与等待。报告分别保留思考／正文首增量、增量数、输出区间及重叠情况；256-token 夹具覆盖总生成吞吐，完整答复由 `thinking` 夹具验证。`thinking_token_budget=-1` 采用上游语义，由总输出和上下文额度约束思考；非法负值使用 -2。
 

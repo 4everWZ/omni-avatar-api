@@ -49,7 +49,7 @@ class PortraitClient:
             return PortraitRenderer(socket, preview)
         except ClientError as error:
             if getattr(error, 'status', None) == 429:
-                raise web.HTTPTooManyRequests(reason='Neural renderer busy') from error
+                raise web.HTTPTooManyRequests(reason='Neural renderer busy', headers={'Retry-After': '1'}) from error
             raise web.HTTPServiceUnavailable(reason='Portrait worker unavailable') from error
 
 
@@ -58,7 +58,9 @@ class PortraitRenderer:
 
     def __init__(self, socket, preview):
         self.socket, self.preview = socket, preview
-        self.frames = deque(maxlen=64)
+        # WHEP supplies its timeline origin before ICE connects. Keep enough
+        # compressed history for the first media read after negotiation.
+        self.frames = deque(maxlen=25 * 15)
         self.audio = asyncio.Queue(maxsize=128)
         self.generation = 0
         self.failed = False
@@ -90,8 +92,7 @@ class PortraitRenderer:
                 if frame.type == WSMsgType.BINARY:
                     timestamp, generation = struct.unpack('!dI', frame.data[:12])
                     if generation == self.generation:
-                        with Image.open(io.BytesIO(frame.data[12:])) as image:
-                            self.frames.append((timestamp, image.convert('RGB')))
+                        self.frames.append((timestamp, frame.data[12:]))
                         self.generated_frames += 1
                         self.last_generated = timestamp
                         self.received = monotonic()
@@ -116,8 +117,13 @@ class PortraitRenderer:
     def render(self, timestamp, rms):
         if self.failed or monotonic() - self.received > 2:
             raise RuntimeError('Portrait output stalled')
+        selected = None
         while self.frames and self.frames[0][0] <= timestamp:
-            self.latest_time, self.latest = self.frames.popleft()
+            selected = self.frames.popleft()
+        if selected:
+            self.latest_time, encoded = selected
+            with Image.open(io.BytesIO(encoded)) as image:
+                self.latest = image.convert('RGB')
         if monotonic() > self.reset_deadline and timestamp - self.latest_time > .75:
             raise RuntimeError('Portrait output behind playback')
         return self.latest

@@ -59,7 +59,7 @@ class PreparationTests(unittest.IsolatedAsyncioTestCase):
         path = '/v1/avatar/generations/' + job['id']
         async with self.http.delete(path, headers=AUTH) as response:
             self.assertEqual((await response.json())['state'], 'cancelled')
-        self.assertTrue(self.app['service'].lock.locked())
+        self.assertFalse(self.app['service'].slots)
         self.backend.release.set()
         async with asyncio.timeout(2):
             while self.app['service'].tasks:
@@ -92,6 +92,22 @@ class PreparationTests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(response.status, 204)
         async with self.http.delete('/v1/avatar/assets/' + reference, headers=AUTH) as response:
             self.assertEqual(response.status, 204)
+
+    async def test_two_preparations_get_independent_slots(self):
+        other = Backend()
+        self.addCleanup(other.release.set)
+        self.app['service'].slots.append(other)
+        reference = await self.image()
+        try:
+            for _ in range(2):
+                async with await self.generate(reference) as response:
+                    self.assertEqual(response.status, 202)
+            self.assertTrue(await asyncio.to_thread(self.backend.entered.wait, 2))
+            self.assertTrue(await asyncio.to_thread(other.entered.wait, 2))
+            self.assertFalse(self.app['service'].slots)
+        finally:
+            self.backend.release.set()
+            other.release.set()
 
     async def test_image_validation_and_no_url_fetch(self):
         for body in ({'mime_type': 'image/png', 'image_base64': '!'},

@@ -1,0 +1,56 @@
+# Optional queued image worker on physical GPU 0.
+services:
+  image-model-fetch:
+    profiles: [assets]
+    image: omni-api-images:klein4b
+    pull_policy: never
+    command: [fetch]
+    user: ${OMNI_IMAGE_FETCH_USER:-10001:10001}
+    volumes:
+      - ${OMNI_MODEL_DATA:-./data/models}:/models
+    networks: [asset-download]
+
+  omni-images:
+    build: ./services/images
+    image: omni-api-images:klein4b
+    restart: unless-stopped
+    init: true
+    runtime: nvidia
+    gpus:
+      - driver: nvidia
+        device_ids: ['0']
+    environment:
+      HF_HUB_OFFLINE: '1'
+      TRANSFORMERS_OFFLINE: '1'
+      OMNI_GPU_SWITCH_ROOT: /run/omni-gpu
+      OMNI_IMAGE_INTERNAL_TOKEN: ${OMNI_IMAGE_INTERNAL_TOKEN:?set image worker token}
+    volumes:
+      - ${OMNI_MODEL_DATA:-./data/models}:/models:ro
+      - gpu-switch:/run/omni-gpu:ro
+    networks: [engine-private]
+    healthcheck:
+      test: [CMD, python3, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/livez', timeout=3).close()"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+
+  llm-engine:
+    environment:
+      LLM_GPU_CONTROL_TOKEN: ${LLM_GPU_CONTROL_TOKEN:?set separate LLM GPU control token}
+
+  omni-gateway:
+    environment:
+      OMNI_IMAGE_WORKER_URL: http://omni-images:8000
+      OMNI_IMAGE_DATA: /image-data
+      OMNI_GPU_SWITCH_ROOT: /run/omni-gpu
+      OMNI_IMAGE_MIN_FREE_MIB: ${OMNI_IMAGE_MIN_FREE_MIB:-13312}
+      LLM_KV_CACHE_BYTES: ${LLM_KV_CACHE_BYTES:-9663676416}
+      OMNI_IMAGE_INTERNAL_TOKEN: ${OMNI_IMAGE_INTERNAL_TOKEN:?set image worker token}
+      LLM_GPU_CONTROL_TOKEN: ${LLM_GPU_CONTROL_TOKEN:?set separate LLM GPU control token}
+    volumes:
+      - image-jobs:/image-data
+      - gpu-switch:/run/omni-gpu
+
+volumes:
+  image-jobs:
+  gpu-switch:

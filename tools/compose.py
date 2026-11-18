@@ -16,13 +16,16 @@ TARGETS = {
 }
 
 
-def command(target, compose_args, *, portrait=False, vpn=False, media=False, env_file=None):
+def command(target, compose_args, *, portrait=False, images=False, vpn=False, media=False, env_file=None):
     if target not in TARGETS:
         raise ValueError(f'Unknown deployment target: {target}')
     if portrait and target != 'workstation':
         raise ValueError('The portrait overlay requires the split workstation target')
+    if images and target != 'workstation':
+        raise ValueError('The images overlay requires the split workstation target')
     files = list(TARGETS[target])
-    files.extend(name for name, enabled in [('portrait', portrait), ('vpn', vpn), ('media', media)] if enabled)
+    files.extend(name for name, enabled in [('portrait', portrait), ('images', images),
+                                          ('vpn', vpn), ('media', media)] if enabled)
     env_file = Path(env_file).resolve() if env_file else ROOT / '.env'
     args = ['docker', 'compose', '--project-directory', str(ROOT), '--env-file', str(env_file)]
     for name in files:
@@ -38,6 +41,7 @@ def main(argv=None):
         'python tools/compose.py --portrait --vpn -- up -d --wait'))
     parser.add_argument('--target', choices=TARGETS, default='workstation')
     parser.add_argument('--portrait', action='store_true', help='Enable reference-driven neural portraits')
+    parser.add_argument('--images', action='store_true', help='Enable queued Klein image generation')
     parser.add_argument('--vpn', action='store_true', help='Publish on OMNI_GATEWAY_VPN_BIND as well as loopback')
     parser.add_argument('--media', action='store_true', help='Enable optional MediaMTX transport')
     parser.add_argument('--env-file', type=Path, help='Defaults to the repository .env, even from another directory')
@@ -47,7 +51,7 @@ def main(argv=None):
         parser.error('Specify Docker Compose arguments after --')
     try:
         args = command(options.target, argv[split + 1:], portrait=options.portrait,
-                       vpn=options.vpn, media=options.media, env_file=options.env_file)
+                       images=options.images, vpn=options.vpn, media=options.media, env_file=options.env_file)
     except ValueError as error:
         parser.error(str(error))
     if options.dry_run:

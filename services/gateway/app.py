@@ -15,6 +15,7 @@ from .token_budget import reservation, ReservationRejected
 from .config import Config, MODEL_ALIAS
 from .avatar_proxy import AvatarProxy
 from .responses_proxy import ResponsesProxy
+from .image_jobs import ImageJobs
 from .thinking import apply_thinking_default
 
 MAX_BODY = 32 * 1024 * 1024
@@ -146,10 +147,15 @@ class Gateway:
 
     async def health(self, request):
         model, (version, version_source) = await asyncio.gather(self.ready_model(), self.engine_version())
+        state = 'ready' if model else 'unavailable'
+        if self.admission.paused == 'image_gpu_switch':
+            state = 'busy'
+        elif self.admission.paused:
+            state = 'unavailable'
         if not model:
             self.capabilities, self.chat_observed = None, False
         return web.json_response({
-            "state": "ready" if model else "unavailable", "alias": self.config.model_alias,
+            "state": state, "alias": self.config.model_alias,
             "model": model["id"] if model else None, "configured_model": self.config.model,
             "model_root": model.get("root") if model else None,
             "checkpoint": self.config.checkpoint, "checkpoint_source": "deployment",
@@ -157,7 +163,7 @@ class Gateway:
             "engine_version": version, "engine_version_source": version_source,
             "protocols": {"chat_completions": self.chat_observed, "realtime_duplex": self.capabilities is not None},
             "realtime_capabilities": self.capabilities, **self.admission.view(),
-        }, status=200 if model else 503)
+        }, status=200 if state in ('ready', 'busy') else 503)
 
     async def aliased_models(self, request):
         try:
@@ -348,13 +354,16 @@ class Gateway:
         await asyncio.gather(downstream.close(code=code, message=reason), upstream.close(code=code, message=reason))
 
 
-def create_app(config=None, text_config=None):
+def create_app(config=None, text_config=None, *, image_factory=None):
     if config is None:
         config = Config.from_env()
         if os.environ.get("LLM_ENGINE_URL"):
             text_config = config.text_backend()
+        if os.environ.get('OMNI_IMAGE_WORKER_URL'):
+            image_factory = ImageJobs.from_env
     gateway = Gateway(config)
     app = web.Application(client_max_size=MAX_BODY, middlewares=[gateway.authenticate])
+    app['gateway'] = gateway
     app.cleanup_ctx.append(gateway.session_context)
 
     async def livez(request):
@@ -367,7 +376,19 @@ def create_app(config=None, text_config=None):
         web.post("/v1/chat/prompt_tokens", gateway.prompt_tokens),
     ])
     if text_config is not None:
-        app.add_subapp('/llm', create_app(text_config))
+        text_app = create_app(text_config)
+        app.add_subapp('/llm', text_app)
+        if image_factory:
+            images = image_factory(text_app['gateway'])
+            app.cleanup_ctx.append(images.lifecycle)
+            app.add_routes([
+                web.post('/v1/images/jobs', images.submit),
+                web.get('/v1/images/jobs/{id}', images.detail),
+                web.get('/v1/images/jobs/{id}/result', images.detail),
+                web.post('/v1/images/jobs/{id}/cancel', images.detail),
+            ])
+    elif image_factory:
+        raise ValueError('Images require the workstation text engine')
     if not config.realtime_enabled:
         app.add_routes([
             web.post('/v1/responses', gateway.responses_request),

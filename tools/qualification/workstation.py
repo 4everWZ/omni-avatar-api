@@ -6,6 +6,7 @@ Credentials are read from a private environment file and never written to the re
 import argparse
 import asyncio
 import base64
+from contextlib import AsyncExitStack
 import io
 import json
 import math
@@ -173,21 +174,28 @@ class Qualification:
         payload = {'model': 'omni-default', 'max_tokens': 4096, 'stream': True,
                    'chat_template_kwargs': {'enable_thinking': False}, 'messages': [{
                        'role': 'user', 'content': '请从1开始逐个写出整数，一直写到6000。每个数字单独一行，不要省略，不要解释，直接开始。'}]}
-        response = await self.request('POST', '/v1/chat/completions', json=payload)
-        try:
-            async with asyncio.timeout(30):
-                while not (await response.content.readline()).startswith(b'data: '):
-                    if response.content.at_eof():
-                        raise AssertionError('Streaming request ended before queue verification')
+        health = await self.json('GET', '/healthz')
+        capacity = health['batch_cap'] if health['mode'] == 'batch' else health['live_chat_cap']
+        async with AsyncExitStack() as streams:
+            async def start_stream():
+                response = await self.request('POST', '/v1/chat/completions', json=payload)
+                streams.callback(response.close)
+                async with asyncio.timeout(30):
+                    while not (await response.content.readline()).startswith(b'data: '):
+                        if response.content.at_eof():
+                            raise AssertionError('Streaming request ended before queue verification')
+
+            async with asyncio.TaskGroup() as group:
+                for _ in range(capacity):
+                    group.create_task(start_stream())
             health = await self.json('GET', '/healthz')
-            assert health['active']['chat'] == 1, 'Long stream did not keep an admission slot'
+            assert health['active']['chat'] == capacity, 'Long streams did not hold all Chat slots'
             async with asyncio.timeout(30):
-                await self.request('POST', '/v1/chat/completions', other=True, expected=429, json={
+                async with await self.request('POST', '/v1/chat/completions', other=True, expected=429, json={
                     'model': 'omni-default', 'max_tokens': 128,
-                    'messages': [{'role': 'user', 'content': '只回答数字：2+3等于几？'}]})
+                    'messages': [{'role': 'user', 'content': '只回答数字：2+3等于几？'}]}):
+                    pass
             self.check('queue_deadline_returns_429')
-        finally:
-            response.close()
         async with asyncio.timeout(30):
             while (await self.json('GET', '/healthz'))['active']['chat']:
                 await asyncio.sleep(.2)

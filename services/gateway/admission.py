@@ -22,6 +22,15 @@ class Admission:
         self.reserved_tokens = 0
         self.waiters = deque()
         self.changed = asyncio.Event()
+        self.paused = None
+
+    def pause(self, reason):
+        self.paused = reason
+        self._signal()
+
+    async def drain(self):
+        while any(self.active.values()):
+            await self.changed.wait()
 
     def _signal(self):
         event, self.changed = self.changed, asyncio.Event()
@@ -48,10 +57,14 @@ class Admission:
                 self._signal()
 
     def _available(self, lane, tokens=0, slots=1):
+        if self.paused:
+            return False
         chat, realtime = self.active["chat"], self.active["realtime"]
         if self.config.token_budget:
             return (chat + realtime + slots <= self.config.batch_cap
                     and self.reserved_tokens + tokens <= self.config.token_budget)
+        if self.config.shared_capacity:
+            return chat + realtime + slots <= self.config.batch_cap
         if self.mode == "batch":
             return chat + realtime + slots <= self.config.batch_cap and (lane == "chat" or realtime == 0)
         if lane == "chat":
@@ -64,7 +77,8 @@ class Admission:
         if (tokens < 0 or slots < 1 or slots > self.config.batch_cap
                 or (self.config.token_budget and (tokens <= 0 or tokens > self.config.token_budget))):
             raise BudgetExceeded('Request exceeds the configured token or sequence budget.')
-        if (self.config.token_budget and self.waiters) or not self._available(lane, tokens, slots):
+        fifo = self.config.token_budget or self.config.shared_capacity
+        if (fifo and self.waiters) or not self._available(lane, tokens, slots):
             if self.queued >= self.config.queue_limit:
                 raise Busy()
             ticket = object()
@@ -72,7 +86,7 @@ class Admission:
             self.queued += 1
             try:
                 async with asyncio.timeout(self.config.queue_timeout):
-                    while ((self.config.token_budget and self.waiters[0] is not ticket)
+                    while ((fifo and self.waiters[0] is not ticket)
                            or not self._available(lane, tokens, slots)):
                         await self.changed.wait()
             except TimeoutError as error:
@@ -97,4 +111,9 @@ class Admission:
             state.update(token_budget=self.config.token_budget, reserved_tokens=self.reserved_tokens,
                          available_tokens=self.config.token_budget - self.reserved_tokens,
                          scheduling='fifo', live_chat_cap=self.config.batch_cap, live_realtime_reserve=0)
+        elif self.config.shared_capacity:
+            state.update(scheduling='fifo', shared_capacity=self.config.batch_cap,
+                         live_chat_cap=self.config.batch_cap, live_realtime_reserve=0)
+        if self.paused:
+            state['admission_paused'] = self.paused
         return state

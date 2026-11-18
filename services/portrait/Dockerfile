@@ -7,7 +7,7 @@ COPY requirements.txt /opt/portrait/requirements.txt
 RUN /opt/portrait-env/bin/python -m pip install --no-cache-dir -r /opt/portrait/requirements.txt
 ENV PATH="/opt/portrait-env/bin:${PATH}" HOME=/tmp
 WORKDIR /srv
-RUN install -d -o 10001 -g 10001 /run/omni-portrait /data /cache
+RUN install -d -o 10001 -g 10001 /run/omni-portrait /run/omni-gpu /data /cache
 ENV TORCHINDUCTOR_CACHE_DIR=/cache/inductor TRITON_CACHE_DIR=/cache/triton
 COPY *.py /srv/portrait/
 USER 10001:10001

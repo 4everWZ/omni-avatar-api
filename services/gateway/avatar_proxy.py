@@ -122,7 +122,7 @@ class AvatarProxy:
                 async with client.request(request.method, url, headers=headers,
                                           data=await request.read(), allow_redirects=False) as upstream:
                     out = {key: upstream.headers[key] for key in ('Content-Type', 'Location', 'Cache-Control',
-                                                                  'X-Avatar-Timeline-Origin-Ms')
+                                                                  'X-Avatar-Timeline-Origin-Ms', 'Retry-After')
                            if key in upstream.headers}
                     return web.Response(status=upstream.status, body=await upstream.read(), headers=out)
         except ClientError as error:

@@ -9,6 +9,7 @@ import os
 import re
 import secrets
 import struct
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 from aiohttp import WSMsgType, web
@@ -19,13 +20,15 @@ MAX_IMAGE = 4 * 1024 * 1024
 
 
 class PortraitService:
-    def __init__(self, root, token, backend):
+    def __init__(self, root, token, backends, gpu_gate=None):
         if not token:
             raise ValueError('Internal token required')
-        self.root, self.token, self.backend = Path(root), token, backend
+        self.root, self.token = Path(root), token
         self.root.mkdir(parents=True, exist_ok=True)
-        self.lock = asyncio.Lock()
-        self.tasks, self.active = {}, set()
+        self.slots = list(backends)
+        self.slot_returned = asyncio.Event()
+        self.gpu_gate = gpu_gate
+        self.tasks, self.active = {}, {}
         self.sockets = set()
         # Interrupted jobs cannot be advertised as ready after restart.
         for path in self.root.glob('*/jobs/*.json'):
@@ -132,14 +135,14 @@ class PortraitService:
     async def prepare(self, path, job, image):
         prepared = path.with_suffix('.pkl')
         try:
-            async with self.lock:
+            async with self.acquire(wait=True) as backend:
                 if job['state'] == 'cancelled':
                     return
                 job['state'] = 'preparing'
                 self.save(path, job)
                 # Cancelling an asyncio task cannot cancel CUDA/to_thread. The
                 # lease stays held until preparation actually leaves the GPU.
-                await asyncio.to_thread(self.backend.prepare, image, prepared)
+                await asyncio.to_thread(backend.prepare, image, prepared)
                 if job['state'] != 'cancelled':
                     job.update(state='ready', avatar_id='portrait_' + job['id'])
                     self.save(path, job)
@@ -189,12 +192,33 @@ class PortraitService:
         return web.json_response({'id': job['avatar_id'], 'driver': 'ditto', 'state': 'ready',
                                   'video': '640x720', 'fps': 25, 'input_lead_ms': 1200})
 
+    @asynccontextmanager
+    async def acquire(self, *, wait=False):
+        while True:
+            guard = reserve_gpu(self.gpu_gate) if self.slots and self.gpu_gate else None
+            if self.slots and (not self.gpu_gate or guard is not None):
+                backend = self.slots.pop()
+                break
+            if not wait:
+                raise web.HTTPTooManyRequests(reason='Neural renderer busy', headers={'Retry-After': '1'})
+            try:
+                await asyncio.wait_for(self.slot_returned.wait(), .25)
+            except TimeoutError:
+                pass
+        try:
+            yield backend
+        finally:
+            if guard is not None:
+                guard.close()
+            self.slots.append(backend)
+            self.slot_returned.set()
+            self.slot_returned.clear()
+
     async def render(self, request):
         path, job = self.avatar(request)
-        if self.lock.locked():
-            raise web.HTTPTooManyRequests(reason='Neural renderer busy')
-        async with self.lock:
-            self.active.add(job['id'])
+        async with self.acquire() as backend:
+            identifier = job['id']
+            self.active[identifier] = self.active.get(identifier, 0) + 1
             socket = web.WebSocketResponse(heartbeat=20, max_msg_size=1024 * 1024)
             loop = asyncio.get_running_loop()
             frames = asyncio.Queue(maxsize=64)
@@ -208,7 +232,7 @@ class PortraitService:
                 loop.call_soon_threadsafe(offer, struct.pack('!dI', timestamp, generation) + jpeg)
             run = None
             try:
-                run = await asyncio.to_thread(self.backend.start, path.with_suffix('.pkl'), emit)
+                run = await asyncio.to_thread(backend.start, path.with_suffix('.pkl'), emit)
                 await socket.prepare(request)
                 self.sockets.add(socket)
                 await socket.send_json({'type': 'ready', 'input_lead_ms': 1200})
@@ -246,7 +270,9 @@ class PortraitService:
                     except Exception:
                         # Do not release a potentially still-running GPU lease.
                         os._exit(1)
-                self.active.discard(job['id'])
+                self.active[identifier] -= 1
+                if not self.active[identifier]:
+                    del self.active[identifier]
             return socket
 
     async def cleanup(self, app):
@@ -259,8 +285,21 @@ class PortraitService:
                              return_exceptions=True)
 
 
-def create_app(root, token, backend):
-    service = PortraitService(root, token, backend)
+def reserve_gpu(root):
+    import fcntl
+    guard = (Path(root) / 'portrait.lock').open('a')
+    try:
+        fcntl.flock(guard, fcntl.LOCK_SH | fcntl.LOCK_NB)
+        if not (Path(root) / 'image-active').exists():
+            return guard
+    except BlockingIOError:
+        pass
+    guard.close()
+    return None
+
+
+def create_app(root, token, backend, *, additional_backends=(), gpu_gate=None):
+    service = PortraitService(root, token, (backend, *additional_backends), gpu_gate)
     app = web.Application(client_max_size=6 * 1024 * 1024, middlewares=[service.auth])
     app['service'] = service
     app.on_cleanup.append(service.cleanup)
@@ -283,9 +322,22 @@ def create_app(root, token, backend):
 
 def main():
     from .backend import DittoBackend
-    backend = DittoBackend(os.environ.get('PORTRAIT_MODELS', '/portrait'))
+    capacity = int(os.environ.get('OMNI_PORTRAIT_CAP', '1'))
+    if capacity not in (1, 2):
+        raise ValueError('OMNI_PORTRAIT_CAP must be 1 or 2')
+    gpu_gate = os.environ.get('OMNI_GPU_SWITCH_ROOT')
+    guard = reserve_gpu(gpu_gate) if gpu_gate else None
+    if gpu_gate and guard is None:
+        raise RuntimeError('Waiting for image GPU release before portrait startup')
+    try:
+        backends = [DittoBackend(os.environ.get('PORTRAIT_MODELS', '/portrait'), slot)
+                    for slot in range(capacity)]
+    finally:
+        if guard:
+            guard.close()
     web.run_app(create_app(os.environ.get('PORTRAIT_DATA', '/data'),
-                          os.environ['OMNI_AVATAR_INTERNAL_TOKEN'], backend),
+                          os.environ['OMNI_AVATAR_INTERNAL_TOKEN'], backends[0],
+                          additional_backends=backends[1:], gpu_gate=gpu_gate),
                 path=os.environ.get('PORTRAIT_SOCKET', '/run/omni-portrait/control.sock'),
                 access_log=None, handler_cancellation=False)
 

@@ -1,0 +1,205 @@
+{
+  "model": "black-forest-labs/FLUX.2-klein-4B",
+  "checkpoint": "e7b7dc27f91deacad38e78976d1f2b499d76a294",
+  "hardware": "dual RTX 3090; Qwen + two resident idle Ditto slots on GPU 0",
+  "configuration": {
+    "precision": "BF16",
+    "text_encoder": "CPU",
+    "steps": 4,
+    "dimensions": [
+      1024,
+      1024
+    ],
+    "seed": 42,
+    "gpu_sample_interval_ms": 100
+  },
+  "reference_sources": {
+    "reference_person": "https://scikit-image.org/docs/stable/api/skimage.data.html#skimage.data.astronaut",
+    "anime_character": "../ava-talking-portrait.png"
+  },
+  "visual_review": {
+    "reference_person": "Face shape, smile, short hair and the orange suit remain recognizable. The background changes to the requested garden. Badge lettering is distorted.",
+    "anime_character": "Hair silhouette, cream clothing and gold jewelry remain recognizable. The pose and background change as asked. Eye color and jewelry placement drift from the reference.",
+    "text_only": "The snowy hill, observatory, blue sky and watercolor style are visible."
+  },
+  "baseline": {
+    "minimum_free_mib": 12288,
+    "responses_continuation": "passed",
+    "cases": [
+      {
+        "name": "reference_person",
+        "peak_gpu_used_mib": {
+          "0": 24044,
+          "1": 20244
+        },
+        "peak_host_used_kib": 28891700,
+        "observed_seconds": 29.208143637981266,
+        "state": "completed",
+        "seed": 42,
+        "created_at": 1794972016.18712,
+        "gpu_release": "kv_only",
+        "worker_peak_reserved_bytes": 12712935424,
+        "timing": {
+          "prepare": 12.7600960789714,
+          "drain_llm": 9.965500794351101e-05,
+          "queue": 0.0005202274769544601,
+          "release_llm": 0.025121916085481644,
+          "load_cpu": 0.7281870089937001,
+          "encode_cpu": 7.550230570835993,
+          "upload_gpu": 9.016439093044028,
+          "inference": 3.551482229027897,
+          "cleanup_and_png": 3.4033717419952154,
+          "restore_llm": 0.2344812359660864,
+          "total": 29.14058232307434
+        },
+        "finished_at": 1794972045.3277023
+      },
+      {
+        "name": "anime_character",
+        "peak_gpu_used_mib": {
+          "0": 21208,
+          "1": 20208
+        },
+        "peak_host_used_kib": 38703848,
+        "observed_seconds": 17.12128386902623,
+        "state": "completed",
+        "seed": 42,
+        "created_at": 1794972045.4351196,
+        "gpu_release": "weights_and_kv",
+        "worker_peak_reserved_bytes": 12926844928,
+        "timing": {
+          "prepare": 3.523428854998201,
+          "drain_llm": 8.020899258553982e-05,
+          "queue": 0.000886640278622508,
+          "release_llm": 4.6563959459308535,
+          "load_cpu": 0.003936115885153413,
+          "encode_cpu": 3.4061174739617854,
+          "upload_gpu": 0.9973986810073256,
+          "inference": 3.840751809068024,
+          "cleanup_and_png": 3.0506074028089643,
+          "restore_llm": 0.7373868278227746,
+          "total": 17.032388925552368
+        },
+        "finished_at": 1794972062.4675086
+      },
+      {
+        "name": "text_only",
+        "peak_gpu_used_mib": {
+          "0": 21208,
+          "1": 20208
+        },
+        "peak_host_used_kib": 38934492,
+        "observed_seconds": 11.277924939058721,
+        "state": "completed",
+        "seed": 42,
+        "created_at": 1794972062.572354,
+        "gpu_release": "weights_and_kv",
+        "worker_peak_reserved_bytes": 13147045888,
+        "timing": {
+          "prepare": 3.0175572561565787,
+          "drain_llm": 0.00010355189442634583,
+          "queue": 0.0006032472010701895,
+          "release_llm": 0.8582890280522406,
+          "load_cpu": 2.0440202206373215e-06,
+          "encode_cpu": 2.827822472900152,
+          "upload_gpu": 0.9525124139618129,
+          "inference": 2.6466606920585036,
+          "cleanup_and_png": 2.910075108986348,
+          "restore_llm": 0.7359195770695806,
+          "total": 11.237669229507446
+        },
+        "finished_at": 1794972073.8100233
+      }
+    ]
+  },
+  "optimized": {
+    "minimum_free_mib": 13312,
+    "responses_continuation": "passed",
+    "cases": [
+      {
+        "name": "reference_person",
+        "peak_gpu_used_mib": {
+          "0": 21206,
+          "1": 20338
+        },
+        "peak_host_used_kib": 33533308,
+        "observed_seconds": 15.92543076002039,
+        "state": "completed",
+        "seed": 42,
+        "created_at": 1794972408.562303,
+        "gpu_release": "weights_and_kv",
+        "worker_peak_reserved_bytes": 12712935424,
+        "timing": {
+          "prepare": 7.676472856895998,
+          "drain_llm": 8.80241859704256e-05,
+          "queue": 2.0074391341768205,
+          "release_llm": 0.41551945684477687,
+          "load_cpu": 0.518281098920852,
+          "encode_cpu": 3.0012323029804975,
+          "upload_gpu": 0.8138875809963793,
+          "inference": 3.623031463008374,
+          "cleanup_and_png": 0.4074198389425874,
+          "restore_llm": 0.740332756889984,
+          "total": 15.89449691772461
+        },
+        "finished_at": 1794972424.4568
+      },
+      {
+        "name": "anime_character",
+        "peak_gpu_used_mib": {
+          "0": 21206,
+          "1": 20338
+        },
+        "peak_host_used_kib": 33847036,
+        "observed_seconds": 9.46331839915365,
+        "state": "completed",
+        "seed": 42,
+        "created_at": 1794972424.563303,
+        "gpu_release": "weights_and_kv",
+        "worker_peak_reserved_bytes": 12926844928,
+        "timing": {
+          "prepare": 3.0150408260524273,
+          "drain_llm": 0.0001127591822296381,
+          "queue": 0.0009914056863635778,
+          "release_llm": 0.40192445809952915,
+          "load_cpu": 0.00430594477802515,
+          "encode_cpu": 2.898629807168618,
+          "upload_gpu": 0.648885112022981,
+          "inference": 3.9675105968490243,
+          "cleanup_and_png": 0.4070349901448935,
+          "restore_llm": 0.7495822140481323,
+          "total": 9.278033018112183
+        },
+        "finished_at": 1794972433.841336
+      },
+      {
+        "name": "text_only",
+        "peak_gpu_used_mib": {
+          "0": 21206,
+          "1": 20338
+        },
+        "peak_host_used_kib": 33834408,
+        "observed_seconds": 7.854991095140576,
+        "state": "completed",
+        "seed": 42,
+        "created_at": 1794972434.0442524,
+        "gpu_release": "weights_and_kv",
+        "worker_peak_reserved_bytes": 13147045888,
+        "timing": {
+          "prepare": 2.765814106911421,
+          "drain_llm": 7.052114233374596e-05,
+          "queue": 0.0004708864726126194,
+          "release_llm": 0.4076519061345607,
+          "load_cpu": 2.084067091345787e-06,
+          "encode_cpu": 2.730918633984402,
+          "upload_gpu": 0.646970750996843,
+          "inference": 2.719024170888588,
+          "cleanup_and_png": 0.3470914831850678,
+          "restore_llm": 0.7465631898958236,
+          "total": 7.783275604248047
+        },
+        "finished_at": 1794972441.827528
+      }
+    ]
+  }
+}

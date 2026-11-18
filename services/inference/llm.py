@@ -46,16 +46,19 @@ def serve(model, revision, path):
                '--model', str(path), '--served-model-name', model,
                '--host', '0.0.0.0', '--port', '8000', '--dtype', 'bfloat16',
                '--max-model-len', str(window), '--max-num-seqs', os.environ.get('LLM_MAX_NUM_SEQS', '4'),
-               '--max-num-batched-tokens', '2048',
+               '--max-num-batched-tokens', os.environ.get('LLM_MAX_NUM_BATCHED_TOKENS', '2048'),
                '--compilation-config', json.dumps({'mode': 0, 'cudagraph_mode': 'FULL_DECODE_ONLY',
                                                     'cudagraph_capture_sizes': [1, 2, 4]}),
                '--no-async-scheduling',
                '--language-model-only', '--no-enable-prefix-caching',
-               # Fixed KV bytes below own allocation; leave startup headroom for Ditto.
-               '--gpu-memory-utilization', '0.85',
+               # Fixed KV bytes below own allocation. This is the startup
+               # free-memory check, including when both Ditto slots are resident.
+               '--gpu-memory-utilization', '0.75',
                '--kv-cache-memory-bytes', os.environ.get('LLM_KV_CACHE_BYTES', '9663676416'),
                '--mamba-ssm-cache-dtype', 'float32', '--reasoning-parser', 'qwen3',
                '--enable-auto-tool-choice', '--tool-call-parser', 'qwen3_coder']
+    if os.environ.get('LLM_GPU_CONTROL_TOKEN'):
+        command.append('--enable-sleep-mode')
     os.execvp(command[0], command)
 
 

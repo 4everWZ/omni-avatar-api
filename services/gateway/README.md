@@ -15,7 +15,7 @@ Applications use a configured gateway URL and the `omni-default` model alias. On
 
 Except for liveness, requests require `Authorization: Bearer <token>`, including the WebSocket upgrade. The gateway attaches its own optional engine bearer and keeps it out of application responses. Use a different bearer for mode changes.
 
-Batch mode shares a capacity of one by default. Live mode permits one ordinary Chat Completions request and reserves one separate Realtime WebSocket. Set the `media` entry in `OMNI_GATEWAY_TOKENS` to the media bridge's dedicated bearer for automatic mode changes. A manual live setting remains active when the program disconnects. Already admitted work can drain during a mode transition. Queued requests wait for capacity within the configured deadline, then receive `429`. Closing a client connection releases its admission after closing the upstream request or socket. The engine owns actual cancellation and any detached-session grace period.
+The split workstation uses two FIFO slots shared by Chat Completions and Realtime in both modes. On legacy hardware profiles, batch mode defaults to one shared slot and live mode reserves one Realtime socket alongside one Chat request. Set the `media` entry in `OMNI_GATEWAY_TOKENS` to the media bridge's dedicated bearer for automatic mode changes. A manual live setting remains active when the program disconnects. Queued requests wait for capacity within the configured deadline, then receive `429`. Closing a client connection releases its admission after closing the upstream request or socket. The engine owns cancellation and any detached-session grace period.
 
 | Environment | Default or meaning |
 | --- | --- |
@@ -29,6 +29,7 @@ Batch mode shares a capacity of one by default. Live mode permits one ordinary C
 | `OMNI_GATEWAY_TOKENS` | Optional JSON object mapping additional service names to their independent tokens. |
 | `OMNI_ENGINE_TOKEN` | Optional bearer for upstream only. |
 | `OMNI_BATCH_CAP` | `1` |
+| `OMNI_WORKSTATION_CAP` | `2` shared Chat/Realtime slots in the split workstation. |
 | `OMNI_QUEUE_LIMIT` | `16` queued requests |
 | `OMNI_QUEUE_TIMEOUT` | `5` seconds |
 | `OMNI_REQUEST_TIMEOUT` | `1200` seconds to receive the Chat request body. After admission, a fresh total deadline of the same duration covers the upstream request and complete SSE response. Set an explicit value to override both. |

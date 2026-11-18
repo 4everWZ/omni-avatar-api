@@ -73,6 +73,7 @@ All inference and avatar endpoints require an application bearer token. Administ
 | `/llm/v1/responses` | `llm-default` | Long-context inference and incremental Responses SSE. |
 | `/llm/v1/chat/completions` | `llm-default` | Chat-compatible clients. |
 | `/v1/avatar/*` | — | Reference uploads, preparation jobs, sessions, audio and WHEP. |
+| `/v1/images/jobs` | Klein 4B | Optional queued image generation with reference images. |
 | `/healthz`, `/llm/healthz` | — | Authenticated backend identity, readiness and admission. |
 
 For example, with the OpenAI Python SDK and an application token in the client environment:
@@ -135,7 +136,7 @@ Current dual-3090 measurements use the TensorRT FP16 frame backend and CoT, at m
 | LLM | 4 | Native voice + portrait | 21.20–21.56 | 84.81–86.04 |
 | LLM | 4 | Native voice + portrait + one Omni Chat request | 19.47–21.47 | 77.89–85.33 |
 
-The full mixed-load check produced 2,265 real neural frames in 90 seconds at 25 fps, with a maximum sampled timeline lag of 57 ms. CUDA MPS and actual frame-deadline feedback allocate GPU 0 compute. Ordinary Omni Chat uses single-request admission and FIFO queueing: two simultaneous short submissions aggregate 65.47 TPS.
+The single-portrait mixed-load baseline produced 2,265 real neural frames in 90 seconds at 25 fps, with a maximum sampled timeline lag of 57 ms. The split workstation has two shared Omni slots. Ditto has two implementation slots and runs with one enabled pending dual-render frame-rate qualification. CUDA MPS and per-slot frame deadlines allocate GPU 0 compute. [Workstation deployment](docs/deployment/workstation.md)
 
 The 256-token fixture measures total generation throughput and can spend its budget on reasoning. Separate checks cover completed CoT answers, budgets, JSON Schema and tool continuation. See the [workstation guide](docs/deployment/workstation.md#四路并发与计算预算) for formulas, raw records and validation coverage. The [acceptance plan](docs/plans/avatar-workstation.md) tracks full 262K quality, sustained load and physical speaker/microphone playback.
 
