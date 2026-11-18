@@ -154,6 +154,8 @@ Realtime 客户端仍使用原协议。客户端以 `?avatar=1` 选择 Avatar �
 
 该子集在 640×720 画布上支持 Node 与 Part、完整纹理的轴向矩形网格、Normal 混合和线性标量参数。局部平移、缩放与平面旋转依次沿节点树合成，按累计 zsort 递减绘制。平移与角度绑定采用加法，缩放和 Part 不透明度绑定采用乘法；关键点从参数声明的归一化 `axis_points` 读取。口形读取当前播放位置的 20 ms PCM，以及两侧各 60 ms 已入队的音频作局部响度参照。MouthOpen 使用相对能量和鼻音闭合线索，MouthForm 使用上下共振频带的比例；当前窗静音时闭嘴，缺少邻窗时直接使用可用样本。眼睑、视线、头部和呼吸沿用会话时钟。两条嘴部控制量是声学估计；姿态驱动和浏览器实呈分别验收。
 
+Inochi2D 另读取当前窗之前最多 220 ms 的播放历史。弱起音之前已有 200 ms 静默时，口型驱动检查相邻已入队样本的能量分布。能量集中在单个极短脉冲时保持闭口。音轨和两个媒体轨的发送时钟沿用原路径。两套原画的原声对照见[起音重放记录](../evaluations/results/inochi-quiet-onset-20261119.md)。
+
 ## 参考图与会议式头像
 
 准备形象时可向 `POST /v1/avatar/generations` 添加 `"infra":{"version":1,"portrait":{"crop_scale":2.3,"crop_vx_ratio":0,"crop_vy_ratio":-0.125,"crop_flag_do_rot":true}}`。前三项为有限 FP32 范围的数值，比例 crop_scale 为正，旋转开关为布尔值。示例取值即原有 registrar 默认值；准备任务绑定参考图及裁剪，修改需创建新形象。创建 Ditto 会话可声明 `"infra":{"version":1,"portrait":{"online":true}}`，返回 format.online=true。当前 Ditto 驱动仅提供在线渲染，显式 false 或未知选项返回 400。

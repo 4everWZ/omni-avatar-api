@@ -9,6 +9,7 @@ from pathlib import Path
 from PIL import Image
 
 from services.avatar.inochi import InochiRenderer
+from services.avatar.speech_mouth import CONTEXT, HOP
 
 
 def node(uid, kind='Node', x=0, y=0, z=0):
@@ -128,3 +129,36 @@ class InochiTest(unittest.TestCase):
         self.assertEqual(rig.render_pcm(1, bytes(960))['MouthForm'], 0)
         # No state from a previous generation, peer or render order.
         self.assertEqual(wide, pose(packet(front)))
+
+    def test_isolated_click_after_silence_and_short_speech(self):
+        rig = self.load([square(2, 1)])
+        rig.render_pose = lambda values: values
+        offset, size = rig.pcm_window
+
+        def poses(*sounds):
+            samples = [0] * size
+            for start_ms, duration_ms, amplitude in sounds:
+                for i in range(duration_ms * 24):
+                    samples[-offset + start_ms * 24 + i] = round(
+                        amplitude * math.sin(2 * math.pi * 800 * i / 24000))
+            window = struct.pack(f'<{size}h', *samples)
+            gain_start = (-offset - CONTEXT) * 2
+            gain_size = (HOP + 2 * CONTEXT) * 2
+            baseline = rig.render_pcm(0, window[gain_start:gain_start + gain_size])
+            return baseline, rig.render_pcm(0, window)
+
+        # Check a pulse inside the central packet and across each packet edge.
+        for start in (-2, 8, 18):
+            before, after = poses((start, 4, 800))
+            self.assertGreater(before['MouthOpen'], 0)
+            self.assertEqual((after['MouthOpen'], after['MouthForm']), (0., 0.))
+
+        for sounds in (
+            ((1, 16, 300),),                      # weak, sustained short onset
+            ((16, 16, 700),),                     # onset continues into the next packet
+            ((8, 4, 4000),),                      # strong attack after silence
+            ((-100, 20, 1000), (8, 4, 800)),      # weak, brief sound inside speech
+        ):
+            before, after = poses(*sounds)
+            self.assertGreater(before['MouthOpen'], 0)
+            self.assertEqual(before, after)

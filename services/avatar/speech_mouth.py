@@ -10,7 +10,9 @@ import struct
 
 HOP = 480  # 20 ms
 CONTEXT = 3 * HOP  # local level on either side of the analysis window
+ONSET_HISTORY = 11 * HOP  # 200 ms of history before a 20 ms onset margin
 _PACKET = struct.Struct('<480h')
+_MILLISECOND = struct.Struct('<24h')
 # Decimate to 12 kHz. The paired-sample average attenuates upper-band energy.
 _SIZE = HOP // 2
 _TAPER = tuple(.5 - .5 * math.cos(2 * math.pi * i / _SIZE) for i in range(_SIZE))
@@ -28,12 +30,38 @@ def _limit(value, lo=0., hi=1.):
     return max(lo, min(hi, value))
 
 
+def _isolated_weak_onset(pcm):
+    # Retain short consonants inside speech. Only inspect a possible click
+    # after ten consecutive quiet packets before the onset margin.
+    margin = (ONSET_HISTORY - HOP) * 2
+    for offset in range(0, margin, _PACKET.size):
+        block = _PACKET.unpack_from(pcm, offset)
+        if math.sumprod(block, block) - sum(block)**2 / HOP >= HOP * (.003 * 32768)**2:
+            return False
+    # In a 60 ms neighbourhood of the current packet, require some energy
+    # outside the transient. The next 20 ms is already in the renderer's
+    # normal context; neither the track deadline nor the audio moves.
+    energies = []
+    for offset in range(margin, (ONSET_HISTORY + 2 * HOP) * 2, _MILLISECOND.size):
+        block = _MILLISECOND.unpack_from(pcm, offset)
+        energies.append(math.sumprod(block, block))
+    total = sum(energies)
+    # A six-ms pulse may straddle seven one-ms bins.
+    peak = window = sum(energies[:7])
+    for i in range(7, len(energies)):
+        window += energies[i] - energies[i - 7]
+        peak = max(peak, window)
+    return peak >= .9 * total
+
+
 def mouth_controls(pcm):
     """Return jaw opening (0..1) and spread (-1 rounded to +1 wide)."""
     if len(pcm) == _PACKET.size:
         center = 0
     elif len(pcm) == 2 * (2 * CONTEXT + HOP):
         center = CONTEXT * 2
+    elif len(pcm) == 2 * (ONSET_HISTORY + HOP + CONTEXT):
+        center = ONSET_HISTORY * 2
     else:
         raise ValueError('Expected a 20 ms PCM packet or its timeline context')
     samples = _PACKET.unpack_from(pcm, center)
@@ -42,8 +70,11 @@ def mouth_controls(pcm):
     rms = math.sqrt(power / HOP) / 32768
     if rms < .003:
         return 0., 0.
+    if rms < .012 and center == ONSET_HISTORY * 2 and _isolated_weak_onset(pcm):
+        return 0., 0.
     peak = power
-    for offset in range(0, len(pcm), _PACKET.size):
+    gain_start = max(0, center - CONTEXT * 2)
+    for offset in range(gain_start, len(pcm), _PACKET.size):
         if offset != center:
             nearby = _PACKET.unpack_from(pcm, offset)
             peak = max(peak, math.sumprod(nearby, nearby) - sum(nearby)**2 / HOP)

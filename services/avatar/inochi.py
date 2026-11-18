@@ -11,7 +11,7 @@ from pathlib import Path
 
 from PIL import Image, ImageOps
 
-from .speech_mouth import CONTEXT, HOP, mouth_controls
+from .speech_mouth import CONTEXT, HOP, ONSET_HISTORY, mouth_controls
 
 CANVAS = (640, 720)
 PROPERTIES = ('transform.t.x', 'transform.t.y', 'transform.s.x', 'transform.s.y', 'transform.r.z', 'opacity')
@@ -187,8 +187,8 @@ class Node:
 
 class InochiRenderer:
     capabilities = {'video': '640x720', 'fps': 25, 'alpha': False, 'driver': 'inochi2d'}
-    # Offsets are in playback samples. Context affects the local gain only.
-    pcm_window = (-CONTEXT, HOP + 2 * CONTEXT)
+    # Earlier samples distinguish a quiet onset; the lookahead stays at CONTEXT.
+    pcm_window = (-ONSET_HISTORY, ONSET_HISTORY + HOP + CONTEXT)
 
     def __init__(self, root: Path):
         model, textures = read_inp(root / 'model.inp' if root.is_dir() else root)
