@@ -42,7 +42,7 @@ Omni Chat、后台 LLM Chat／Responses 默认 `chat_template_kwargs.enable_thin
 
 固定版 vLLM-Omni 接受并回显 `input_audio_transcription`，此字段不会启动独立 ASR。原生最终用户转写事件取决于模型是否产出转写。服务端历史校准的 ASR 选择针对中断后已播的助手音频。[固定版双工协议](https://github.com/vllm-project/vllm-omni/blob/v0.32.0/docs/serving/realtime_duplex_api.md)
 
-私有连接可在 WebSocket URL 加 `input_transcription=explicit`。客户端收到 `session.created.session.capabilities.gateway_input_transcription` 的 `mode=explicit_once` 后可显示转认操作。连接协商本身不会保存音频或发起转写。`program=1` 不提供该能力。
+使用一次性票据的私有连接可在 WebSocket URL 加 `input_transcription=explicit`。客户端收到 `session.created.session.capabilities.gateway_input_transcription` 的 `mode=explicit_once` 和 `receipt=hmac-sha256-v1` 后可显示转认操作。连接协商本身不会保存音频或发起转写。`program=1` 不提供该能力。
 
 | 方向 | 事件与含义 |
 | --- | --- |
@@ -52,6 +52,8 @@ Omni Chat、后台 LLM Chat／Responses 默认 `chat_template_kwargs.enable_thin
 | 网关 → 客户端 | `gateway.input_transcription.failed` 返回本次 ID 与原因，如 `empty_audio`、`audio_bounds`、`capacity` 或 `budget`。 |
 
 转认与原生 final 使用不同事件。网关将选中的录音封装为 WAV，走 Omni 的音频 Chat 和普通推理准入；不传会话提示、记忆、助手回复或预期句子。每个私聊连接分别持有在内存中的短时录音。
+
+完成事件另含小写十六进制 `receipt`。业务服务使用签票的普通应用凭据作为 HMAC-SHA256 密钥，验证 UTF-8 JSON 数组 `["omni.mic.v1", sha256_hex(ticket), capture_id, samples, transcript]`（紧凑序列化，保留非 ASCII 字符）。业务端应同时核对票据签发时绑定的号主与角色。界面可以让号主修订文字；保存时保留经核实的机器原文，并单独记录号主最终确认的文字。密钥仅在服务端使用。
 
 ## Omni 实时历史窗口
 

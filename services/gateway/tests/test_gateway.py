@@ -148,7 +148,9 @@ class GatewayTest(unittest.IsolatedAsyncioTestCase):
         origin = await self.serve(app)
         mic = {"type":"input_audio_buffer.append", "sample_rate_hz":16000, "format":"pcm16"}
         async with ClientSession(base_url=origin) as client:
-            async with client.ws_connect("/v1/realtime?duplex=1&input_transcription=explicit", headers=SERVICE_AUTH) as ws:
+            async with client.post("/v1/browser-tickets", headers=SERVICE_AUTH, json={"path":"/v1/realtime"}) as issued:
+                ticket = (await issued.json())["ticket"]
+            async with client.ws_connect("/v1/realtime?duplex=1&input_transcription=explicit&ticket="+ticket) as ws:
                 caps = (await ws.receive_json())["session"]["capabilities"]
                 self.assertEqual(caps["gateway_input_transcription"]["mode"], "explicit_once")
                 self.assertEqual(self.realtime_query, {"duplex":"1"})
@@ -165,7 +167,9 @@ class GatewayTest(unittest.IsolatedAsyncioTestCase):
                 await echo(mic | {"audio":"AQIDBA=="})
                 self.assertFalse(hasattr(self, "chat_payload"))
                 await ws.send_json({"type":PREFIX+"finish", "capture_id":capture})
-                self.assertEqual(await ws.receive_json(), {"type":PREFIX+"completed", "capture_id":capture,
+                result = await ws.receive_json()
+                self.assertRegex(result.pop("receipt"), r"^[a-f0-9]{64}$")
+                self.assertEqual(result, {"type":PREFIX+"completed", "capture_id":capture,
                                  "samples":2, "source":"explicit_user_audio", "transcript":"ok"})
                 message = self.chat_payload["messages"][-1]
                 self.assertEqual(message["role"], "user")

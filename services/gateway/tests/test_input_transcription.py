@@ -11,7 +11,7 @@ from services.gateway.input_transcription import InputTranscription, PREFIX
 class SelectionTest(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
         self.socket = AsyncMock()
-        self.selection = InputTranscription(object(), self.socket)
+        self.selection = InputTranscription(object(), self.socket, "fixture-client", "fixture-ticket")
         self.addAsyncCleanup(self.selection.stop)
         self.append = {"type":"input_audio_buffer.append", "format":"pcm16", "sample_rate_hz":16000,
                        "audio":base64.b64encode(b"\x00\x01"*16000).decode()}

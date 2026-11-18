@@ -289,8 +289,8 @@ class Gateway:
                     await downstream.send_json({'type': 'gateway.session.created',
                                                 'source_session_id': None, 'avatar_available': False})
                 transcription = None
-                if not program and request.query.get("input_transcription") == "explicit":
-                    transcription = InputTranscription(self, downstream)
+                if not program and request.query.get("ticket") and request.query.get("input_transcription") == "explicit":
+                    transcription = InputTranscription(self, downstream, request["service_token"], request.query["ticket"])
                     stack.push_async_callback(transcription.stop)
                 await self.relay(upstream, downstream, tap, transcription)
                 return downstream

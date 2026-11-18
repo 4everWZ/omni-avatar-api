@@ -5,6 +5,8 @@ import base64
 import binascii
 import io
 import json
+import hashlib
+import hmac
 import secrets
 import wave
 
@@ -16,7 +18,7 @@ from .token_budget import ReservationRejected, reservation
 
 MAX_SECONDS = 15
 RATE = 16000
-CAPABILITY = {"mode": "explicit_once", "max_seconds": MAX_SECONDS, "sample_rate_hz": RATE}
+CAPABILITY = {"mode": "explicit_once", "max_seconds": MAX_SECONDS, "sample_rate_hz": RATE, "receipt": "hmac-sha256-v1"}
 PREFIX = "gateway.input_transcription."
 
 
@@ -56,8 +58,10 @@ async def transcribe(gateway, pcm):
 
 
 class InputTranscription:
-    def __init__(self, gateway, socket):
+    def __init__(self, gateway, socket, token, ticket):
         self.gateway, self.socket = gateway, socket
+        self.token = token.encode()
+        self.ticket_hash = hashlib.sha256(ticket.encode()).hexdigest()
         self.identity = self.pcm = self.pending = None
 
     async def event(self, kind, **fields):
@@ -72,7 +76,11 @@ class InputTranscription:
     async def finish(self, pcm):
         try:
             text = await transcribe(self.gateway, pcm)
-            await self.event("completed", transcript=text, source="explicit_user_audio", samples=len(pcm)//2)
+            samples = len(pcm) // 2
+            fields = json.dumps(["omni.mic.v1", self.ticket_hash, self.identity, samples, text],
+                                ensure_ascii=False, separators=(",", ":")).encode()
+            await self.event("completed", transcript=text, source="explicit_user_audio", samples=samples,
+                             receipt=hmac.digest(self.token, fields, "sha256").hex())
         except Busy:
             await self.event("failed", reason="capacity")
         except (BudgetExceeded, ReservationRejected):
