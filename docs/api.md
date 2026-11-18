@@ -149,6 +149,8 @@ Realtime 客户端仍使用原协议。客户端以 `?avatar=1` 选择 Avatar �
 | `GET /v1/avatar/avatars/{avatar_id}` | 查询已准备形象和驱动能力。`/preview` 返回规范化参考图预览。 |
 | `POST /v1/avatar/sessions` | 将就绪的 `portrait_...` 作为 `avatar_id`，仍按上述方式绑定 `audio` 或自有 `realtime` 源；返回同一套音频、事件及 WHEP 入口。 |
 
+每次登记可在 `infra.portrait.calibration` 指定当前参考图的 `face_box`、`eyes` 或两者，坐标以规范化后的 640×720 资产为准。省略的阶段继续使用 Ditto 自动检测。GET 任务时可读回 `crop.calibration`；失败保留原错误码，并通过 `diagnostic.stage` 定位准备阶段。[按形象校准、两份原稿标注与隔离复测](ditto-calibration.md)
+
 Ditto 支持两个渲染和参考图准备共享的 GPU 槽位，工作站默认启用一个，双路帧率待验收。准备任务等待空闲槽，忙时创建神经会话返回 `429`。CPU Avatar 的服务总会话上限是四路。每调用方最多保留 16 张图、16 个任务，总量各 64；客户端按需回收资产。准备形象持久化，重启后由客户端新建活跃会话。不同驱动返回各自实际能力，未来的 3D 驱动沿用同一接口。
 
 神经会话创建时先完成实际渲染线程的预热再就绪；等待创建成功后再向绑定源发送需要形象播放的音频。输出 640×720、25 fps；音频播放预留 1200 ms 推理时间，`format.input_lead_ms` 明示。音画共用时间线，原生 Omni 音频仍独立输出。清空立即停播旧音频并丢弃旧代次视频，神经运动状态允许自然过渡。落后或停滞会发出 `avatar.failed`，调用方继续消费原生语音。会话 `renderer` 字段报告实际 `generated_frames`、最新生成及已显示帧时间，可用于检查是否真正达到实时生成速度。

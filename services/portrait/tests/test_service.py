@@ -9,6 +9,7 @@ from pathlib import Path
 from aiohttp import ClientSession, web
 from PIL import Image
 from services.portrait.app import create_app
+from services.portrait.registration import PreparationError
 
 AUTH = {'Authorization': 'Bearer private', 'X-Omni-Owner': 'a' * 64}
 OTHER = AUTH | {'X-Omni-Owner': 'b' * 64}
@@ -115,3 +116,38 @@ class PreparationTests(unittest.IsolatedAsyncioTestCase):
                      {'url': 'http://localhost/private'}, []):
             async with self.http.post('/v1/avatar/assets', headers=AUTH, json=body) as response:
                 self.assertEqual(response.status, 400)
+
+    async def test_calibration_is_per_generation_and_failure_is_readable_by_owner(self):
+        reference = await self.image()
+        calibration = {'face_box': [20, 30, 150, 200]}
+        received = []
+
+        def fail(image, output, **options):
+            received.append(options)
+            raise PreparationError('eye_mesh')
+
+        self.backend.prepare = fail
+        body = {'reference_asset_id': reference, 'infra': {'version': 1, 'portrait': {
+            'crop_scale': 2.1, 'calibration': calibration}}}
+        path = '/v1/avatar/generations'
+        async with self.http.post(path, headers=OTHER, json=body) as response:
+            self.assertEqual(response.status, 404)
+        async with self.http.post(path, headers=AUTH, json=body) as response:
+            self.assertEqual(response.status, 202)
+            job_path = path + '/' + (await response.json())['id']
+        async with asyncio.timeout(2):
+            while self.app['service'].tasks:
+                await asyncio.sleep(.01)
+        async with self.http.get(job_path, headers=AUTH) as response:
+            job = await response.json()
+        self.assertEqual(received, [body['infra']['portrait']])
+        self.assertEqual(job['crop']['calibration'], calibration)
+        self.assertEqual((job['state'], job['error'], job['avatar_id']),
+                         ('failed', 'reference_preparation_failed', None))
+        self.assertEqual(job['diagnostic'], {'stage': 'eye_mesh', 'reason': 'stage_failed'})
+        async with self.http.get(job_path, headers=OTHER) as response:
+            self.assertEqual(response.status, 404)
+        body['infra']['portrait']['calibration'] = {'face_box': [6, 2, 1, 4]}
+        async with self.http.post(path, headers=AUTH, json=body) as response:
+            self.assertEqual(response.status, 400)
+        self.assertEqual(len(received), 1)

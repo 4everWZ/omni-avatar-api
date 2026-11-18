@@ -18,13 +18,14 @@ class PortraitTransportTest(unittest.IsolatedAsyncioTestCase):
         image = BytesIO()
         Image.new('RGB', (32, 32), 'blue').save(image, 'JPEG')
         received = asyncio.Event()
+        marks = {'face_box': [100, 100, 300, 420]}
 
         class Backend:
             failure = None
 
-            def prepare(self, reference, output, *, crop_scale, crop_vy_ratio):
-                if (crop_scale, crop_vy_ratio) != (2.2, 0):
-                    raise ValueError("Expected caller crop options")
+            def prepare(self, reference, output, *, crop_scale, crop_vy_ratio, calibration):
+                if (crop_scale, crop_vy_ratio, calibration) != (2.2, 0, marks):
+                    raise ValueError("Expected caller crop and calibration options")
                 output.write_bytes(b'features')
 
             def start(self, path, emit):
@@ -49,7 +50,8 @@ class PortraitTransportTest(unittest.IsolatedAsyncioTestCase):
                         self.assertEqual(asset.status, 201)
                         job = await client.post('/v1/avatar/generations', headers=headers, json={
                             'reference_asset_id': (await asset.json())['id'],
-                            'infra': {'version': 1, 'portrait': {'crop_scale': 2.2, 'crop_vy_ratio': 0}}})
+                            'infra': {'version': 1, 'portrait': {'crop_scale': 2.2, 'crop_vy_ratio': 0,
+                                                                'calibration': marks}}})
                         path = '/v1/avatar/generations/' + (await job.json())['id']
                         async with asyncio.timeout(5):
                             while (record := await (await client.get(path, headers=headers)).json())['state'] != 'ready':

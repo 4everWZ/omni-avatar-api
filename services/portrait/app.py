@@ -15,6 +15,8 @@ from pathlib import Path
 from aiohttp import WSMsgType, web
 from PIL import Image, ImageOps, UnidentifiedImageError
 
+from .registration import PreparationError, validate_calibration
+
 ID = r'[a-f0-9]{32}'
 MAX_IMAGE = 4 * 1024 * 1024
 
@@ -27,10 +29,13 @@ def reference_crop(body):
             or infra.keys() - {'version', 'portrait'}):
         raise ValueError('Invalid infra extension')
     crop = infra.get('portrait', {})
-    if not isinstance(crop, dict) or crop.keys() - {'crop_scale', 'crop_vx_ratio', 'crop_vy_ratio', 'crop_flag_do_rot'}:
+    if not isinstance(crop, dict) or crop.keys() - {
+            'crop_scale', 'crop_vx_ratio', 'crop_vy_ratio', 'crop_flag_do_rot', 'calibration'}:
         raise ValueError('Unsupported reference crop option')
     for key, value in crop.items():
-        if key == 'crop_flag_do_rot':
+        if key == 'calibration':
+            validate_calibration(value)
+        elif key == 'crop_flag_do_rot':
             if type(value) is not bool:
                 raise ValueError(key)
         elif type(value) not in (int, float) or not -3.4028234e38 <= value <= 3.4028234e38:
@@ -170,10 +175,12 @@ class PortraitService:
                 if job['state'] != 'cancelled':
                     job.update(state='ready', avatar_id='portrait_' + job['id'])
                     self.save(path, job)
-        except Exception:
+        except Exception as error:
             logging.exception('Portrait preparation failed')
             if job['state'] != 'cancelled':
                 job.update(state='failed', error='reference_preparation_failed')
+                if isinstance(error, PreparationError):
+                    job['diagnostic'] = {'stage': error.stage, 'reason': error.reason}
                 self.save(path, job)
         finally:
             if job['state'] != 'ready':

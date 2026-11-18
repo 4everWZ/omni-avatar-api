@@ -16,6 +16,8 @@ import numpy as np
 from PIL import Image
 from scipy.signal import resample_poly
 
+from .registration import register, stage
+
 CODE_REVISION = 'c3e47eee2e626500017a0556b470d6d4182f85e8'
 MODEL_REVISION = 'e4a2f60328ee7c32af585ac4b3cce299e4c8e254'
 setup_writer = threading.local()
@@ -115,20 +117,23 @@ class DittoBackend:
         # Bound queued decoded-frame memory instead of the SDK's hundred items.
         self.sdk.decode_f3d_queue.maxsize = 2
 
-    def prepare(self, image, output, *, crop_scale=2.3, crop_vx_ratio=0, crop_vy_ratio=-.125, crop_flag_do_rot=True):
-        data = self.registrar(str(image), max_dim=720, crop_scale=crop_scale,
-                              crop_vx_ratio=crop_vx_ratio, crop_vy_ratio=crop_vy_ratio, crop_flag_do_rot=crop_flag_do_rot)
+    def prepare(self, image, output, *, crop_scale=2.3, crop_vx_ratio=0, crop_vy_ratio=-.125,
+                crop_flag_do_rot=True, calibration=None):
+        data = register(self.registrar, image, calibration or {}, crop_scale=crop_scale,
+                        crop_vx_ratio=crop_vx_ratio, crop_vy_ratio=crop_vy_ratio,
+                        crop_flag_do_rot=crop_flag_do_rot)
         if not self.warmed:
-            self.setup(data, NullWriter())
-            try:
-                for _ in range(9):
-                    self.sdk.run_chunk(np.zeros(6480, dtype=np.float32), (3, 5, 2))
-                self.sdk.close()
-                self.warmed = True
-            except BaseException:
-                self.abort()
-                raise
-        with Path(output).open('wb') as target:
+            with stage('warmup'):
+                self.setup(data, NullWriter())
+                try:
+                    for _ in range(9):
+                        self.sdk.run_chunk(np.zeros(6480, dtype=np.float32), (3, 5, 2))
+                    self.sdk.close()
+                    self.warmed = True
+                except BaseException:
+                    self.abort()
+                    raise
+        with stage('persist'), Path(output).open('wb') as target:
             pickle.dump(data, target, protocol=5)
 
     def abort(self):
