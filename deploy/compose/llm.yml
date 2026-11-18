@@ -1,0 +1,42 @@
+x-llm: &llm
+  LLM_MODEL_ID: ${LLM_MODEL_ID:-axteam/Qwen3.5-9B-AWQ-4bit}
+  LLM_CHECKPOINT: ${LLM_CHECKPOINT:-5577b5b71e6f06b9f6a1f3743ef6ba6dc4ecd2df}
+
+services:
+  llm-model-fetch:
+    profiles: [assets]
+    image: ${LLM_IMAGE:-omni-api-llm:0.32.0}
+    pull_policy: never
+    command: [python3, /opt/llm/llm.py, fetch]
+    environment: *llm
+    volumes:
+      - ${OMNI_MODEL_DATA:-./data/models}:/models
+
+  llm-engine:
+    build: ./services/llm
+    image: ${LLM_IMAGE:-omni-api-llm:0.32.0}
+    pull_policy: never
+    restart: unless-stopped
+    init: true
+    runtime: nvidia
+    gpus:
+      - driver: nvidia
+        device_ids: ["${LLM_GPU_DEVICE:-0}"]
+    shm_size: 2gb
+    command: [python3, /opt/llm/llm.py, serve]
+    environment:
+      <<: *llm
+      HF_HUB_OFFLINE: '1'
+      TRANSFORMERS_OFFLINE: '1'
+      VLLM_ENABLE_RESPONSES_API_STORE: '1'
+      LLM_MAX_NUM_SEQS: ${LLM_MAX_NUM_SEQS:-4}
+      LLM_MAX_NUM_BATCHED_TOKENS: ${LLM_MAX_NUM_BATCHED_TOKENS:-2048}
+      LLM_KV_CACHE_BYTES: ${LLM_KV_CACHE_BYTES:-9663676416}
+    volumes:
+      - ${OMNI_MODEL_DATA:-./data/models}:/models:ro
+    healthcheck:
+      test: [CMD, python3, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3).close()"]
+      interval: 15s
+      timeout: 5s
+      start_period: 8m
+      retries: 4

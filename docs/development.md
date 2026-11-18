@@ -22,7 +22,7 @@ uv run --no-project --with-requirements services/gateway/requirements.txt python
 uv run --no-project --with-requirements services/avatar/requirements.txt python -B -m unittest discover -s services/avatar/tests -v
 uv run --no-project --with-requirements services/avatar/requirements.txt python -B -m unittest discover -s tests/integration -v
 uv run --no-project --with aiohttp --with pillow python -B -m unittest discover -s services/portrait/tests -v
-python -B -m unittest services.inference.tests.test_model services.inference.tests.test_chat_validation services.inference.tests.test_llm_admission services.inference.tests.test_gpu_deadline services.inference.tests.test_reasoning_budget services.inference.tests.test_patch_minicpmo_awq_stages tests.tooling.test_compose -v
+python -B -m unittest services.inference.tests.test_model services.inference.tests.test_chat_validation services.llm.tests.test_llm_admission services.llm.tests.test_gpu_deadline services.llm.tests.test_reasoning_budget services.inference.tests.test_reasoning_budget services.inference.tests.test_patch_minicpmo_awq_stages tests.tooling.test_compose -v
 ```
 
 INT4 layout/reference tests additionally need PyTorch. Run them in the pinned inference environment:
@@ -38,7 +38,7 @@ docker run --rm --entrypoint python3 -v "$PWD:/work:ro" -w /work \
 ```sh
 python tools/compose.py --dry-run --portrait --vpn -- config --quiet
 python tools/compose.py --portrait --vpn -- config --quiet
-python tools/compose.py -- build omni-engine omni-gateway omni-avatar
+python tools/compose.py -- build omni-engine llm-engine omni-gateway omni-avatar
 python tools/compose.py --portrait -- build omni-portrait
 ```
 

@@ -18,7 +18,7 @@ services:
     runtime: nvidia
     gpus:
       - driver: nvidia
-        device_ids: ['0']
+        device_ids: ["${LLM_GPU_DEVICE:-0}"]
     environment:
       HF_HUB_OFFLINE: '1'
       TRANSFORMERS_OFFLINE: '1'

@@ -4,8 +4,8 @@ from pathlib import Path
 import tempfile
 import unittest
 from unittest.mock import patch
-from services.inference.llm import serve
-from services.inference.patches.patch_llm_admission import patch_api_source
+from services.llm.llm import serve
+from services.llm.patches.patch_llm_admission import patch_api_source
 
 
 class InferenceAdmissionTests(unittest.TestCase):

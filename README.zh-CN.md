@@ -42,7 +42,7 @@ cp .env.example .env
 
 ```sh
 docker network create tuber-omni
-python tools/compose.py -- build omni-engine omni-gateway omni-avatar
+python tools/compose.py -- build omni-engine llm-engine omni-gateway omni-avatar
 python tools/compose.py -- --profile assets run --rm model-fetch
 python tools/compose.py -- --profile assets run --rm llm-model-fetch
 python tools/compose.py -- up -d --wait
@@ -104,6 +104,7 @@ with client.responses.stream(
 ```text
 services/                 独立构建的服务边界
   gateway/                鉴权与推理／媒体代理
+  llm/                    长上下文文本引擎及 vLLM 补丁
   inference/              启动器、模型配置、固定补丁与镜像
   avatar/                 会话、渲染与 WebRTC 音画
   portrait/               参考图准备与神经渲染

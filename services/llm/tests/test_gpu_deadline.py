@@ -2,8 +2,8 @@ import json
 import unittest
 from unittest.mock import patch
 
-from services.inference.patches.gpu_deadline import yield_to_renderer
-from services.inference.patches.patch_llm_admission import patch_core_source
+from services.llm.patches.gpu_deadline import yield_to_renderer
+from services.llm.patches.patch_llm_admission import patch_core_source
 
 
 class GPUDeadlineTests(unittest.TestCase):

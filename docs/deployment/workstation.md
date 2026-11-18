@@ -4,11 +4,11 @@ GPU 1 承载 MiniCPM-o 的 Thinker、Talker、Code2Wav；GPU 0 承载后台长�
 
 ## 主线组合
 
-统一入口组合 `deploy/compose/base.yml`、`workstation.yml`、`avatar.yml` 和 `inference.yml`；`--portrait` 添加神经头像与 GPU 0 MPS，`--vpn` 添加私网监听。
+统一入口组合 `deploy/compose/base.yml`、`workstation.yml`、`avatar.yml`、`llm.yml` 和 `inference.yml`；`--portrait` 添加神经头像与 GPU 0 MPS，`--vpn` 添加私网监听。
 
 ```sh
 python tools/compose.py --portrait --vpn -- config --quiet
-python tools/compose.py -- build omni-engine omni-gateway omni-avatar
+python tools/compose.py -- build omni-engine llm-engine omni-gateway omni-avatar
 python tools/compose.py --portrait -- build omni-portrait
 python tools/compose.py -- --profile assets run --rm model-fetch
 python tools/compose.py -- --profile assets run --rm llm-model-fetch
@@ -19,6 +19,17 @@ python tools/compose.py --portrait --vpn -- up -d --wait
 完成标准头像镜像与资产准备后，按下方 TensorRT 配置启用实测帧后端。
 
 首次配置与共享网络创建见[快速开始](../../README.zh-CN.md#快速开始)。模型使用精确快照和独立目录，服务离线加载。应用、管理和 Avatar 内部令牌在根目录 `.env` 中分别配置；凭据与模型资产由本地忽略目录持有。引擎使用 Docker 私网，Avatar／Portrait 控制使用私有 Unix socket。宿主发布回环及指定 VPN 地址的网关 8000 端口。
+
+### 独立 LLM 节点
+
+在文本节点设置 `LLM_GPU_DEVICE`（设备 UUID 或宿主索引）和模型目录。独立项目默认将引擎发布到回环地址 8100；跨机接入通过受控内网或隧道，Gateway 的 `LLM_ENGINE_URL` 指向该私有入口。引擎直连绕开 Gateway 的应用鉴权与配额，限制入口仅供受信网关使用。工作站同卡配置下 Images、MPS、Ditto 跟随 LLM 的设备选择，Omni 使用独立的 `OMNI_GPU_DEVICE`。
+
+```sh
+python tools/compose.py --target llm -- build llm-engine
+python tools/compose.py --target llm -- --profile assets run --rm llm-model-fetch
+python tools/compose.py --target llm -- up -d --wait
+python tools/compose.py --target llm -- stop llm-engine
+```
 
 ## API 与上下文
 

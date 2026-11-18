@@ -19,7 +19,7 @@ class ComposeEntrypointTests(unittest.TestCase):
                                    '--env-file', str(ROOT / '.env')])
         files = [args[i+1] for i, item in enumerate(args) if item == '-f']
         self.assertEqual(files, [str(COMPOSE / f'{name}.yml') for name in
-                                 ('base', 'workstation', 'avatar', 'inference')])
+                                 ('base', 'workstation', 'avatar', 'llm', 'inference')])
         self.assertEqual(args[-3:], ['up', '-d', '--wait'])
 
     def test_all_deployment_targets_use_existing_compose_files(self):

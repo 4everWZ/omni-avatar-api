@@ -28,7 +28,7 @@ services:
     runtime: nvidia
     gpus:
       - driver: nvidia
-        device_ids: ['0']
+        device_ids: ["${LLM_GPU_DEVICE:-0}"]
     environment:
       CUDA_MPS_PIPE_DIRECTORY: /run/omni-mps
       CUDA_MPS_LOG_DIRECTORY: /mps-log
@@ -80,7 +80,7 @@ services:
     runtime: nvidia
     gpus:
       - driver: nvidia
-        device_ids: ['0']
+        device_ids: ["${LLM_GPU_DEVICE:-0}"]
     ipc: service:gpu-mps
     pid: service:gpu-mps
     depends_on:

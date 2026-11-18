@@ -8,7 +8,8 @@ import sys
 ROOT = Path(__file__).resolve().parents[1]
 COMPOSE = ROOT / 'deploy' / 'compose'
 TARGETS = {
-    'workstation': ('base', 'workstation', 'avatar', 'inference'),
+    'llm': ('llm', 'llm-endpoint'),
+    'workstation': ('base', 'workstation', 'avatar', 'llm', 'inference'),
     'workstation-omni': ('base', 'workstation', 'avatar'),
     'workstation-bf16': ('base', 'workstation', 'workstation-bf16', 'avatar'),
     'orin': ('base',),

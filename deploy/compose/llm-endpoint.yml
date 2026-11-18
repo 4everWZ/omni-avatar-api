@@ -1,0 +1,5 @@
+name: omni-llm
+services:
+  llm-engine:
+    ports:
+      - '${LLM_BIND:-127.0.0.1}:${LLM_PORT:-8100}:8000/tcp'

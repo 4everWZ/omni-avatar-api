@@ -42,7 +42,7 @@ Create the shared application network once, then build, download and start:
 
 ```sh
 docker network create tuber-omni
-python tools/compose.py -- build omni-engine omni-gateway omni-avatar
+python tools/compose.py -- build omni-engine llm-engine omni-gateway omni-avatar
 python tools/compose.py -- --profile assets run --rm model-fetch
 python tools/compose.py -- --profile assets run --rm llm-model-fetch
 python tools/compose.py -- up -d --wait
@@ -104,6 +104,7 @@ The service implements the pinned engine's HTTP/SSE Responses subset. Function t
 ```text
 services/                 Independently built service boundaries
   gateway/                Authentication and inference/media proxies
+  llm/                    Long-context text engine and vLLM patches
   inference/              Launchers, model configs, pinned patches and images
   avatar/                 Sessions, renderers and WebRTC media
   portrait/               Reference preparation and neural rendering

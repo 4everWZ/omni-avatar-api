@@ -9,12 +9,10 @@ RUN env -u UV_CONSTRAINT -u UV_OVERRIDE uv --no-config pip install \
 
 COPY model.py /opt/tuber-omni/
 COPY configs/ /opt/tuber-omni/configs/
-COPY llm.py /opt/tuber-omni/
 COPY patches/ /opt/tuber-omni/patches/
 RUN python3 /opt/tuber-omni/patches/restore_chat_constraints.py \
     && python3 /opt/tuber-omni/patches/patch_minicpmo_int4_window.py \
     && python3 /opt/tuber-omni/patches/patch_minicpmo_awq_stages.py \
     && python3 /opt/tuber-omni/patches/patch_chat_prompt_tokens.py \
-    && python3 /opt/tuber-omni/patches/patch_llm_admission.py \
     && python3 /opt/tuber-omni/patches/patch_reasoning_budget.py \
     && python3 /opt/tuber-omni/patches/patch_minicpmo_duplex_idle.py
