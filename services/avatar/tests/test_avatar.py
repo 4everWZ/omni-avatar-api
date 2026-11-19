@@ -1,21 +1,18 @@
 import asyncio
 import base64
 import hashlib
-import io
 import math
 import struct
 import sys
 import unittest
-from pathlib import Path
 from time import perf_counter
 from unittest.mock import patch
 
-from aiohttp import ClientSession, WSMessage, WSMsgType, web
+from aiohttp import ClientSession, web
 from aiortc import RTCConfiguration, RTCPeerConnection, RTCSessionDescription
-from PIL import Image, ImageChops, ImageStat
+from PIL import ImageChops, ImageStat
 
 from services.avatar.app import create_app
-from services.avatar.portrait_client import PortraitRenderer
 from services.avatar.sessions import Session
 
 AUTH = {'Authorization': 'Bearer internal', 'X-Omni-Owner': hashlib.sha256(b'one').hexdigest()}
@@ -41,34 +38,6 @@ class AvatarFixture(unittest.IsolatedAsyncioTestCase):
 
 
 class AvatarTest(AvatarFixture):
-    async def test_delayed_whep_can_render_from_negotiated_origin(self):
-        encoded = io.BytesIO()
-        preview = Image.new('RGB', (16, 16), 'black')
-        Image.new('RGB', preview.size, 'white').save(encoded, format='JPEG')
-        ready = asyncio.Event()
-
-        class Socket:
-            async def __aiter__(self):
-                for index in range(125):
-                    payload = struct.pack('!dI', index / 25, 0) + encoded.getvalue()
-                    yield WSMessage(WSMsgType.BINARY, payload, '')
-                ready.set()
-                await asyncio.Future()
-
-            async def close(self):
-                pass
-
-        renderer = PortraitRenderer(Socket(), preview)
-        try:
-            await asyncio.wait_for(ready.wait(), 2)
-            frame = renderer.render(.8, 0)
-            self.assertEqual(frame.getpixel((0, 0)), (255, 255, 255))
-            self.assertEqual(renderer.status()['displayed_frame_ms'], 800)
-            renderer.render(.4, 0)
-            self.assertEqual(renderer.status()['displayed_frame_ms'], 400)
-        finally:
-            await renderer.close()
-
     async def test_render_failure_releases_async_worker(self):
         released = asyncio.Event()
         class Driver:
@@ -78,7 +47,7 @@ class AvatarTest(AvatarFixture):
                     await asyncio.sleep(0)
                     released.set()
                 return asyncio.create_task(release())
-        session = Session('owner', 'portrait', None, Driver())
+        session = Session('owner', 'test-avatar', None, Driver())
         await session.fail('renderer_failed')
         self.assertEqual(session.state, 'failed')
         self.assertTrue(released.is_set())

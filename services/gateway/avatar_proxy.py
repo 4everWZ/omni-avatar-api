@@ -90,7 +90,10 @@ class AvatarProxy:
         # Do not let URL normalization turn a public proxy path into /internal/*.
         registered_detail = request.method == 'GET' and re.fullmatch(
             r'/v1/avatar/avatars/[A-Za-z0-9][A-Za-z0-9_.-]{0,127}', request.path)
-        if not registered_detail and not re.fullmatch(r'/v1/avatar/(?:sessions(?:/[A-Za-z0-9_-]+(?:/(?:audio|events|whep)(?:/[A-Za-z0-9_-]+)?)?)?|(?:assets|generations)(?:/[a-f0-9]{32})?|avatars/portrait_[a-f0-9]{32}(?:/preview)?)', request.path):
+        session_path = re.fullmatch(
+            r'/v1/avatar/sessions(?:/[A-Za-z0-9_-]+(?:/(?:audio|events|whep)(?:/[A-Za-z0-9_-]+)?)?)?',
+            request.path)
+        if not (registered_detail or session_path):
             raise web.HTTPNotFound()
         if not self.base_url or not self.token:
             return web.json_response({'error': {'code': 'avatar_unavailable'}}, status=503)

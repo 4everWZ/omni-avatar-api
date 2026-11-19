@@ -43,13 +43,13 @@ class ComposeEntrypointTests(unittest.TestCase):
         self.assertEqual(files, ['gateway-node', 'remote-images'])
 
     def test_optional_layers_do_not_replace_base_stack_or_consume_docker_arguments(self):
-        args = command('workstation', ['--profile', 'assets', 'run', '--rm', 'portrait-assets'],
-                       portrait=True, vpn=True, media=True)
+        args = command('workstation', ['--profile', 'assets', 'run', '--rm', 'image-model-fetch'],
+                       images=True, vpn=True, media=True)
         files = [Path(args[i+1]).stem for i, item in enumerate(args) if item == '-f']
-        self.assertEqual(files[-3:], ['portrait', 'vpn', 'media'])
-        self.assertEqual(args[-5:], ['--profile', 'assets', 'run', '--rm', 'portrait-assets'])
+        self.assertEqual(files[-3:], ['images', 'vpn', 'media'])
+        self.assertEqual(args[-5:], ['--profile', 'assets', 'run', '--rm', 'image-model-fetch'])
 
-    def test_portrait_cannot_allocate_workstation_gpu_on_legacy_or_orin_targets(self):
+    def test_shared_images_cannot_allocate_workstation_gpu_on_legacy_or_orin_targets(self):
         for target in set(TARGETS) - {'workstation'}:
             with self.subTest(target=target), self.assertRaises(ValueError):
-                command(target, ['up'], portrait=True)
+                command(target, ['up'], images=True)

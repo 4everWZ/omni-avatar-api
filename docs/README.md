@@ -10,6 +10,5 @@
 | [JetPack 6 / CUDA 12.9](deployment/jetpack6-cu129.md) | Compatibility build variants and hardware checks. |
 | [Development](development.md) | Isolated tests, Python entrypoints, image checks and contribution workflow. |
 | [Gateway reference](../services/gateway/README.md) | Authentication, admission and protocol configuration. |
-| [Portrait worker](../services/portrait/README.md) | Provider assets, rendering and GPU lifecycle. |
 | [Tools](../tools/README.md) | Deployment, real-device qualification and diagnostics. |
 | [Outstanding acceptance](plans/avatar-workstation.md) | Remaining manual and deployment-specific verification. |

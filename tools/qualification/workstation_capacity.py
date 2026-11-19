@@ -1,4 +1,4 @@
-"""Measure two real Omni and Ditto streams and Qwen single/four-way throughput."""
+"""Measure two real Omni streams with CPU avatars and Qwen single/four-way throughput."""
 import argparse
 import asyncio
 import base64
@@ -10,11 +10,11 @@ from aiohttp import ClientSession, ClientTimeout, WSServerHandshakeError
 
 from .concurrency import SHORT_PROMPT, stream_group, stream_requests
 from .omni_throughput import stream_chat
-from .portrait import PortraitQualification
+from .inference import InferenceQualification
 from .workstation import audio_chunks
 
 
-class CapacityQualification(PortraitQualification):
+class CapacityQualification(InferenceQualification):
     async def ordinary_request(self):
         pass
 
@@ -53,8 +53,8 @@ class CapacityQualification(PortraitQualification):
             await asyncio.gather(talk, return_exceptions=True)
 
     async def run(self):
-        self.report.update(scope='dual_omni_dual_ditto_single_and_four_qwen',
-                           mps_client_percent=self.args.mps_percent, state='running')
+        scope = 'dual_cpu_avatar_single_and_four_qwen' if self.args.avatar_only else 'dual_omni_dual_cpu_avatar_single_and_four_qwen'
+        self.report.update(scope=scope, state='running')
         self.save()
         async with ClientSession(timeout=ClientTimeout(total=1200), trust_env=False) as self.http:
             second = None
@@ -74,7 +74,6 @@ class CapacityQualification(PortraitQualification):
                 if not self.args.avatar_only:
                     await self.mixed_omni()
                 second_args = copy(self.args)
-                second_args.avatar_id = self.avatar_id
                 second_args.report = str(Path(self.args.report).with_suffix('.second.json'))
                 second = CapacityQualification(second_args)
                 second.http = self.http
@@ -89,14 +88,11 @@ class CapacityQualification(PortraitQualification):
                 for current in (self, second):
                     detail = await current.json('GET', '/v1/avatar/sessions/' + current.avatar['id'])
                     assert detail['state'] == 'active', detail
-                async with await self.request('POST', '/v1/avatar/sessions', expected=429,
-                        json={'avatar_id': self.avatar_id, 'source': {'type': 'audio'}}):
-                    pass
                 async with asyncio.TaskGroup() as group:
                     group.create_task(self.exercise())
                     group.create_task(second.exercise())
-                    group.create_task(self.text_load('dual_ditto_qwen'))
-                self.check('second_neural_session', checks=second.report['checks'])
+                    group.create_task(self.text_load('dual_cpu_avatar_qwen'))
+                self.check('second_cpu_avatar_session', checks=second.report['checks'])
                 await second.cleanup()
                 second = None
                 # The first session continues while the second capacity is reused.
@@ -109,7 +105,6 @@ class CapacityQualification(PortraitQualification):
                 raise
             finally:
                 if second:
-                    self.report['second_renderer_samples'] = second.render_samples[-120:]
                     await second.cleanup()
                 await self.cleanup()
                 self.save()
@@ -121,16 +116,11 @@ if __name__ == '__main__':
     parser.add_argument('--env', default='.env')
     parser.add_argument('--seconds', type=int, default=90)
     parser.add_argument('--repeats', type=int, default=3)
-    parser.add_argument('--mps-percent', type=int, required=True)
     workload = parser.add_mutually_exclusive_group()
     workload.add_argument('--text-only', action='store_true')
-    workload.add_argument('--portraits-only', dest='avatar_only', action='store_true')
-    reference = parser.add_mutually_exclusive_group()
-    reference.add_argument('--reference')
-    reference.add_argument('--avatar-id')
+    workload.add_argument('--avatar-only', action='store_true')
+    parser.add_argument('--avatar-id', default='ava')
     parser.add_argument('--wav', default='evaluations/fixtures/question.wav')
     parser.add_argument('--report', default='tmp/workstation-capacity.json')
     args = parser.parse_args()
-    if not args.text_only and not (args.reference or args.avatar_id):
-        parser.error('Choose --reference or --avatar-id for mixed-load qualification')
     asyncio.run(CapacityQualification(args).run())

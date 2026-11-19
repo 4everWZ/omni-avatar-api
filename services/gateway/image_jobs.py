@@ -187,8 +187,7 @@ class ImageJobs(ImageQueue):
                  kv_bytes=0):
         super().__init__(root, worker_url, worker_token, text.config.request_timeout)
         self.text = text
-        self.switch_root = Path(switch_root)
-        self.marker = self.switch_root / 'image-active'
+        self.marker = Path(switch_root) / 'image-active'
         self.llm_token = llm_token
         self.minimum_free = minimum_mib * 1024 ** 2
         self.kv_bytes = kv_bytes
@@ -209,19 +208,6 @@ class ImageJobs(ImageQueue):
                 timeout=ClientTimeout(total=self.text.config.request_timeout, connect=3)) as response:
             response.raise_for_status()
             return (await response.json())['phase']
-
-    def claim_portrait_window(self, *, probe=False):
-        import fcntl
-        with (self.switch_root / 'portrait.lock').open('a') as guard:
-            try:
-                fcntl.flock(guard, fcntl.LOCK_EX | fcntl.LOCK_NB)
-            except BlockingIOError:
-                return False
-            if self.marker.exists():
-                raise OSError('Previous GPU lease must be recovered')
-            if not probe:
-                self.atomic(self.marker, b'blocked')
-            return True
 
     async def restore(self):
         if self.marker.exists():
@@ -255,42 +241,29 @@ class ImageJobs(ImageQueue):
         timing = {}
         owned = False
         result = {}
-        preparing = prepared = False
+        preparing = False
         path = '/render/' + identifier
         try:
-            while not cancel.is_set():
-                if time() - job['created_at'] >= QUEUE_TIMEOUT:
-                    result.update(state='failed', error='image_queue_timeout')
-                    break
-                if self.claim_portrait_window(probe=True):
-                    if not prepared:
-                        started = monotonic()
-                        preparing = True
-                        await self.worker('PUT', '/prepare/' + identifier, json=payload)
-                        response = await self.await_worker(path, cancel, success='prepared')
-                        timing['prepare'] = monotonic() - started
-                        if response['state'] != 'prepared':
-                            result.update(state='failed', error=response.get('error', 'image_prepare_failed'))
-                            return
-                        prepared = True
-                    if not self.claim_portrait_window(probe=True):
-                        continue
-                    self.text.admission.pause('image_gpu_switch')
-                    started = monotonic()
-                    await self.wait_until_drained(cancel)
-                    timing['drain_llm'] = monotonic() - started
-                    if self.claim_portrait_window():
-                        owned = True
-                        break
-                    self.text.admission.pause(None)
-                try:
-                    await asyncio.wait_for(cancel.wait(), .25)
-                except TimeoutError:
-                    pass
+            if time() - job['created_at'] >= QUEUE_TIMEOUT:
+                result.update(state='failed', error='image_queue_timeout')
+                return
             if cancel.is_set():
                 raise Cancelled()
-            if not owned:
+            started = monotonic()
+            preparing = True
+            await self.worker('PUT', '/prepare/' + identifier, json=payload)
+            response = await self.await_worker(path, cancel, success='prepared')
+            timing['prepare'] = monotonic() - started
+            if response['state'] != 'prepared':
+                result.update(state='failed', error=response.get('error', 'image_prepare_failed'))
                 return
+            self.text.admission.pause('image_gpu_switch')
+            started = monotonic()
+            await self.wait_until_drained(cancel)
+            timing['drain_llm'] = monotonic() - started
+            # Fence delayed worker dispatches and record the lease before releasing LLM memory.
+            self.atomic(self.marker, b'blocked')
+            owned = True
             timing['queue'] = max(0, time() - job['created_at'] - timing['drain_llm'] - timing['prepare'])
             self.save(job, state='running')
             started = monotonic()

@@ -10,7 +10,7 @@
 
 - **实时多模态助手**：MiniCPM-o Chat Completions 与原生双工 Realtime，使用约 8K 的近期上下文窗口。
 - **长上下文推理**：独立 Qwen3.5 后端，保留单请求 262K 窗口，以共享 token 预算控制最多 4 个生成序列，支持 Responses、增量 SSE、结构化回复和函数调用输出，并保留 Chat Completions 兼容入口。
-- **可插拔形象**：内置 Ava 2D，或参考图驱动的 Ditto 会议式说话头像；通过 WHEP 输出音画，支持打断和代次隔离。
+- **CPU 头像**支持内置 Ava 2D 和已登记的 Inochi2D 原画，通过 WHEP 输出同步音画，支持打断和代次隔离。
 - **共享基础服务**：应用独立 Bearer 凭据、后端独立准入、有界队列、取消以及按调用方归属隔离的响应续接。
 - **固定部署版本**：锁定模型快照和推理镜像，将资产下载与离线服务分开。
 
@@ -22,9 +22,8 @@
 | Omni 引擎 | 低延迟语音／视觉交互和近期会话上下文。 |
 | LLM 引擎 | 为应用和外部编排器提供长上下文文本推理。 |
 | Avatar 服务 | 会话归属、音频时间线、渲染生命周期和 WHEP 音画。 |
-| Portrait 工作器 | 可选的 GPU 参考图准备与神经视频生成。 |
 
-已验证的工作站布局使用**双 RTX 3090**：Omni 使用一张卡，文本 LLM 和可选的神经头像工作器共享另一张卡。Ava 2D 使用宿主 CPU 渲染。AGX Orin 配置提供独立硬件评估路径。详见[架构](docs/architecture.md)与[部署配置](docs/deployment/workstation.md)。
+已验证的工作站布局使用**双 RTX 3090**：Omni 使用一张卡，文本 LLM 使用另一张卡，也可按需让给 Klein 生图。头像使用宿主 CPU 渲染。AGX Orin 配置提供独立硬件评估路径。详见[架构](docs/architecture.md)与[部署配置](docs/deployment/workstation.md)。
 
 ## 快速开始
 
@@ -48,19 +47,9 @@ python tools/compose.py -- --profile assets run --rm llm-model-fetch
 python tools/compose.py -- up -d --wait
 ```
 
-独立节点可用 `--target` 选择 gateway、omni、llm、avatar、portrait 或 images。私有端点与设备选择见[工作站指南](docs/deployment/workstation.md)。
+独立节点可用 `--target` 选择 gateway、omni、llm、avatar 或 images。私有端点与设备选择见[工作站指南](docs/deployment/workstation.md)。
 
 默认组合包含 Omni、文本 LLM、网关和 Ava 2D。API 默认监听 **`http://127.0.0.1:8000`**，浏览器示例位于 `/`。WHEP 媒体需要 LAN／VPN 直达；远程麦克风和屏幕采集需要可信的浏览器上下文。
-
-启用神经头像：
-
-```sh
-python tools/compose.py --portrait -- build omni-portrait
-python tools/compose.py --portrait -- --profile assets run --rm portrait-assets
-python tools/compose.py --portrait -- up -d --wait
-```
-
-实测 TensorRT FP16 配置按[帧后端说明](services/portrait/README.md#tensorrt-frame-backend)启用。
 
 统一入口以仓库根目录解析 `.env`、构建上下文和绑定目录。添加 `--vpn` 可发布到 `OMNI_GATEWAY_VPN_BIND`，添加 `--media` 可启用 MediaMTX。其他硬件／评估配置使用 `--target` 选择。配置与服务更新方式见[工作站指南](docs/deployment/workstation.md)。
 
@@ -74,7 +63,7 @@ python tools/compose.py --portrait -- up -d --wait
 | `/v1/realtime?duplex=1&model=omni-default` | `omni-default` | 原生双工 WebSocket。 |
 | `/llm/v1/responses` | `llm-default` | 长上下文推理和 Responses 增量 SSE。 |
 | `/llm/v1/chat/completions` | `llm-default` | 兼容 Chat 的客户端。 |
-| `/v1/avatar/*` | — | 参考图上传、准备任务、会话、音频与 WHEP。 |
+| `/v1/avatar/*` | — | 已登记原画、会话、音频与 WHEP。 |
 | `/v1/images/jobs` | Klein 4B | 可选生图队列，支持参考图。 |
 | `/healthz`、`/llm/healthz` | — | 需要鉴权的后端身份、就绪与准入查询。 |
 
@@ -109,7 +98,6 @@ services/                 独立构建的服务边界
   llm/                    长上下文文本引擎及 vLLM 补丁
   inference/              启动器、模型配置、固定补丁与镜像
   avatar/                 会话、渲染与 WebRTC 音画
-  portrait/               参考图准备与神经渲染
 deploy/                   Compose 层与可选媒体配置
 tools/                    部署、验收与诊断入口
 tests/                    跨服务契约与部署工具测试
@@ -117,29 +105,15 @@ docs/                     架构、API、开发和部署指南
 evaluations/              共享测试输入和保留的实机证据
 ```
 
-`data/`、`runtime/`、`tmp/` 和 `.env` 属于本地忽略内容。各服务依赖由自己的镜像隔离；服务间通过 HTTP、WebSocket 和 Unix socket 契约通信；同卡服务另用私有帧截止期信号协调计算预算。
+`data/`、`runtime/`、`tmp/` 和 `.env` 属于本地忽略内容。各服务依赖由自己的镜像隔离；服务间通过 HTTP、WebSocket 和 Unix socket 契约通信。
 
 ## 开发与验证
 
 [开发指南](docs/development.md)说明依赖隔离的测试方式与本地服务入口；[工具说明](tools/README.md)提供实机验收命令。
 
-现有记录覆盖 Omni 8K 多轮检索、Responses 续接、约 22K tokens 的 LLM 历史，以及四路较短请求实际同时生成与 25 fps 神经头像共驻。
+现有记录覆盖 Omni 8K 多轮检索、Responses 续接、约 22K tokens 的 LLM 历史，以及旧版 GPU 共享配置下的四路短请求同时生成。
 
 当前 Omni Chat 和后台 Chat／Responses 默认开启 CoT，思考预算沿用上游默认；原生双工保留官方模型策略。实时窗口默认 `basic`（8000／6000），外部应用可在创建会话时调整窗口与文本推理预算，见 [API](docs/api.md#cot-默认与调用方预算)。
-
-此前双 3090 基线使用 TensorRT FP16 帧后端。CoT 开启，每路最多生成 256 tokens，温度 0；输入按模板实报为 Omni 25／LLM 27 tokens。TPS 统计思考＋正文，包含预填充与等待。
-
-| 服务 | 生成请求数 | 其他负载 | 每路总生成 TPS | 合计 TPS |
-| --- | --- | --- | --- | --- |
-| Omni Chat | 1 | 空闲 | 65.97 | 65.97 |
-| Omni Chat | 1 | 原生语音＋头像＋四路 LLM | 33.60–37.39 | 33.60–37.39 |
-| LLM | 1 | 空闲 | 46.69 | 46.69 |
-| LLM | 4 | 空闲 | 36.94–37.09 | 147.77 |
-| LLM | 1 | 原生语音＋头像 | 25.55–26.46 | 25.55–26.46 |
-| LLM | 4 | 原生语音＋头像 | 21.20–21.56 | 84.81–86.04 |
-| LLM | 4 | 原生语音＋头像＋一路 Omni Chat | 19.47–21.47 | 77.89–85.33 |
-
-单头像基线的全栈混跑在 90 秒内生成 2,265 张真实神经帧，最大采样时间线偏差 57 ms。双卡工作站启用两个 Omni 共享槽，Ditto 已接入双槽，双路帧率通过验收前启用一个。共享卡通过 CUDA MPS 和各槽帧截止期分配算力。 [工作站部署](docs/deployment/workstation.md)
 
 256-token 夹具覆盖思考＋正文总生成吞吐，额度可用于思考阶段；完整 CoT 答案、预算、JSON Schema 和工具续接由独立功能夹具验证。计算方式、原始数据和验证范围见[工作站指南](docs/deployment/workstation.md#四路并发与计算预算)。完整 262K 质量、持续负载与实物播放由[后续验收计划](docs/plans/avatar-workstation.md)跟进。
 

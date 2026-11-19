@@ -114,13 +114,11 @@ LLM 单请求上限保留 262144 tokens，引擎和网关默认允许 4 个生�
 
 `LLM_MAX_NUM_SEQS` 同时配置引擎和网关（默认 4）；`LLM_TOKEN_BUDGET` 控制全局活跃预留，模型窗口由 `max_model_len` 独立配置。`LLM_QUEUE_LIMIT`、`LLM_QUEUE_TIMEOUT`、`LLM_REQUEST_TIMEOUT` 可独立设置后台排队和总期限，默认继承现有 16／5 秒／1200 秒；Omni 的实时通道保持独立。提高并发或预算必须重新验证显存和头像共驻表现。
 
-启用神经头像覆盖时，LLM 与 Ditto 通过 CUDA MPS 共驻站点选择的 GPU；LLM 活跃线程上限默认 20%，并启用批次 1／2／4 的解码 CUDA Graph、关闭异步调度。派发前读取实际帧进度，渲染余量低于 240 ms 时主动让出最多 18 ms，余量恢复后提前派发；反馈空闲或失效时正常派发，SSE 即时转发。计算资源上限与 token 显存预算分别生效；当前吞吐和重启流程见[工作站部署](deployment/workstation.md#四路并发与计算预算)。
-
 当前验收范围是 provider API，具体 Antigravity／agent-orchestrator 客户端接入留在应用项目。[provider 约定](../services/gateway/README.md#external-orchestration-clients)。
 
 ## Avatar 会话与音画
 
-Avatar 由独立服务持有，所有外部请求通过共享网关鉴权。用不同客户端创建独立会话，按会话隔离媒体和控制。渲染服务可替换驱动，统一消费带时间戳和代次的音频，输出同步的视频帧及媒体状态。渲染失败时，原生语音和字幕仍可交付。当前 Ava 2D 已通过分卡配置下约 20 分钟原生双工与后台 LLM 共驻检查；参考图驱动的会议式神经头像也已通过 25 fps、同步、归属隔离及取消恢复检查；浏览器实物交互列入后续人工验收。[当前验收结论](deployment/workstation.md#实机准入)。
+Avatar 由独立服务持有，所有外部请求通过共享网关鉴权。用不同客户端创建独立会话，按会话隔离媒体和控制。渲染服务可替换驱动，统一消费带时间戳和代次的音频，输出同步的视频帧及媒体状态。渲染失败时，原生语音和字幕仍可交付。当前 Ava 2D 已通过分卡配置下约 20 分钟原生双工与后台 LLM 共驻检查；浏览器实物交互列入后续人工验收。[当前验收结论](deployment/workstation.md#实机准入)。
 
 | 会话操作 | 目标契约 |
 | --- | --- |
@@ -159,7 +157,7 @@ Realtime 客户端仍使用原协议。客户端以 `?avatar=1` 选择 Avatar �
 
 ### 可插拔渲染与后续数字人
 
-`services/avatar/avatars.json` 登记 `avatar_id`、驱动和素材目录；`OMNI_AVATAR_REGISTRY` 可指定替代登记文件。驱动接收带采样起点和代次的原始 PCM，按会话时间戳提供画面，并实现能力声明、代次清除和关闭；音频入队与取帧应保持非阻塞，神经驱动可在独立 worker 推理。媒体与权限不依赖具体驱动。`sprite2d` 使用 Ava 四状态素材和共享时间线的音量；`ditto` 提供参考图会议式说话头像。已登记驱动共用媒体和会话契约，未来 3D 多视角驱动沿用该接口。后续验收见[当前计划](plans/avatar-workstation.md)。
+`services/avatar/avatars.json` 登记 `avatar_id`、驱动和素材目录；`OMNI_AVATAR_REGISTRY` 可指定替代登记文件。驱动接收带采样起点和代次的原始 PCM，按会话时间戳提供画面，并实现能力声明、代次清除和关闭；音频入队与取帧应保持非阻塞。媒体与权限不依赖具体驱动。`sprite2d` 使用 Ava 四状态素材和共享时间线的音量。已登记驱动共用媒体和会话契约，未来 3D 多视角驱动沿用该接口。后续验收见[当前计划](plans/avatar-workstation.md)。
 
 `inochi2d` 在媒体服务 CPU 上读取 Inochi2D 0.8 的 INP1 文件。在私有登记文件中加入例如 `{"my-avatar":{"driver":"inochi2d","root":"rigs/my-avatar/model.inp"}}`。Compose 部署将该文件命名为 `registry.json`，设置 `OMNI_AVATAR_ASSETS_DIR` 为同时存放登记表和模型的工作站目录，为现有 `tools/compose.py` 命令加上 `--registered-avatars` 以只读方式挂载。登记表应包含仍在使用的全部形象。相对路径以登记文件所在目录为准。通过原有 `POST /v1/avatar/sessions` 传入 `{"avatar_id":"my-avatar","source":{"type":"audio"}}`，向返回的 `audio_url` 提交 PCM，并在 `media_url` 订阅 WHEP。实时会话可沿用 `source.type=realtime`。返回的 `format.driver` 为 `inochi2d`。
 
@@ -167,29 +165,9 @@ Realtime 客户端仍使用原协议。客户端以 `?avatar=1` 选择 Avatar �
 
 Inochi2D 另读取当前窗之前最多 220 ms 的播放历史。弱起音之前已有 200 ms 静默时，口型驱动检查相邻已入队样本的能量分布。能量集中在单个极短脉冲时保持闭口。音轨和两个媒体轨的发送时钟沿用原路径。两套原画的原声对照见[起音重放记录](../evaluations/results/inochi-quiet-onset-20261119.md)。
 
-## 参考图与会议式头像
+已登记的 Inochi2D 形象可通过 `GET /v1/avatar/avatars/{avatar_id}` 查询。模型与纹理可加载时返回 `id`、`driver: inochi2d` 和 `state: ready`。未知 ID 返回 404，已登记但素材缺失或损坏返回 503。
 
-准备形象时可向 `POST /v1/avatar/generations` 添加 `"infra":{"version":1,"portrait":{"crop_scale":2.3,"crop_vx_ratio":0,"crop_vy_ratio":-0.125,"crop_flag_do_rot":true}}`。前三项为有限 FP32 范围的数值，比例 crop_scale 为正，旋转开关为布尔值。示例取值即原有 registrar 默认值；准备任务绑定参考图及裁剪，修改需创建新形象。创建 Ditto 会话可声明 `"infra":{"version":1,"portrait":{"online":true}}`，返回 format.online=true。当前 Ditto 驱动仅提供在线渲染，显式 false 或未知选项返回 400。
-
-参考图驱动的会议式说话头像采用可插拔 Ditto 驱动，生成参考图身份的会议式音画。启用 `deploy/compose/portrait.yml` 后，所有请求沿用应用 Bearer，通过网关进入私有准备／渲染服务；未启用时返回 503。参考图和生成结果仅原调用方可访问，其他调用方得到 404。
-
-| 接口 | 行为 |
-| --- | --- |
-| `POST /v1/avatar/assets` | JSON `{"mime_type":"image/png","image_base64":"..."}`，也支持 JPEG。最多 4 MiB、800 万像素，解码后保留方向与比例并填充至 640×720。返回 201 和参考图 `id`。使用清楚的单人正面头像。 |
-| `DELETE /v1/avatar/assets/{id}` | 删除未被任务引用的参考图；有依赖时返回 409。 |
-| `POST /v1/avatar/generations` | `{"reference_asset_id":"...","driver":"ditto"}`，返回 202 和任务 `id`。准备人脸、外观和运动特征，输出参考图驱动的说话头像。 |
-| `GET /v1/avatar/generations/{id}` | 状态 `queued → preparing → ready`；失败为 `failed`，取消为 `cancelled`。仅 `ready` 返回可用 `avatar_id`。 |
-| `DELETE /v1/avatar/generations/{id}` | 活跃准备任务标为 cancelled，GPU 工作实际退出前继续占用配额；再次删除可清理记录。就绪任务删除形象及特征，若形象正在通话则返回 409。 |
-| `GET /v1/avatar/avatars/{avatar_id}` | 查询已准备形象和驱动能力。已注册的 Inochi2D 原画使用部署方提供的 ID，容器及纹理可加载时返回同一 `id`、`driver: inochi2d` 和 `state: ready`。未知 ID 返回 404，损坏或缺失的注册文件返回 503。神经形象的 `/preview` 返回规范化参考图预览。 |
-| `POST /v1/avatar/sessions` | 将就绪的 `portrait_...` 作为 `avatar_id`，仍按上述方式绑定 `audio` 或自有 `realtime` 源；返回同一套音频、事件及 WHEP 入口。 |
-
-每次登记可在 `infra.portrait.calibration` 指定当前参考图的 `face_box`、`eyes` 或两者，坐标以规范化后的 640×720 资产为准。省略的阶段继续使用 Ditto 自动检测。GET 任务时可读回 `crop.calibration`；失败保留原错误码，并通过 `diagnostic.stage` 定位准备阶段。[按形象校准、两份原稿标注与隔离复测](ditto-calibration.md)
-
-Ditto 支持两个渲染和参考图准备共享的 GPU 槽位，工作站默认启用一个，双路帧率待验收。准备任务等待空闲槽，忙时创建神经会话返回 `429`。CPU Avatar 的服务总会话上限是四路。每调用方最多保留 16 张图、16 个任务，总量各 64；客户端按需回收资产。准备形象持久化，重启后由客户端新建活跃会话。不同驱动返回各自实际能力，未来的 3D 驱动沿用同一接口。
-
-神经会话创建时先完成实际渲染线程的预热再就绪；等待创建成功后再向绑定源发送需要形象播放的音频。输出 640×720、25 fps；音频播放预留 1200 ms 推理时间，`format.input_lead_ms` 明示。音画共用时间线，原生 Omni 音频仍独立输出。清空立即停播旧音频并丢弃旧代次视频，神经运动状态允许自然过渡。落后或停滞会发出 `avatar.failed`，调用方继续消费原生语音。会话 `renderer` 字段报告实际 `generated_frames`、最新生成及已显示帧时间，可用于检查是否真正达到实时生成速度。
-
-单头像基线在 90 秒内生成 2,265 张真实神经帧，最大采样时间线偏差 57 ms。双头像的实机状态见工作站指南。 [混跑证据](../evaluations/results/omni-throughput-tensorrt-workstation.json) · [生命周期证据](../evaluations/results/portrait-lifecycle-workstation.json) · [工作站指南](deployment/workstation.md)。
+旧版 Ditto 的资产上传、准备任务和预览入口返回 404。用旧版生成的形象 ID 创建会话会返回 400；调用方可改用登记表中的 2D 形象。
 
 ## 生图任务
 
@@ -202,11 +180,9 @@ Ditto 支持两个渲染和参考图准备共享的 GPU 槽位，工作站默认
 | `GET /v1/images/jobs/{id}/result` | 完成后获取 `image/png`，其他状态返回 `409`。 |
 | `POST /v1/images/jobs/{id}/cancel` | 取消等待任务或请求运行任务协作停止，返回当前状态。安全释放 GPU 并恢复后进入终态。重复调用返回当前状态。 |
 
-服务依次执行任务，最多额外排队八个。满队列返回 `429`，等待时限为 1200 秒，终态记录保留 24 小时，上限 256 条。协调进程重启时，未完成任务标为失败。运行中的神经头像和参考图准备优先于等待中的生图。
+服务依次执行任务，最多额外排队八个。满队列返回 `429`，等待时限为 1200 秒，终态记录保留 24 小时，上限 256 条。协调进程重启时，未完成任务标为失败。
 
 切换开始后，已准入的 LLM 生成正常完成，新的 Chat／Responses 生成按现有 FIFO 和等待时限准入，超时返回 `429` 和 `Retry-After`。已有 Responses 查询和取消可用，已存储的历史在正常切换后可用原 `previous_response_id` 续接。`/llm/healthz` 在切换时返回 `busy`，恢复状态不明时返回 `503`。
-
-实现与实机验收进度见[当前计划](plans/avatar-workstation.md)；驱动、资产和资源生命周期见 [services/portrait/README.md](../services/portrait/README.md)。
 
 ### 独立图像节点
 

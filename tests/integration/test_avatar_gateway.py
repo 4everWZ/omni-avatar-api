@@ -49,6 +49,18 @@ class BridgeTest(unittest.IsolatedAsyncioTestCase):
         self.addAsyncCleanup(client.close)
         return client
 
+    async def test_retired_portrait_api(self):
+        client = await self.gateway()
+        identity = 'portrait_' + 'a' * 32
+        for method, path in [('POST', 'assets'), ('POST', 'generations'), ('GET', 'avatars/' + identity),
+                             ('GET', 'avatars/' + identity + '/preview')]:
+            async with client.request(method, '/v1/avatar/' + path, headers=AUTH) as response:
+                self.assertEqual(response.status, 404, path)
+        async with client.post('/v1/avatar/sessions', headers=AUTH, json={
+                'avatar_id': identity, 'source': {'type': 'audio'}}) as response:
+            self.assertEqual(response.status, 400)
+            self.assertEqual((await response.json())['error']['message'], 'Unknown avatar_id')
+
     async def test_tap_owner_media_events_and_live_chat(self):
         client = await self.gateway()
         voice = await client.ws_connect('/v1/realtime?duplex=1&avatar=1', headers=AUTH)

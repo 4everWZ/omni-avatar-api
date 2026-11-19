@@ -15,19 +15,11 @@ from services.gateway.image_jobs import ImageJobs
 class FixtureJobs(ImageJobs):
     engine_phase = 'awake'
     run_phase = 'idle'
-    portrait_active = False
     broken_wake = False
 
     def __init__(self, text, root):
         super().__init__(text, root, root, 'http://worker', 'worker', 'engine', 1)
         self.calls = []
-
-    def claim_portrait_window(self, *, probe=False):
-        if self.portrait_active:
-            return False
-        if not probe:
-            self.atomic(self.marker, b'blocked')
-        return True
 
     async def llm(self, action):
         self.calls.append(action)
@@ -82,16 +74,11 @@ class ImageJobTests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(reply.status, 202)
             return reply.headers['Location']
 
-    async def test_portrait_priority_drains_llm_and_restores_after_completion(self):
-        self.jobs.portrait_active = True
+    async def test_image_job_drains_llm_and_restores_after_completion(self):
         self.jobs.calls.clear()
         admission = self.jobs.text.admission
         async with admission.hold('chat', tokens=1):
             path = await self.submit()
-            await asyncio.sleep(.05)
-            self.assertFalse(self.jobs.calls)
-            self.assertIsNone(admission.paused)
-            self.jobs.portrait_active = False
             await self.until(lambda: admission.paused)
             self.assertFalse(self.jobs.calls)
             with self.assertRaises(Busy):

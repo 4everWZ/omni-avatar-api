@@ -7,14 +7,13 @@ import secrets
 from pathlib import Path
 from time import monotonic
 
-from aiohttp import ClientSession, ClientTimeout, UnixConnector, WSMsgType, web
+from aiohttp import WSMsgType, web
 from aiortc import RTCConfiguration, RTCPeerConnection, RTCSessionDescription
 from aiortc.codecs import h264, vpx
 
 from .media import PlaybackClock, TimelineTrack
 from .renderers import DRIVERS
 from .sessions import PLAYBACK_HISTORY_SECONDS, RATE, Session
-from .portrait_client import PortraitClient
 from .registered import RegisteredRigs
 
 ROOT = Path(__file__).parent
@@ -34,7 +33,6 @@ class AvatarService:
         self.rigs = RegisteredRigs()
         self.capacity, self.idle_timeout = capacity, idle_timeout
         self.sessions, self.sources = {}, {}
-        self.portrait = None
         self.creating = 0
 
     @web.middleware
@@ -64,20 +62,13 @@ class AvatarService:
         if not isinstance(body, dict):
             raise ValueError('Expected an object')
         avatar_id = body.get('avatar_id')
-        neural = isinstance(avatar_id, str) and re.fullmatch(r'portrait_[a-f0-9]{32}', avatar_id)
-        if avatar_id not in self.registry and not neural:
+        if not isinstance(avatar_id, str) or avatar_id not in self.registry:
             raise ValueError('Unknown avatar_id')
         if 'infra' in body:
             infra = body['infra']
             if (not isinstance(infra, dict) or type(infra.get('version')) is not int
-                    or infra['version'] != 1 or infra.keys() - {'version', 'portrait'}):
+                    or infra['version'] != 1 or infra.keys() - {'version'}):
                 raise ValueError('Invalid infra extension')
-            if 'portrait' in infra:
-                options = infra['portrait']
-                if not neural or not isinstance(options, dict) or options.keys() - {'online'}:
-                    raise ValueError('Invalid portrait session options')
-                if options.get('online', True) is not True:
-                    raise ValueError('Ditto supports online=true')
         source = body.get('source')
         if not isinstance(source, dict) or source.get('type') not in ('realtime', 'audio'):
             raise ValueError('source.type must be realtime or audio')
@@ -86,22 +77,13 @@ class AvatarService:
             raise web.HTTPNotFound(reason='Realtime source not available for this caller')
         if sum(s.state != 'closed' for s in self.sessions.values()) + self.creating >= self.capacity:
             raise web.HTTPTooManyRequests(reason='Avatar capacity reached')
-        if neural:
-            if self.portrait is None:
-                raise web.HTTPServiceUnavailable(reason='Portrait worker is not configured')
-            self.creating += 1
-            try:
-                renderer = await self.portrait.renderer(request['owner'], avatar_id)
-            finally:
-                self.creating -= 1
-        else:
-            registered = self.registry[avatar_id]
-            factory = DRIVERS[registered['driver']]
-            self.creating += 1
-            try:
-                renderer = await asyncio.to_thread(factory, Path(registered['root']))
-            finally:
-                self.creating -= 1
+        registered = self.registry[avatar_id]
+        factory = DRIVERS[registered['driver']]
+        self.creating += 1
+        try:
+            renderer = await asyncio.to_thread(factory, Path(registered['root']))
+        finally:
+            self.creating -= 1
         source_state = self.sources.get(source_id, {})
         session = Session(request['owner'], avatar_id, source_id, renderer,
                           epoch=source_state.get('epoch', -1), response_id=source_state.get('response_id'))
@@ -267,16 +249,6 @@ class AvatarService:
             raise
 
     async def lifecycle(self, app):
-        client = None
-        path = os.environ.get('OMNI_PORTRAIT_SOCKET')
-        origin = os.environ.get('OMNI_PORTRAIT_URL')
-        if path and origin:
-            raise ValueError('Configure one Portrait transport: socket or HTTP origin')
-        if path or origin:
-            client = ClientSession(base_url=origin or 'http://portrait',
-                                   connector=UnixConnector(path=path) if path else None,
-                                   timeout=ClientTimeout(total=40))
-            self.portrait = PortraitClient(client, self.token)
         async def reap():
             while True:
                 await asyncio.sleep(15)
@@ -291,20 +263,13 @@ class AvatarService:
         await asyncio.gather(task, return_exceptions=True)
         await asyncio.gather(*(item['socket'].close() for item in tuple(self.sources.values())))
         await asyncio.gather(*(s.close() for s in tuple(self.sessions.values())))
-        if client:
-            await client.close()
 
-    async def portrait_api(self, request):
-        identity = request.match_info.get('id', '')
-        if request.method == 'GET' and request.path == '/v1/avatar/avatars/' + identity:
-            if not re.fullmatch(r'portrait_[a-f0-9]{32}', identity):
-                entry = self.registry.get(identity)
-                if not entry or entry['driver'] != 'inochi2d' or 'inochi2d' not in DRIVERS:
-                    raise web.HTTPNotFound()
-                return await self.rigs.describe(identity, entry, DRIVERS['inochi2d'])
-        if self.portrait is None:
-            raise web.HTTPServiceUnavailable(reason='Portrait worker is not configured')
-        return await self.portrait.forward(request)
+    async def registered_detail(self, request):
+        identity = request.match_info['id']
+        entry = self.registry.get(identity)
+        if not entry or entry['driver'] != 'inochi2d':
+            raise web.HTTPNotFound()
+        return await self.rigs.describe(identity, entry, DRIVERS['inochi2d'])
 
 
 def create_app(token=None, **options):
@@ -320,13 +285,7 @@ def create_app(token=None, **options):
     app.add_routes([
         web.get('/livez', livez),
         web.get('/internal/sources/{id}', service.source),
-        web.post('/v1/avatar/assets', service.portrait_api),
-        web.delete('/v1/avatar/assets/{id}', service.portrait_api),
-        web.post('/v1/avatar/generations', service.portrait_api),
-        web.get('/v1/avatar/generations/{id}', service.portrait_api),
-        web.delete('/v1/avatar/generations/{id}', service.portrait_api),
-        web.get('/v1/avatar/avatars/{id}', service.portrait_api),
-        web.get('/v1/avatar/avatars/{id}/preview', service.portrait_api),
+        web.get('/v1/avatar/avatars/{id}', service.registered_detail),
         web.post('/v1/avatar/sessions', service.create),
         web.get('/v1/avatar/sessions/{id}', service.detail),
         web.delete('/v1/avatar/sessions/{id}', service.detail),

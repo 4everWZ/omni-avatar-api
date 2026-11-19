@@ -10,7 +10,6 @@ services:
     environment:
       OMNI_AVATAR_INTERNAL_TOKEN: ${OMNI_AVATAR_INTERNAL_TOKEN:?set OMNI_AVATAR_INTERNAL_TOKEN in .env}
       OMNI_AVATAR_SOCKET: /run/omni-avatar/control.sock
-      OMNI_PORTRAIT_URL: ${OMNI_PORTRAIT_URL:-}
     volumes:
       - avatar-control:/run/omni-avatar
     healthcheck:

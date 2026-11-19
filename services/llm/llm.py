@@ -51,8 +51,7 @@ def serve(model, revision, path):
                                                     'cudagraph_capture_sizes': [1, 2, 4]}),
                '--no-async-scheduling',
                '--language-model-only', '--no-enable-prefix-caching',
-               # Fixed KV bytes below own allocation. This is the startup
-               # free-memory check, including when both Ditto slots are resident.
+               # KV allocation is fixed separately from the startup free-memory check.
                '--gpu-memory-utilization', '0.75',
                '--kv-cache-memory-bytes', os.environ.get('LLM_KV_CACHE_BYTES', '9663676416'),
                '--mamba-ssm-cache-dtype', 'float32', '--reasoning-parser', 'qwen3',
