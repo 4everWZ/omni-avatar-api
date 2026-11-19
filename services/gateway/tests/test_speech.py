@@ -48,7 +48,7 @@ class SpeechTest(unittest.IsolatedAsyncioTestCase):
         self.auth = {"Authorization": "Bearer ordinary-test-key"}
 
     async def test_verified_audio_requires_separate_audio_only_readback(self):
-        response = await self.client.post("/v1/audio/speech", headers=self.auth, json=self.input)
+        response = await self.client.post("/v1/audio/speech", headers=self.auth, json=self.input | {"voice": "reference"})
         self.assertEqual(response.status, 200)
         self.assertEqual(await response.read(), self.wav)
         self.assertEqual(base64.b64decode(response.headers["X-Omni-Transcript"]).decode(), self.heard)
@@ -61,7 +61,7 @@ class SpeechTest(unittest.IsolatedAsyncioTestCase):
     async def test_auth_reference_boundary_and_shared_admission(self):
         response = await self.client.post("/v1/audio/speech", json=self.input)
         self.assertEqual(response.status, 401)
-        for patch in ({"reference_audio": "https://example.com/sample.wav"}, {"model": "another"},
+        for patch in ({"reference_audio": "https://example.com/sample.wav"}, {"model": "another"}, {"voice": "another"},
                       {"sampling_params_list": []}, {"reference_audio": {"format": "wav", "data": "aGVsbG8="}}):
             response = await self.client.post("/v1/audio/speech", headers=self.auth, json=self.input | patch)
             self.assertEqual(response.status, 400)

@@ -89,10 +89,11 @@ async def speech(request):
     try:
         async with asyncio.timeout(gateway.config.request_timeout):
             body = await request.json()
-            if not isinstance(body, dict) or set(body) - {"input", "model", "reference_audio", "response_format"}:
+            if not isinstance(body, dict) or set(body) - {"input", "model", "reference_audio", "response_format", "voice"}:
                 raise ValueError()
             line, ref = body["input"], body["reference_audio"]
             if (body["model"] != gateway.config.model_alias or body.get("response_format", "wav") != "wav"
+                    or body.get("voice", "reference") != "reference"
                     or not isinstance(line, str) or not 1 <= len(line) <= 4096 or not spoken_words(line)
                     or not isinstance(ref, dict) or set(ref) != {"data", "format"} or ref["format"] != "wav"
                     or not isinstance(ref["data"], str) or len(ref["data"]) > 10_666_668):
