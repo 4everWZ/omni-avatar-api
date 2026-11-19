@@ -30,6 +30,11 @@ class SpeechTest(unittest.IsolatedAsyncioTestCase):
                 msg = {"content": json.dumps({"transcript": self.heard})}
             else:
                 self.assertEqual(payload["ref_audio"], "data:audio/wav;base64," + self.audio)
+                system, user = payload["messages"]
+                self.assertEqual(system["role"], "system")
+                self.assertEqual([part["type"] for part in system["content"]], ["text", "input_audio", "text"])
+                self.assertEqual(system["content"][1]["input_audio"], self.input["reference_audio"])
+                self.assertIn(self.input["input"], user["content"])
                 self.assertEqual(payload["sampling_params_list"][1]["min_tokens"], 1)
                 msg = {"content": "收到！", "audio": {"data": self.audio}}
             return web.json_response({"choices": [{"finish_reason": "stop", "message": msg}]})

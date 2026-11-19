@@ -33,9 +33,16 @@ def validate_wav(data, *, output=False):
 
 def synthesis_request(model, line, reference):
     budget = len(line.encode()) + 16
+    # MiniCPM-o conditions the Thinker on system audio as well as conditioning
+    # Code2Wav on the reference waveform. Both inputs use the same recording.
+    voice_context = [
+        {"type": "text", "text": "模仿音频样本的音色并生成新的内容。"},
+        {"type": "input_audio", "input_audio": {"format": "wav", "data": reference}},
+        {"type": "text", "text": "请用这种声音风格来为用户提供帮助。直接作答，不要有冗余内容。"},
+    ]
     return {
         "model": model, "modalities": ["text", "audio"], "audio": {"format": "wav", "voice": "assistant"},
-        "messages": [{"role": "system", "content": "逐字朗读用户给出的台词，保留标点。"},
+        "messages": [{"role": "system", "content": voice_context},
                      {"role": "user", "content": "请朗读以下内容。 " + line}],
         "ref_audio": "data:audio/wav;base64," + reference,
         "chat_template_kwargs": {"enable_thinking": False, "use_tts_template": True},
@@ -43,7 +50,7 @@ def synthesis_request(model, line, reference):
         # The workstation Talker's default EOS floor is 50 codec frames. It can
         # repeat a finished short utterance while waiting for EOS to be available.
         "sampling_params_list": [
-            {"temperature": 0, "max_tokens": budget},
+            {"temperature": 0, "seed": 42, "max_tokens": budget},
             {"temperature": 0.8, "top_p": 0.85, "top_k": 25, "repetition_penalty": 1.05,
              "min_tokens": 1, "max_tokens": min(2048, 64 + len(line) * 24), "seed": 42, "detokenize": False},
         ],

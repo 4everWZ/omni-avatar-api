@@ -22,6 +22,8 @@ Bearer 鉴权、排队、取消、超时和管理接口由[网关规范](../serv
 
 ## 参考音色朗读
 
+MiniCPM-o 朗读适配器把同一份参考录音放入系统消息的音频上下文，并作为 Code2Wav 的参考波形。Thinker 接收带音频的上下文，Talker 接收 Thinker 的台词隐状态。准入按实际含音频的模板计量。客户端仍然只需上传一份参考。
+
 需要 `voice` 参数的 Speech SDK 可传 `voice="reference"`，并通过 JSON 扩展字段 `reference_audio` 提供真实参考。每次请求均须带参考音频。
 
 `input` 为指定台词（1 至 4096 字符），`model` 使用 Omni 模型别名，`reference_audio` 为含 `format: "wav"` 和 Base64 `data` 的对象。`response_format` 可省略或填 `wav`。参考材料接受单／双声道 PCM WAV，上限 8 MB、90 秒。参考须由调用方按角色授权选定并上传。URL、文件路径和调用方传入的引擎参数返回 400。
