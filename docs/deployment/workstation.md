@@ -72,6 +72,20 @@ LLM 固定为 `axteam/Qwen3.5-9B-AWQ-4bit@5577b5b71e6f06b9f6a1f3743ef6ba6dc4ecd2
 
 旧版 Ditto／MPS 部署的实测值随测量条件保存在[前台混跑](../../evaluations/results/omni-throughput-tensorrt-workstation.json)和[后台混跑](../../evaluations/results/throughput-tensorrt-workstation.json)。新版的吞吐可用[工作站工具](../../tools/README.md#tps-与混跑)测量。
 
+### 移除 Ditto 后的工作站实测
+
+2026-11-19 在同一台双 RTX 3090 工作站，从 `082f213` 的单 Ditto／MPS 部署切换到 `500ccc8`。Omni 使用 GPU0，Qwen 和按需运行的 Klein 使用 GPU1。以下显存来自模型就绪、未运行测试作业时的整卡采样。
+
+| 指标 | 切换前 | 切换后 |
+| --- | ---: | ---: |
+| GPU1 空闲显存（MiB） | 4,546 | 6,322 |
+| Qwen 单路端到端输出（tokens/s） | 81.74 | 86.35 |
+| Qwen 四路合计端到端输出（tokens/s） | 301.81 | 323.19 |
+
+两侧均通过同一工作站网关，使用 [Responses 短提示夹具](../../tools/qualification/concurrency.py) 的 `stream_requests`，温度为 0、CoT 开启、每路最多输出 256 tokens。先跑一次单路预热，再各测一次单路与四路。四路的实际输出区间重叠。吞吐值为本次短测的观测值。
+
+切换后，Ava 和登记的 Inochi2D 原画 `q` 各运行四秒 WHEP，分别解码 101、100 帧视频，两路都收到非静音音频并成功关闭。Omni Chat 返回正确答案。Klein 完成一张 1024×1024 PNG，用时 8.94 秒，仅释放 LLM 的 KV 缓存；恢复后用生图前创建的 Responses ID 续接，成功取回原对话中的数字。
+
 ### 从旧版 Ditto 部署升级
 
 在旧版本下，使用现场原有的 Compose 参数先停止 `omni-portrait` 和 `llm-engine`，再停止 `gpu-mps`。这会中断现有推理请求。移除这三个已停止的容器，保留命名卷。更新仓库后，从启动参数去掉 `--portrait`，保留现场启用的 `--images`、`--registered-avatars`、`--vpn` 等选项。重新构建 `llm-engine`、`omni-avatar` 和 `omni-gateway` 并启动，再检查两个模型健康接口和登记原画会话。独立部署的旧 Portrait 节点也需在原项目中停止其 worker。
