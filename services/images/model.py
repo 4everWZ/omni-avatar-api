@@ -12,8 +12,11 @@ class Cancelled(Exception):
 
 
 class Klein:
-    def __init__(self, path):
+    def __init__(self, path, num_inference_steps=4):
+        if not 1 <= num_inference_steps <= 32:
+            raise ValueError('Image inference steps must be between 1 and 32')
         self.path = path
+        self.num_inference_steps = num_inference_steps
         self.pipe = None
         self.cpu_weights = None
 
@@ -94,7 +97,8 @@ class Klein:
                 check_cancelled(cancelled)
                 uploaded = monotonic()
                 image = pipe(prompt_embeds=embeddings.to('cuda'), image=reference,
-                             width=1024, height=1024, guidance_scale=1.0, num_inference_steps=4,
+                             width=1024, height=1024, guidance_scale=1.0,
+                             num_inference_steps=self.num_inference_steps,
                              generator=torch.Generator(device='cuda').manual_seed(seed),
                              callback_on_step_end=step).images[0]
                 torch.cuda.synchronize()
