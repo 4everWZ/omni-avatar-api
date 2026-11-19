@@ -42,7 +42,9 @@ async def responses_capacity(request: ResponsesRequest, raw_request: Request):
                 previous = handler.response_store.get(request.previous_response_id)
             if previous is None:
                 return failed(handler._make_not_found_error(request.previous_response_id))
-        rendered = await handler._render_resolved_response_inputs(request, previous)
+        # This render never reaches the scheduler. Populating the sender-side
+        # multimodal cache here would make the actual generation omit the pixels.
+        rendered = await handler._render_resolved_response_inputs(request, previous, skip_mm_cache=True)
         if (error := failed(rendered)) is not None:
             return error
         if (error := failed(handler._validate_generator_input(rendered.engine_input))) is not None:

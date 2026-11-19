@@ -51,6 +51,9 @@ python tools/compose.py --target llm -- stop llm-engine
 | `/healthz`、`/llm/healthz` | 各自后端的身份、根目录校验、就绪和准入状态。 |
 | `/v1/images/jobs` | 可选 Klein 生图任务，提交、查询、下载、取消。 |
 
+现有 Qwen 权重包含视觉部分。升级时用原模型卷重建并重启 `llm-engine`，`LLM_MAX_IMAGES_PER_REQUEST` 默认 8，填写 0 可切回只加载语言部分。以 Responses 同一请求体先计量再生成，核对实际计量和图像内容。变更图片上限、推理并发或 KV 预留后按实测显存复核。
+
+
 Chat 调用方每次提交 messages 和所选记忆；Realtime 引擎维护活跃近期历史并按窗口策略滑动。两个模型由路径和别名显式选择。实时窗口沿用官方 `basic`；通过 `autostart=0` 和首条 `session.update.session.extra_body` 可配置新会话。可选 `context` 保留 24 个近期输入单元与最多 500 tokens 的较早模型生成文本，并重建窗口。长期历史由应用持有并按需选入提示。[窗口参数](../api.md#omni-实时历史窗口)。
 
 Omni Chat 和后台 Chat／Responses 默认开启 CoT，思考预算沿用固定上游默认；Omni Chat 总输出默认 2048。调用方可覆盖模板开关、思考预算与总输出上限；Realtime 采用模型原生监听／说话策略。[预算字段](../api.md#cot-默认与调用方预算)。

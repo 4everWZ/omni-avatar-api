@@ -32,6 +32,15 @@ class InferenceAdmissionTests(unittest.TestCase):
         self.assertEqual(config['cudagraph_mode'], 'FULL_DECODE_ONLY')
         self.assertEqual(config['cudagraph_capture_sizes'], [1, 2, 4])
 
+    def test_background_qwen_enables_bounded_image_input(self):
+        command = self.launch({})
+        self.assertNotIn('--language-model-only', command)
+        self.assertEqual(json.loads(command[command.index('--limit-mm-per-prompt') + 1]),
+                         {'image': 8, 'video': 0})
+        self.assertIn('--language-model-only', self.launch({'LLM_MAX_IMAGES_PER_REQUEST': '0'}))
+        with self.assertRaises(ValueError):
+            self.launch({'LLM_MAX_IMAGES_PER_REQUEST': '9'})
+
     def test_withdrawn_pause_setting_cannot_reenable_throttling(self):
         self.assertEqual(self.launch({}), self.launch({'LLM_GPU_STEP_PAUSE_MS': '250'}))
 
