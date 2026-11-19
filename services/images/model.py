@@ -66,7 +66,7 @@ class Klein:
                 if source.format not in ('PNG', 'JPEG') or source.width * source.height > 8_000_000:
                     raise ValueError('Expected a PNG or JPEG of at most eight megapixels')
                 reference = ImageOps.exif_transpose(source).convert('RGB')
-                reference.thumbnail((1024, 1024))
+                # The pipeline scales by pixel area, preserving detail in wide design sheets.
         self.load_cpu()
         loaded = monotonic()
         check_cancelled(cancelled)
