@@ -1,4 +1,4 @@
-"""Pinned, independent text inference; never executes tools or stores memory."""
+"""Pinned, independent text and image inference; never executes tools or stores memory."""
 import json
 import os
 from pathlib import Path
@@ -42,6 +42,9 @@ def serve(model, revision, path):
     window = int(os.environ.get('LLM_MAX_MODEL_LEN', native))
     if not 4096 <= window <= native:
         raise ValueError('LLM_MAX_MODEL_LEN is outside the checkpoint window')
+    max_images = int(os.environ.get('LLM_MAX_IMAGES_PER_REQUEST', '8'))
+    if not 0 <= max_images <= 8:
+        raise ValueError('LLM_MAX_IMAGES_PER_REQUEST must be between 0 and 8')
     command = [sys.executable, '-m', 'vllm.entrypoints.openai.api_server',
                '--model', str(path), '--served-model-name', model,
                '--host', '0.0.0.0', '--port', '8000', '--dtype', 'bfloat16',
@@ -50,12 +53,16 @@ def serve(model, revision, path):
                '--compilation-config', json.dumps({'mode': 0, 'cudagraph_mode': 'FULL_DECODE_ONLY',
                                                     'cudagraph_capture_sizes': [1, 2, 4]}),
                '--no-async-scheduling',
-               '--language-model-only', '--no-enable-prefix-caching',
+               '--no-enable-prefix-caching',
                # KV allocation is fixed separately from the startup free-memory check.
                '--gpu-memory-utilization', '0.75',
                '--kv-cache-memory-bytes', os.environ.get('LLM_KV_CACHE_BYTES', '9663676416'),
                '--mamba-ssm-cache-dtype', 'float32', '--reasoning-parser', 'qwen3',
                '--enable-auto-tool-choice', '--tool-call-parser', 'qwen3_coder']
+    if max_images:
+        command.extend(['--limit-mm-per-prompt', json.dumps({'image': max_images, 'video': 0})])
+    else:
+        command.append('--language-model-only')
     if os.environ.get('LLM_GPU_CONTROL_TOKEN'):
         command.append('--enable-sleep-mode')
     os.execvp(command[0], command)

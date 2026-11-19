@@ -9,8 +9,13 @@ import secrets
 
 from aiohttp import ClientError, web
 from .admission import BudgetExceeded
-from .token_budget import reservation
+from .token_budget import ReservationRejected, measure, reservation
 from .thinking import apply_thinking_default
+
+
+def inline_image(url):
+    return isinstance(url, str) and url.startswith((
+        'data:image/png;base64,', 'data:image/jpeg;base64,', 'data:image/webp;base64,'))
 
 
 def error(status, code, message):
@@ -66,33 +71,62 @@ class ResponsesProxy:
                     pass
             await lease.aclose()
 
+    async def creation(self, request):
+        owner = request['owner']
+        try:
+            async with asyncio.timeout(self.gateway.config.request_timeout):
+                payload = await request.json()
+        except (ValueError, UnicodeError, TimeoutError):
+            return None, error(400, 'invalid_json', 'Expected a Responses request.')
+        if not isinstance(payload, dict) or payload.get('model') != self.gateway.config.model_alias:
+            return None, error(400, 'model_not_found', 'Use the llm-default alias.')
+        previous = payload.get('previous_response_id')
+        if previous is not None and (not isinstance(previous, str) or not self.owns(owner, previous)):
+            return None, error(404, 'response_not_found', 'Response not found.')
+        tools = payload.get('tools') or []
+        if (not isinstance(tools, list) or any(not isinstance(t, dict) or t.get('type') != 'function' for t in tools)):
+            return None, error(400, 'unsupported_tool', 'Only function-call output is supported; tools are executed by the caller.')
+        items = payload.get('input', [])
+        if payload.get('conversation') is not None or (isinstance(items, list) and any(
+                isinstance(item, dict) and item.get('type') == 'item_reference' for item in items)):
+            return None, error(400, 'unsupported_reference', 'Use inline input or an owned previous_response_id.')
+        if isinstance(items, list) and any(
+                isinstance(part, dict) and part.get('type') == 'input_image'
+                and (part.get('file_id') is not None or not inline_image(part.get('image_url')))
+                for item in items if isinstance(item, dict) and isinstance(item.get('content'), list)
+                for part in item['content']):
+            return None, error(400, 'invalid_image_source', 'Use inline PNG, JPEG, or WebP image data.')
+        nonce = secrets.token_hex(16)
+        payload['request_id'] = 'resp_' + nonce + '_' + self.signature(owner, nonce)
+        payload['model'] = self.gateway.config.model
+        apply_thinking_default(payload)
+        return payload, None
+
+    async def prompt_tokens(self, request):
+        payload, rejection = await self.creation(request)
+        if rejection is not None:
+            return rejection
+        try:
+            async with asyncio.timeout(self.gateway.config.request_timeout):
+                counted = await measure(self.gateway, 'responses', payload)
+            count = counted['input_tokens']
+            if type(count) is not int or count < 1:
+                raise ValueError('Invalid engine input token count')
+            return web.json_response({'count': count})
+        except ReservationRejected as exc:
+            return exc.response()
+        except (TimeoutError, ClientError, KeyError, TypeError, ValueError):
+            return error(504, 'tokenizer_timeout', 'Responses token counting did not finish within its deadline.')
+
     async def handle(self, request):
         owner = request['owner']
         payload = None
         path = '/v1/responses'
         creating = request.method == 'POST' and 'response_id' not in request.match_info
         if creating:
-            try:
-                async with asyncio.timeout(self.gateway.config.request_timeout):
-                    payload = await request.json()
-            except (ValueError, UnicodeError, TimeoutError):
-                return error(400, 'invalid_json', 'Expected a Responses request.')
-            if not isinstance(payload, dict) or payload.get('model') != self.gateway.config.model_alias:
-                return error(400, 'model_not_found', 'Use the llm-default alias.')
-            previous = payload.get('previous_response_id')
-            if previous is not None and (not isinstance(previous, str) or not self.owns(owner, previous)):
-                return error(404, 'response_not_found', 'Response not found.')
-            tools = payload.get('tools') or []
-            if (not isinstance(tools, list) or any(not isinstance(t, dict) or t.get('type') != 'function' for t in tools)):
-                return error(400, 'unsupported_tool', 'Only function-call output is supported; tools are executed by the caller.')
-            items = payload.get('input', [])
-            if payload.get('conversation') is not None or (isinstance(items, list) and any(
-                    isinstance(item, dict) and item.get('type') == 'item_reference' for item in items)):
-                return error(400, 'unsupported_reference', 'Use inline input or an owned previous_response_id.')
-            nonce = secrets.token_hex(16)
-            payload['request_id'] = 'resp_' + nonce + '_' + self.signature(owner, nonce)
-            payload['model'] = self.gateway.config.model
-            apply_thinking_default(payload)
+            payload, rejection = await self.creation(request)
+            if rejection is not None:
+                return rejection
         else:
             response_id = request.match_info['response_id']
             if not self.owns(owner, response_id):
@@ -133,6 +167,8 @@ class ResponsesProxy:
                         self.track_background(payload['request_id'], lease)
                         lease = None
                     return web.Response(status=upstream.status, body=body, headers={'Content-Type': content_type})
+        except ReservationRejected as exc:
+            return exc.response()
         except BudgetExceeded as exc:
             return error(400, 'request_budget_exceeded', str(exc))
         except (TimeoutError, ClientError, ValueError):

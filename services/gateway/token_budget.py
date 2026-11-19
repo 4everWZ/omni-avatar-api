@@ -10,14 +10,18 @@ class ReservationRejected(Exception):
         return web.Response(status=self.status, body=self.body, content_type='application/json')
 
 
-async def reservation(gateway, kind, payload):
-    if not gateway.config.token_budget:
-        return {}
+async def measure(gateway, kind, payload):
     async with gateway.engine.post('/internal/admission/' + kind, json=payload,
                                    allow_redirects=False) as response:
         if response.status != 200:
             raise ReservationRejected(response.status, await response.read())
-        counted = await response.json()
+        return await response.json()
+
+
+async def reservation(gateway, kind, payload):
+    if not gateway.config.token_budget:
+        return {}
+    counted = await measure(gateway, kind, payload)
     tokens, slots = counted['reserved_tokens'], counted['sequences']
     if type(tokens) is not int or tokens < 1 or type(slots) is not int or slots < 1:
         raise ValueError('Invalid engine reservation')

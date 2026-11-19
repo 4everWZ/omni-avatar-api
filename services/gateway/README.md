@@ -68,6 +68,8 @@ with client.responses.stream(model="llm-default", input="你好", max_output_tok
             print(event.delta, end="", flush=True)
 ```
 
+The `llm-default` Responses route accepts inline JPEG, PNG and WebP `input_image` items. `POST /llm/v1/responses/prompt_tokens` counts the same Responses inputs without generating or creating history.
+
 HTTP Responses supports incremental SSE (`stream: true`), JSON Schema, function-call output, owned `previous_response_id`, retrieval via `GET /llm/v1/responses/{id}` and cancellation via `POST /llm/v1/responses/{id}/cancel`. The tool contract accepts function definitions and returns calls for application execution. These operations define the pinned engine's supported HTTP/SSE subset. `/llm/v1/chat/prompt_tokens` counts Chat templates; Responses admission separately renders the complete continuation lineage.
 
 The gateway replaces caller-supplied request IDs with authenticated owner-bound response IDs. Foreign retrieval, cancellation and continuation return 404. Stored responses live in engine RAM and disappear on restart; callers retain durable business history. Foreground stream disconnection cancels upstream work. Background work, including `background: true` plus streaming, keeps its admission lease after disconnection until completion, cancellation or deadline. Keep the admin secret stable across gateway restarts to retain response ownership verification.

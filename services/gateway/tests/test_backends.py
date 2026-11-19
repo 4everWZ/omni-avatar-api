@@ -113,7 +113,9 @@ class BackendIsolationTest(unittest.IsolatedAsyncioTestCase):
             async def count(request):
                 payload = await request.json()
                 self.counted.append(payload)
-                return web.json_response({'reserved_tokens': 1001 if payload.get('input') == 'oversized' else 250,
+                if payload.get('input') == 'rejected':
+                    return web.json_response({'error': {'message': 'Invalid multimodal input'}}, status=422)
+                return web.json_response({'input_tokens': 100, 'reserved_tokens': 1001 if payload.get('input') == 'oversized' else 250,
                                           'sequences': 1})
 
             app = web.Application()
@@ -135,6 +137,30 @@ class BackendIsolationTest(unittest.IsolatedAsyncioTestCase):
         self.url = await self.serve(create_app(config, text))
         self.http = ClientSession(base_url=self.url, headers={'Authorization': 'Bearer client'})
         self.addAsyncCleanup(self.http.close)
+
+    async def test_responses_image_and_count_use_same_renderer(self):
+        image = 'data:image/png;base64,AAAA'
+        input_items = [{'role': 'user', 'content': [{'type': 'input_text', 'text': 'Read image'},
+                                                       {'type': 'input_image', 'image_url': image}]}]
+        payload = {'model': 'llm-default', 'input': input_items, 'max_output_tokens': 150}
+        async with self.http.post('/llm/v1/responses/prompt_tokens', json=payload) as response:
+            self.assertEqual((response.status, await response.json()), (200, {'count': 100}))
+        self.assertEqual(self.counted[-1]['input'], input_items)
+        self.assertEqual(self.counted[-1]['model'], 'text')
+        self.assertEqual(self.responses, {})
+        async with self.http.post('/llm/v1/responses', json=payload) as response:
+            self.assertEqual(response.status, 200)
+        input_items[0]['content'][1]['image_url'] = 'https://example.com/image.png'
+        for path in ('responses/prompt_tokens', 'responses'):
+            async with self.http.post('/llm/v1/' + path, json=payload) as response:
+                self.assertEqual(response.status, 400)
+                self.assertEqual((await response.json())['error']['code'], 'invalid_image_source')
+        url = await self.serve(create_app(self.parent_config, replace(self.text_config, token_budget=1024)))
+        async with ClientSession(base_url=url, headers={'Authorization': 'Bearer client'}) as client:
+            for path in ('responses/prompt_tokens', 'responses'):
+                async with client.post('/llm/v1/' + path, json=payload | {'input': 'rejected'}) as response:
+                    self.assertEqual(response.status, 422)
+                    self.assertEqual((await response.json())['error']['message'], 'Invalid multimodal input')
 
     async def test_weighted_background_leases_span_four_slots_and_cancellation(self):
         url = await self.serve(create_app(self.parent_config, replace(

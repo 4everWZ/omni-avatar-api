@@ -100,9 +100,13 @@ Omni Chat、后台 LLM Chat／Responses 默认 `chat_template_kwargs.enable_thin
 
 ## 后台 Responses
 
-使用 `POST /llm/v1/responses`，模型 `llm-default`，设置 `stream: true` 接收原生增量 SSE。支持文本、多轮 `previous_response_id`、JSON Schema 及 function 工具调用输出；工具由应用执行。`GET /llm/v1/responses/{id}` 与 `POST /llm/v1/responses/{id}/cancel` 只允许原调用方访问，其他调用方得到 404。
+使用 `POST /llm/v1/responses`，模型 `llm-default`，设置 `stream: true` 接收原生增量 SSE。支持文本、内嵌图片、多轮 `previous_response_id`、JSON Schema 及 function 工具调用输出；工具由应用执行。`GET /llm/v1/responses/{id}` 与 `POST /llm/v1/responses/{id}/cancel` 只允许原调用方访问，其他调用方得到 404。
 
 当前实现 vLLM 0.32 的上述 HTTP／SSE 子集。响应与续接关系保存在引擎进程内；业务历史由调用方持久化，重启后可用保存的历史发起新请求。后台任务在客户端断开后保留准入直到结束或取消；前台流式请求断开会取消。详见[网关规范](../services/gateway/README.md)。
+
+读图继续使用 `llm-default`。消息 content 可按顺序包含 `{"type":"input_text","text":"描述这个时码的画面"}` 和 `{"type":"input_image","image_url":"data:image/jpeg;base64,…","detail":"auto"}`。使用 JPEG、PNG 或 WebP 的内嵌数据，每次请求最多八张，实际部署可下调。普通文本继续用 Responses 或 Chat。看图与生成新图是不同接口。
+
+`POST /llm/v1/responses/prompt_tokens` 接收同一 Responses 请求体，返回 `{"count": N}`。它只调用引擎的计量渲染器，既不生成，也不创建续接记录。图像、文字、工具及续接历史使用同一计量口径，不可用 Chat 计量替代。
 
 ## 外部 Swarm／orchestrator 调用
 

@@ -179,6 +179,12 @@ class Gateway:
             return None, failure(408, "request_timeout", "The request body did not arrive in time.")
         if not isinstance(payload, dict) or payload.get("model") != self.config.model_alias:
             return None, failure(400, "model_not_found", f"Use the {self.config.model_alias} alias.")
+        if self.responses is not None and isinstance(payload.get("messages"), list) and any(
+            isinstance(part, dict) and part.get("type") != "text"
+            for message in payload.get("messages", []) if isinstance(message, dict) and isinstance(message.get("content"), list)
+            for part in message["content"]
+        ):
+            return None, failure(400, "unsupported_media", "Use llm-default Responses for image input.")
         payload["model"] = self.config.model
         apply_thinking_default(payload)
         if payload.get("modalities") is None:
@@ -394,6 +400,7 @@ def create_app(config=None, text_config=None, *, image_factory=None):
     if not config.realtime_enabled:
         app.add_routes([
             web.post('/v1/responses', gateway.responses_request),
+            web.post('/v1/responses/prompt_tokens', gateway.responses.prompt_tokens),
             web.get('/v1/responses/{response_id}', gateway.responses_request),
             web.post('/v1/responses/{response_id}/cancel', gateway.responses_request),
         ])

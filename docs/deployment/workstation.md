@@ -47,7 +47,7 @@ python tools/compose.py --target llm -- stop llm-engine
 | --- | --- |
 | `/v1`，`omni-default` | 实时语音／视觉助手与普通、流式 Chat；Chat 窗口 8192。 |
 | `/v1/realtime?duplex=1` | 原生双工，默认 basic 历史水位 8000／6000。 |
-| `/llm/v1`，`llm-default` | 长上下文 Responses HTTP／增量 SSE，兼容 Chat，支持结构化与 function 输出；单请求窗口 262144。 |
+| `/llm/v1`，`llm-default` | 长上下文 Responses HTTP／增量 SSE，兼容 Chat，支持文本、内嵌图片、结构化与 function 输出；单请求窗口 262144。 |
 | `/healthz`、`/llm/healthz` | 各自后端的身份、根目录校验、就绪和准入状态。 |
 | `/v1/images/jobs` | 可选 Klein 生图任务，提交、查询、下载、取消。 |
 

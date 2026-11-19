@@ -62,7 +62,7 @@ python tools/compose.py -- up -d --wait
 | `/v1/chat/completions` | `omni-default` | 多模态 Chat，支持流式文本。 |
 | `/v1/realtime?duplex=1&model=omni-default` | `omni-default` | 原生双工 WebSocket。 |
 | `/v1/audio/speech` | `omni-default` | 以参考录音的音色朗读指定台词，转写核对通过后返回 WAV。 |
-| `/llm/v1/responses` | `llm-default` | 长上下文推理和 Responses 增量 SSE。 |
+| `/llm/v1/responses` | `llm-default` | 长上下文文本与内嵌图像推理，支持 Responses 增量 SSE。 |
 | `/llm/v1/chat/completions` | `llm-default` | 兼容 Chat 的客户端。 |
 | `/v1/images/jobs` | Klein 4B | 可选生图队列，支持参考图。 |
 | `/healthz`、`/llm/healthz` | — | 需要鉴权的后端身份、就绪与准入查询。 |

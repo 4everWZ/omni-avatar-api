@@ -62,7 +62,7 @@ All inference endpoints require an application bearer token. Administrative cred
 | `/v1/chat/completions` | `omni-default` | Multimodal Chat, including streamed text. |
 | `/v1/realtime?duplex=1&model=omni-default` | `omni-default` | Native duplex WebSocket. |
 | `/v1/audio/speech` | `omni-default` | Reads supplied text in a reference voice and returns a WAV after transcript verification. |
-| `/llm/v1/responses` | `llm-default` | Long-context inference and incremental Responses SSE. |
+| `/llm/v1/responses` | `llm-default` | Long-context text and inline image inference with incremental Responses SSE. |
 | `/llm/v1/chat/completions` | `llm-default` | Chat-compatible clients. |
 | `/v1/images/jobs` | Klein 4B | Optional queued image generation with reference images. |
 | `/healthz`, `/llm/healthz` | — | Authenticated backend identity, readiness and admission. |
