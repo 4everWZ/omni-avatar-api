@@ -64,6 +64,18 @@ Omni Chat 和后台 Chat／Responses 默认开启 CoT，思考预算沿用固定
 
 双路 Omni 已实测两个 Chat 同时输出、两个 Realtime 的语音区间重叠，以及 Chat 和 Realtime 混跑。两个 Realtime 占用期间，第三个连接收到 `429`。
 
+### GPU 0 显存余量
+
+分卡工作站默认启用 `OMNI_RELEASE_UNUSED_CUDA_CACHE=1`。Thinker 预热结束后归还空闲的 CUDA 分配器缓存。Code2Wav 在最后一个请求结束、无待处理请求和参考音频预取时，若分配器中的空闲预留达到 512 MiB，则归还可释放的缓存。模型权重、参考音频特征、Thinker 和 Talker 的 KV 预算、双路准入和 8192-token Chat 窗口沿用原配置。
+
+双 RTX 3090 实测中，Thinker 预热结束时释放 **4,022 MiB**，Code2Wav 每次实际回收 **3,388–4,228 MiB**。每 250 毫秒采样整卡，候选负载期间最低空闲显存为 **2,821 MiB**，热机空闲约 **7,000 MiB**。这两项分别高于 2 GiB 和 3 GiB 的验收线，候选日志中未出现 CUDA OOM。
+
+通过网关对照执行 10 轮，覆盖 8 组输出实际重叠的双路语音、8,056-token Chat 与语音混跑，以及图像输入与语音混跑。按固定音频输入结束到首段非静音 PCM 的时间计量，两侧各采集 18 条，P95 从 **12.63 秒**变为 **12.05 秒**。在工作站回环入口另测两路语音持续 90 秒、Qwen 单路和四路并行，以及长 Chat 输出期间继续接收语音块。私网访问的 90 秒试跑曾在约一分钟时断开，持续双路的通过记录来自回环入口。
+
+如需恢复原分配策略，在工作站 `.env` 设置 `OMNI_RELEASE_UNUSED_CUDA_CACHE=0`，使用当前 Compose 选项执行 `up -d --no-deps omni-engine`。配置变更会重建 Omni 容器并结束当前 Omni 会话。
+
+### 后台 Qwen 并发
+
 LLM 固定为 `axteam/Qwen3.5-9B-AWQ-4bit@5577b5b71e6f06b9f6a1f3743ef6ba6dc4ecd2df`，格式 compressed-tensors W4A16、非对称 group 32，使用 9 GiB BF16 KV 与 FP32 SSM。Omni 固定 OpenBMB AWQ 快照 `927faefa0bce96e557945e106f3b3d8b4d39f4b2`。每个引擎容器将分配的物理 GPU 映射为本地设备 0。
 
 `LLM_MAX_NUM_SEQS=4` 同时配置引擎与网关；`LLM_TOKEN_BUDGET=262144` 控制活跃请求的完整模板输入加最大输出预留。Chat、Responses、后台任务和续接共享预算，长短请求按 FIFO 等待可用序列与 token，完成或取消后释放。调用方显式设置短请求输出额度可释放并发空间。单请求 262144 与四路短请求分别验收；多路满窗口作为后续独立容量评估。[准入语义](../api.md#外部-swarmorchestrator-调用)。
