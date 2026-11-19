@@ -8,6 +8,7 @@ Applications use a configured gateway URL and the `omni-default` model alias. On
 | `GET /healthz` | Bounded upstream `/health` and model discovery checks, plus engine identity, observed wire capabilities and admission. |
 | `POST /v1/chat/prompt_tokens` | Authenticated text-only count using the same upstream Chat renderer and model alias. Returns `count` through a CPU template/tokenizer operation. |
 | `GET /v1/models` | Advertises `omni-default` when the configured engine model matches. |
+| `POST /v1/audio/speech` | Reads literal input with an inline reference WAV, then transcribes the resulting audio on a second admitted Omni call. Returns WAV with the verified transcript. [Speech contract](../../docs/api.md#参考音色朗读) |
 | `POST /v1/chat/completions` | Forwards Chat Completions JSON, including an incremental SSE response when the engine streams. Omitted or null output modalities request text. Explicit modalities pass through. |
 | `GET /v1/realtime?duplex=1&model=omni-default` | WebSocket relay for actual upstream duplex events. Forwards `autostart` and `resume` parameters. A media service session with `program=1` requests live admission for the lifetime of its socket. |
 | `GET /api/mode` | Current admission mode, active lanes and queue occupancy. |

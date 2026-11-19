@@ -18,6 +18,7 @@ from .responses_proxy import ResponsesProxy
 from .input_transcription import CAPABILITY as TRANSCRIPTION_CAPABILITY, InputTranscription
 from .image_jobs import DedicatedImageJobs, ImageJobs
 from .thinking import apply_thinking_default
+from .speech import speech
 
 MAX_BODY = 32 * 1024 * 1024
 MAX_FRAME = 8 * 1024 * 1024
@@ -390,6 +391,8 @@ def create_app(config=None, text_config=None, *, image_factory=None):
         return failure(503, "model_unavailable", "Omni inference is disabled on this gateway.")
 
     inference = bool(config.engine_url)
+    if config.realtime_enabled:
+        app.router.add_post("/v1/audio/speech", speech if inference else unavailable)
     app.add_routes([
         web.get("/livez", livez), web.get("/healthz", gateway.health if inference else unavailable),
         web.get("/api/mode", gateway.mode), web.put("/api/mode", gateway.mode),

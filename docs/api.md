@@ -10,6 +10,7 @@
 | --- | --- |
 | `GET /livez`、`GET /healthz`、`GET /v1/models` | 分别确认网关存活、上游可用性和模型卡。客户端读取认证模型卡的实际 `max_model_len`，健康状态报告锁定版本和已验证能力。 |
 | `POST /v1/chat/completions` | 普通与流式推理共用入口。使用服务配置的模型别名，按实际能力使用视觉、音频和结构化回复。 |
+| `POST /v1/audio/speech` | 使用普通应用 Bearer，提交模型别名、台词和该角色的内联参考 WAV。返回通过转写核对的 WAV。 |
 | `POST /v1/chat/prompt_tokens` | 文本按同一聊天模板计量，供需要精确上下文预算的客户端使用。 |
 | `GET /v1/realtime?duplex=1` | Realtime WebSocket。以 `session.created` 报告的能力确定输入模态、切片、字幕、打断、恢复和播放确认。 |
 
@@ -18,6 +19,12 @@ Omni 的边界夹具显式关闭 CoT，已验证 20 条消息、7,928 个输入 
 Bearer 鉴权、排队、取消、超时和管理接口由[网关规范](../services/gateway/README.md)维护。原生模型服务的协议和 Avatar 能力独立发布，调用应用根据各自会话实际协商。
 
 双卡工作站默认共享两个 Omni 槽位，Chat 和 Realtime 每次各使用一个。两路可任意组合。第三路按 FIFO 等待，超时或满队列返回 `429` 和 `Retry-After`。活动槽位由 `/api/mode` 报告，Chat 与 Realtime 分别计数。
+
+## 参考音色朗读
+
+`input` 为指定台词（1 至 4096 字符），`model` 使用 Omni 模型别名，`reference_audio` 为含 `format: "wav"` 和 Base64 `data` 的对象。`response_format` 可省略或填 `wav`。参考材料接受单／双声道 PCM WAV，上限 8 MB、90 秒。参考须由调用方按角色授权选定并上传。URL、文件路径和调用方传入的引擎参数返回 400。
+
+网关用同一 Omni 引擎合成，再单独提交生成音频作盲转写。两次调用分别获取并释放普通 Chat 槽位，共用该请求时限。收到完整输出且转写字词相符后，响应返回 `audio/wav`，`X-Omni-Transcript` 为实际转写的 UTF-8 Base64。核对允许句读和排版差异，保留拉丁词边界、数字和词序。音频无效、增漏词或转写未能核实原句返回 422。满队列返回 429 及 `Retry-After`，超过推理期限返回 504。
 
 ## CoT 默认与调用方预算
 
