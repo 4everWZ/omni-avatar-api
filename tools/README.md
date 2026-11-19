@@ -43,7 +43,7 @@ python -m tools.qualification.thinking --env .env --report tmp/thinking.json
 
 报告记录持续时间、音频块、非静音块、请求数、隔离及释放。`metrics_collector_host` 标明资源采集位置；工作站 GPU 数据应在工作站采集。可在工作站的隔离 Python 环境中运行采集器。
 
-自动检查覆盖 API、媒体解码、时间线和资源生命周期。浏览器实物播放、麦克风／屏幕权限与持续满载 QoS 由[后续验收计划](../docs/plans/avatar-workstation.md)维护。当前功能检查周期约半小时。
+自动检查覆盖 API、媒体解码、时间线和资源生命周期。浏览器实物播放、麦克风／屏幕权限与持续满载 QoS 由[后续验收计划](../docs/plans/workstation-acceptance.md)维护。当前功能检查周期约半小时。
 
 ## 模型诊断
 

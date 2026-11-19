@@ -39,7 +39,7 @@ python tools/compose.py --target llm -- stop llm-engine
 
 ### 独立 Gateway
 
-`--target gateway` 单独启动 CPU 网关，只需应用／管理凭据即可存活。配置 `LLM_ENGINE_URL`、`LLM_MODEL_ID`、`LLM_CHECKPOINT` 连接私有文本引擎，或加 `--remote-images` 连接专用图像池。启用远端 Omni 时设 `OMNI_GATEWAY_OMNI_ENABLED=1`，填写引擎 origin、模型 ID 和 revision。未启用 Omni 时 `/livez` 仍可用，`/healthz` 及 Omni 推理路径报告 503；LLM 使用自己的 `/llm/healthz`。
+`--target gateway` 单独启动 CPU 网关，只需应用／管理凭据即可存活。配置 `LLM_ENGINE_URL`、`LLM_MODEL_ID`、`LLM_CHECKPOINT` 连接后台推理引擎，或加 `--remote-images` 连接专用图像池。启用远端 Omni 时设 `OMNI_GATEWAY_OMNI_ENABLED=1`，填写引擎 origin、模型 ID 和 revision。未启用 Omni 时 `/livez` 仍可用，`/healthz` 及 Omni 推理路径报告 503；LLM 使用自己的 `/llm/healthz`。
 
 ## API 与上下文
 
@@ -153,8 +153,15 @@ ssh -N -L 18080:127.0.0.1:8000 research-2@100.119.17.6
 | 并发预算 | 四路实际生成、约 28.5K 与三路短请求混跑、独立 worker 历史及并行续接、预算拒绝与释放。 | [并发](../../evaluations/results/llm-mps-concurrency-workstation.json)、[兼容性](../../evaluations/results/responses-mps-compatibility.json) |
 | 默认 CoT | 默认完整答案、显式关闭、三个文本接口的 16-token 思考预算、非法值、JSON Schema、function 归属续接。工具结果由夹具回填。 | [默认与预算](../../evaluations/results/thinking-defaults-workstation.json)、[结构化与工具](../../evaluations/results/thinking-structured-workstation.json) |
 
-当前记录覆盖功能与短时性能。完整 262K 质量、默认 CoT 长历史、持续满载 QoS、实物播放及私网 HTTPS 按[后续计划](../plans/avatar-workstation.md)验收。资源读数以报告的采集位置、指标和采样周期为依据。
+当前记录覆盖功能与短时性能。完整 262K 质量、默认 CoT 长历史、持续满载 QoS、实物播放及私网 HTTPS 按[后续计划](../plans/workstation-acceptance.md)验收。资源读数以报告的采集位置、指标和采样周期为依据。
 
 ## 其他部署目标
 
 `--target workstation-omni` 提供双卡 Omni 配置，`--target workstation-bf16` 提供 BF16 对照；`--target orin` 和 `--target orin-cu129` 提供 AGX 配置与兼容性验证。分卡 `workstation` 可加 `--images` 启用共享 GPU 生图。直接调用 Docker Compose 时，指定 `--project-directory <仓库根目录>` 和环境文件。AGX 细节见 [Orin](orin.md) 与 [CUDA 12.9](jetpack6-cu129.md)。
+
+
+## 容量与发布后的清理
+
+在工作站分别检查 `nvidia-smi`、`free -h`、`df -h` 和 `docker system df`。现行后台限制为 4 个生成序列与总量 262144 tokens。所有请求按实际模板和输出额度准入，结束或取消后释放。Klein 按作业取得显存，完成后恢复后台引擎。当前前台和后台常驻已加载的模型，因此空闲仍占用基线显存。调整任何常驻容量或上限后复核前台延迟、混跑与剩余显存。
+
+在放大容量之前先确认实际瓶颈。发布完成后删除本次临时传输包和测试容器。核对候选镜像引用后，回收过时的 Docker 构建缓存与已退役镜像，保留当前镜像、最近回滚镜像、模型卷、业务卷和待核对应用数据。清理后重测剩余空间与已部署服务健康状态。

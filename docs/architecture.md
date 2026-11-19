@@ -5,8 +5,8 @@ The repository provides shared inference services. Applications own user identit
 ```mermaid
 flowchart LR
     Client[Applications and external orchestrators] --> Gateway[Authenticated gateway]
-    Gateway --> Omni[Omni engine]
-    Gateway --> LLM[Text LLM]
+    Gateway --> Omni[Omni interactive engine]
+    Gateway --> LLM[Background Qwen text and image]
     Gateway --> Images[Optional Klein worker]
 ```
 
@@ -16,7 +16,7 @@ flowchart LR
 | --- | --- | --- |
 | `services/gateway/` | Authentication, aliases, admission, Responses/Chat/Realtime transport and the browser demo. | Private HTTP/WebSocket engine APIs. |
 | `services/inference/` | Model acquisition, inference launchers, deployment configuration and patches for pinned upstream packages. | Model snapshots and upstream inference libraries. |
-| `services/llm/` | Text model acquisition, launcher, Responses admission, GPU control and reasoning budget patches. | Independently pinned vLLM image and LLM snapshot. |
+| `services/llm/` | Text-and-image model acquisition, launcher, Responses admission, GPU control and reasoning budget patches. | Independently pinned vLLM image and LLM snapshot. |
 | `services/images/` | CPU prompt encoding, original-precision Klein inference and task-scoped GPU allocation. | Pinned Klein snapshot and Diffusers, isolated by a worker image. |
 
 Gateway exposes an importable `app.py` factory and a `__main__.py` process entrypoint. Imports inside a service are relative. Gateway separates environment/model policy (`config.py`), resource admission (`admission.py`), HTTP application wiring (`app.py`) and backend-specific transport clients. Cross-service communication uses the [API contract](api.md); cross-service Python imports belong in `tests/integration/` only.
