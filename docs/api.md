@@ -150,7 +150,7 @@ Realtime 客户端仍使用原协议。客户端以 `?avatar=1` 选择 Avatar �
 
 `services/avatar/avatars.json` 登记 `avatar_id`、驱动和素材目录；`OMNI_AVATAR_REGISTRY` 可指定替代登记文件。驱动接收带采样起点和代次的原始 PCM，按会话时间戳提供画面，并实现能力声明、代次清除和关闭；音频入队与取帧应保持非阻塞，神经驱动可在独立 worker 推理。媒体与权限不依赖具体驱动。`sprite2d` 使用 Ava 四状态素材和共享时间线的音量；`ditto` 提供参考图会议式说话头像。已登记驱动共用媒体和会话契约，未来 3D 多视角驱动沿用该接口。后续验收见[当前计划](plans/avatar-workstation.md)。
 
-`inochi2d` 在媒体服务 CPU 上读取 Inochi2D 0.8 的 INP1 文件。在私有登记文件中加入例如 `{"my-avatar":{"driver":"inochi2d","root":"rigs/my-avatar/model.inp"}}`，并将文件及模型只读挂载到服务。相对路径以登记文件所在目录为准。通过原有 `POST /v1/avatar/sessions` 传入 `{"avatar_id":"my-avatar","source":{"type":"audio"}}`，向返回的 `audio_url` 提交 PCM，并在 `media_url` 订阅 WHEP。实时会话可沿用 `source.type=realtime`。返回的 `format.driver` 为 `inochi2d`。
+`inochi2d` 在媒体服务 CPU 上读取 Inochi2D 0.8 的 INP1 文件。在私有登记文件中加入例如 `{"my-avatar":{"driver":"inochi2d","root":"rigs/my-avatar/model.inp"}}`。Compose 部署将该文件命名为 `registry.json`，设置 `OMNI_AVATAR_ASSETS_DIR` 为同时存放登记表和模型的工作站目录，为现有 `tools/compose.py` 命令加上 `--registered-avatars` 以只读方式挂载。登记表应包含仍在使用的全部形象。相对路径以登记文件所在目录为准。通过原有 `POST /v1/avatar/sessions` 传入 `{"avatar_id":"my-avatar","source":{"type":"audio"}}`，向返回的 `audio_url` 提交 PCM，并在 `media_url` 订阅 WHEP。实时会话可沿用 `source.type=realtime`。返回的 `format.driver` 为 `inochi2d`。
 
 该子集在 640×720 画布上支持 Node 与 Part、完整纹理的轴向矩形网格、Normal 混合和线性标量参数。局部平移、缩放与平面旋转依次沿节点树合成，按累计 zsort 递减绘制。平移与角度绑定采用加法，缩放和 Part 不透明度绑定采用乘法；关键点从参数声明的归一化 `axis_points` 读取。口形读取当前播放位置的 20 ms PCM，以及两侧各 60 ms 已入队的音频作局部响度参照。MouthOpen 使用相对能量和鼻音闭合线索，MouthForm 使用上下共振频带的比例；当前窗静音时闭嘴，缺少邻窗时直接使用可用样本。眼睑、视线、头部和呼吸沿用会话时钟。两条嘴部控制量是声学估计；姿态驱动和浏览器实呈分别验收。
 
