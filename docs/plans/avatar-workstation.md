@@ -8,6 +8,7 @@
 | --- | --- | --- |
 | 推理与 Ava 2D | GPU 1 原生 Omni；GPU 0 长上下文 LLM；CPU Ava；独立鉴权与准入。 | Responses 增量 SSE、结构化、工具结果续接、约 22K 多轮检索、约 20 分钟双工与 2D 共驻。 |
 | 历史 CPU 头像部署 | 该阶段使用 Ava 或登记的 Inochi2D 原画，GPU0 运行 Omni，GPU1 运行 Qwen 并按需供 Klein 生图。 | 两种头像均通过 WHEP 收流验证，生图后成功续接原 LLM 对话。[实测记录](../deployment/workstation.md#移除-ditto-后的工作站实测) |
+| 纯推理部署 | 网关直接连接原生双工，工作站启用 Klein，运行四个服务。 | 实机验证非静音 PCM、回答字幕、生图及模型恢复后续接。[当前部署](../deployment/workstation.md#当前纯推理部署) |
 | 四路并发与混跑 | 单请求 262144；四个生成序列；共享 token 预算；解码 CUDA Graph。 | 四路输出区间重叠、长短请求混跑、独立历史续接、预算压力及取消释放。 |
 | 默认推理策略 | Chat／Responses 默认 CoT、上游思考预算；Realtime 默认 basic 8000／6000，调用方可在创建会话时配置。 | 默认完整答案、显式覆盖、思考预算、JSON Schema、function 调用及归属续接。 |
 

@@ -111,7 +111,7 @@ evaluations/              共享测试输入和保留的实机证据
 
 [开发指南](docs/development.md)说明依赖隔离的测试方式与本地服务入口；[工具说明](tools/README.md)提供实机验收命令。
 
-在双 RTX 3090 工作站上，移除 Ditto 模型后，LLM 所在卡多出 1,776 MiB 空闲显存。一次短测中，Qwen 单路输出为 86.35 tokens/s，四路合计为 323.19 tokens/s。Klein 生图完成后，LLM 成功续接了原有的 Responses 对话。[测量条件与完整结果](docs/deployment/workstation.md#移除-ditto-后的工作站实测)
+在双 RTX 3090 工作站的一轮短测中，Qwen 单路输出为 85.87 tokens/s，四路合计为 321.43 tokens/s。MiniCPM-o 通过原生双工回答了语音问题，Klein 完成一张 1024×1024 图片后，Qwen 成功续接原对话。[工作站实测](docs/deployment/workstation.md#当前纯推理部署)
 
 当前 Omni Chat 和后台 Chat／Responses 默认开启 CoT，思考预算沿用上游默认；原生双工保留官方模型策略。实时窗口默认 `basic`（8000／6000），外部应用可在创建会话时调整窗口与文本推理预算，见 [API](docs/api.md#cot-默认与调用方预算)。
 

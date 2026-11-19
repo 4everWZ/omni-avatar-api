@@ -111,7 +111,7 @@ evaluations/              Shared fixtures and retained real-device evidence
 
 See [development](docs/development.md) for dependency-isolated tests and local service entrypoints, and [tools](tools/README.md) for real-device qualification commands.
 
-On the dual RTX 3090 workstation, retiring the Ditto model freed 1,776 MiB on the LLM GPU. A single benchmark run measured 86.35 output tokens/s for one Qwen request and 323.19 tokens/s combined across four. A Klein image job completed and the LLM then resumed the original Responses conversation. [Measurement conditions and results](docs/deployment/workstation.md#移除-ditto-后的工作站实测)
+On the dual RTX 3090 workstation, Qwen produced 85.87 output tokens/s for one request and 321.43 tokens/s combined across four in a short benchmark. MiniCPM-o answered a spoken question, and Qwen resumed a Responses conversation after Klein generated a 1024×1024 image. [Workstation measurements](docs/deployment/workstation.md#当前纯推理部署)
 
 Omni Chat and LLM Chat/Responses default to CoT, with upstream thinking-budget defaults. Native duplex retains the official model policy. Realtime defaults to `basic` (8000/6000); applications can override window policy at session creation and text reasoning budgets per request. See the [API](docs/api.md#cot-默认与调用方预算).
 

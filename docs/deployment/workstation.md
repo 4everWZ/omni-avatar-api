@@ -69,6 +69,14 @@ LLM 固定为 `axteam/Qwen3.5-9B-AWQ-4bit@5577b5b71e6f06b9f6a1f3743ef6ba6dc4ecd2
 
 旧版 Ditto／MPS 部署的实测值随测量条件保存在[前台混跑](../../evaluations/results/omni-throughput-tensorrt-workstation.json)和[后台混跑](../../evaluations/results/throughput-tensorrt-workstation.json)。新版的吞吐可用[工作站工具](../../tools/README.md#tps-与混跑)测量。
 
+### 当前纯推理部署
+
+2026-11-19 在版本 `72755bd` 下，工作站运行 Gateway、MiniCPM-o、Qwen 和 Klein 四个服务。原 CPU 头像容器在停止前的空闲采样为 101.1 MiB 主机内存、65 个进程或线程、CPU 0.00%，该容器未分配 GPU。网关直接转发原生语音 WebSocket。
+
+通过网关发送固定问题的 PCM，MiniCPM-o 返回非静音音频和正确答案的字幕。Klein 生成一张 1024×1024 PNG 用时 8.47 秒，作业仅让 Qwen 释放 KV 缓存；随后用原 Responses ID 成功取回生图前给出的数字。旧头像会话入口在鉴权后返回 404，旧事件路径不能签发浏览器 ticket。
+
+使用下节相同的 256-token 短提示、温度和 CoT 配置，单路预热一次，再测一次单路和一次四路。Qwen 单路为 85.87 tokens/s，四路合计为 321.43 tokens/s。两次部署的结果均为短时采样。
+
 ### 移除 Ditto 后的工作站实测
 
 2026-11-19 在同一台双 RTX 3090 工作站，从 `082f213` 的单 Ditto／MPS 部署切换到 `500ccc8`。Omni 使用 GPU0，Qwen 和按需运行的 Klein 使用 GPU1。以下显存来自模型就绪、未运行测试作业时的整卡采样。
