@@ -67,6 +67,6 @@ MediaMTX 用独立的播放凭据授权 WHEP。信令默认宿主回环 8889，I
 - 用应用凭据检查 `/healthz` 和 `/v1/models`，发一条 `model=omni-default` 的 Chat Completions，并测一次同一别名的 Realtime 会话。从 `session.created` 读取 `session.capabilities`。再测图像、PCM 音频实际回流、字幕、中断和已播回执，分别保存结果。 [双工接口](https://docs.vllm.ai/projects/vllm-omni/en/v0.32.0/serving/realtime_duplex_api/)
 - Omni 0.32.0 接收 Chat Completions 的 `response_format`，部署镜像补上从已解析协议到 Thinker 采样参数的转交。升级时复验流式与普通响应的 JSON Schema，以及非法 schema 的错误返回。 [锁定版采样实现](https://github.com/vllm-project/vllm-omni/blob/5917730a4b02aedb44d374173cdc1b10484ccd52/vllm_omni/entrypoints/openai/serving_chat.py#L1423)
 - MiniCPM-o 开启思考后的普通 Chat 允许直接回答或先产生完整思考段。Thinker 从当前 tokenizer 解析标记 ID，按结构化解码约束闭合标记和随后的正文。原生双工与调用方提交的结构化输出继续采用各自协议。 [vLLM 结构化输出](https://docs.vllm.ai/en/latest/features/structured_outputs/#custom-grammars-and-parser-boundary-tokens)
-- `services/inference/configs/minicpmo-orin.yaml` 继承镜像的三阶段配置，直接用官方 40,960 窗口与 4-bit KV 验收一条原生双工和普通 Chat 的共驻。整机目标为 Omni 30 GiB、Avatar 6 GiB、约 8 GiB 可用余量。按阶段记录实际权重、KV、工作区及整机指标。当前网关 Live 模式的普通并发为 1。提高到 2 前，按目标应用的调用强度验收缓存、设备余量和混合负载。
+- `services/inference/configs/minicpmo-orin.yaml` 继承镜像的三阶段配置，直接用官方 40,960 窗口与 4-bit KV 验收一条原生双工和普通 Chat 的共驻。推理显存按实际模型负载和系统可用余量评估。按阶段记录实际权重、KV、工作区及整机指标。当前网关 Live 模式的普通并发为 1。提高到 2 前，按目标应用的调用强度验收缓存、设备余量和混合负载。
 - 启用媒体覆盖文件后，验证 WHEP 播放客户端和 OBS 的实际音视频、ICE 与重连。独立确认读取与发布凭据各自的权限边界。媒体确认与推理健康分别验收。
 - 引擎配置、资产路径或依赖更新后先独立验证镜像与模型。停止候选时对实际使用的 Compose 文件组合执行 `stop`，保留模型资产及业务持久卷。回退沿已核验的 Provider 或媒体配置办理。

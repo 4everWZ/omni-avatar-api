@@ -1,4 +1,4 @@
-"""Responses + multi-turn Omni + Ava functional qualification, without an Agent."""
+"""Responses + multi-turn Omni duplex functional qualification, without an Agent."""
 import argparse
 import asyncio
 import base64
@@ -21,7 +21,7 @@ def output_text(response):
 class InferenceQualification(Qualification):
     def __init__(self, args):
         super().__init__(args)
-        self.report['scope'] = 'decoupled_responses_omni_avatar_functional'
+        self.report['scope'] = 'decoupled_responses_omni_duplex_functional'
 
     async def responses(self, input, **options):
         body = {'model': 'llm-default', 'input': input, 'max_output_tokens': 256, 'temperature': 0,
@@ -205,5 +205,4 @@ if __name__ == '__main__':
     parser.add_argument('--wav', default=str(Path(__file__).resolve().parents[2] / 'evaluations/fixtures/question.wav'))
     parser.add_argument('--report', default='tmp/inference-functional.json')
     args = parser.parse_args()
-    args.avatar_only = False
     asyncio.run(InferenceQualification(args).run())

@@ -1,4 +1,4 @@
-"""Single/four-request TPS, both idle and during native speech and CPU-rendered media."""
+"""Single/four-request TPS, both idle and during native speech."""
 import argparse
 import asyncio
 from pathlib import Path
@@ -15,7 +15,7 @@ class ThroughputQualification(InferenceQualification):
         models = await self.json('GET', '/llm/v1/models')
         assert health['checkpoint_root_verified']
         assert models['data'][0]['max_model_len'] == 262144
-        self.report.update(scope='single_and_four_tps_with_native_cpu_avatar',
+        self.report.update(scope='single_and_four_tps_with_native_voice',
             model=health['configured_model'], checkpoint=health['checkpoint'],
             sampling_temperature=0, output_tokens_per_request=256,
             thinking_enabled=self.args.thinking == 'enabled', thinking_token_budget=None,
@@ -36,17 +36,17 @@ class ThroughputQualification(InferenceQualification):
 
     async def exercise(self):
         await super().exercise()
-        assert any(check['name'] == 'four_simultaneous_responses_while_cpu_avatar_active'
-                   for check in self.report['checks']), 'Four-way generation did not finish during media playback'
+        assert any(check['name'] == 'four_simultaneous_responses_during_native_voice'
+                   for check in self.report['checks']), 'Four-way generation did not finish during duplex inference'
 
     async def ordinary_request(self):
-        if self.avatar is None:
+        if self.voice is None:
             return await super().ordinary_request()
         self.check('active_single_request_throughput', **await stream_requests(
             self.http, self.args.gateway, self.other, [SHORT_PROMPT], [self.options]))
         group = await stream_group(self.http, self.args.gateway, self.other, request_options=[self.options] * 4)
         assert min(item['end_to_end_output_tps'] for item in group['requests']) >= self.args.minimum_active_tps, group
-        self.check('four_simultaneous_responses_while_cpu_avatar_active', **group)
+        self.check('four_simultaneous_responses_during_native_voice', **group)
 
 
 if __name__ == '__main__':
@@ -54,14 +54,12 @@ if __name__ == '__main__':
     parser.add_argument('--gateway', default='http://127.0.0.1:8000')
     parser.add_argument('--env', default='.env')
     parser.add_argument('--seconds', type=int, default=90)
-    parser.add_argument('--avatar-id', default='ava')
     parser.add_argument('--wav', default=str(Path(__file__).resolve().parents[2] / 'evaluations/fixtures/question.wav'))
     parser.add_argument('--report', default='tmp/throughput-workstation.json')
     parser.add_argument('--thinking', choices=('enabled', 'disabled'), default='enabled')
     parser.add_argument('--minimum-idle-tps', type=float, default=45,
                         help='Short-prompt regression guard, not a long-context SLA')
     parser.add_argument('--minimum-active-tps', type=float, default=15,
-                        help='Per-request guard while four outputs and CPU media are active')
+                        help='Per-request guard during four concurrent responses and native voice')
     args = parser.parse_args()
-    args.avatar_only = False
     asyncio.run(ThroughputQualification(args).run())

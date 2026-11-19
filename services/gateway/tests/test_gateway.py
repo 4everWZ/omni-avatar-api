@@ -129,6 +129,13 @@ class GatewayTest(unittest.IsolatedAsyncioTestCase):
             **options,
         })
 
+    async def test_retired_media_routes_are_unavailable(self):
+        async with self.client.post('/v1/avatar/sessions', headers=SERVICE_AUTH, json={}) as response:
+            self.assertEqual(response.status, 404)
+        async with self.client.post('/v1/browser-tickets', headers=SERVICE_AUTH,
+                                    json={'path': '/v1/avatar/sessions/test/events'}) as response:
+            self.assertEqual(response.status, 400)
+
     async def test_browser_ticket_is_single_use_and_path_scoped(self):
         async with self.client.post('/v1/browser-tickets', headers=SERVICE_AUTH,
                                     json={'path': '/api/mode'}) as response:

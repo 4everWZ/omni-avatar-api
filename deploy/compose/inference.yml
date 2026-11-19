@@ -1,4 +1,4 @@
-# Append after workstation + avatar: two GPU-isolated inference APIs, same host.
+# Append after workstation: two GPU-isolated inference APIs, same host.
 x-llm: &llm
   LLM_MODEL_ID: ${LLM_MODEL_ID:-axteam/Qwen3.5-9B-AWQ-4bit}
   LLM_CHECKPOINT: ${LLM_CHECKPOINT:-5577b5b71e6f06b9f6a1f3743ef6ba6dc4ecd2df}

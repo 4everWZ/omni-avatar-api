@@ -1,6 +1,6 @@
 # 双 RTX 3090 工作站部署
 
-由 OMNI_GPU_DEVICE 选择 MiniCPM-o 的 Thinker、Talker、Code2Wav 所用的卡，LLM_GPU_DEVICE 选择后台长上下文 LLM 的卡，按需与 Klein 生图共享。Ava 与 Inochi2D 使用 CPU。网关统一暴露推理与 Avatar API，应用负责身份、历史、长期记忆、Agent 编排及工具执行。
+由 OMNI_GPU_DEVICE 选择 MiniCPM-o 的 Thinker、Talker、Code2Wav 所用的卡，LLM_GPU_DEVICE 选择后台长上下文 LLM 的卡，按需与 Klein 生图共享。网关统一暴露推理 API，应用负责身份、历史、长期记忆、Agent 编排及工具执行。
 
 ## 主线组合
 
@@ -10,17 +10,17 @@
 
 ### 组合启动
 
-统一入口组合 `deploy/compose/base.yml`、`workstation.yml`、`avatar.yml`、`llm.yml` 和 `inference.yml`；`--vpn` 添加私网监听。
+统一入口组合 `deploy/compose/base.yml`、`workstation.yml`、`llm.yml` 和 `inference.yml`；`--vpn` 添加私网监听。
 
 ```sh
 python tools/compose.py --vpn -- config --quiet
-python tools/compose.py -- build omni-engine llm-engine omni-gateway omni-avatar
+python tools/compose.py -- build omni-engine llm-engine omni-gateway
 python tools/compose.py -- --profile assets run --rm model-fetch
 python tools/compose.py -- --profile assets run --rm llm-model-fetch
 python tools/compose.py --vpn -- up -d --wait
 ```
 
-首次配置与共享网络创建见[快速开始](../../README.zh-CN.md#快速开始)。模型使用精确快照和独立目录，服务离线加载。应用、管理和 Avatar 内部令牌在根目录 `.env` 中分别配置；凭据与模型资产由本地忽略目录持有。引擎使用 Docker 私网，Avatar 控制使用私有 Unix socket。宿主发布回环及指定 VPN 地址的网关 8000 端口。
+首次配置与共享网络创建见[快速开始](../../README.zh-CN.md#快速开始)。模型使用精确快照和独立目录，服务离线加载。应用和管理令牌在根目录 `.env` 中分别配置；凭据与模型资产由本地忽略目录持有。引擎使用 Docker 私网。宿主发布回环及指定 VPN 地址的网关 8000 端口。
 
 ### 独立 LLM 节点
 
@@ -37,11 +37,9 @@ python tools/compose.py --target llm -- stop llm-engine
 
 `--target omni` 提供单独的 amd64 三阶段引擎与 model-fetch。选择 `OMNI_GPU_DEVICE`，依次执行 `build omni-engine`、`--profile assets run --rm model-fetch`、`up -d --wait`。引擎私有端口默认回环 8102；Gateway 的 `OMNI_ENGINE_URL` 指向客户端节点可达的私有地址。JetPack／ARM64 沿用各自的构建目标。
 
-### 独立 Gateway 和 Avatar
+### 独立 Gateway
 
 `--target gateway` 单独启动 CPU 网关，只需应用／管理凭据即可存活。配置 `LLM_ENGINE_URL`、`LLM_MODEL_ID`、`LLM_CHECKPOINT` 连接私有文本引擎，或加 `--remote-images` 连接专用图像池。启用远端 Omni 时设 `OMNI_GATEWAY_OMNI_ENABLED=1`，填写引擎 origin、模型 ID 和 revision。未启用 Omni 时 `/livez` 仍可用，`/healthz` 及 Omni 推理路径报告 503；LLM 使用自己的 `/llm/healthz`。
-
-`--target avatar` 可单独提供 2D 与显式音频会话，设置私有监听地址 `OMNI_AVATAR_BIND` 后让 Gateway 的 `OMNI_AVATAR_URL` 指向它。跨机时为控制平面提供受保护的网络，媒体 ICE 候选需能从实际客户端访问。
 
 ## API 与上下文
 
@@ -51,7 +49,6 @@ python tools/compose.py --target llm -- stop llm-engine
 | `/v1/realtime?duplex=1` | 原生双工，默认 basic 历史水位 8000／6000。 |
 | `/llm/v1`，`llm-default` | 长上下文 Responses HTTP／增量 SSE，兼容 Chat，支持结构化与 function 输出；单请求窗口 262144。 |
 | `/healthz`、`/llm/healthz` | 各自后端的身份、根目录校验、就绪和准入状态。 |
-| `/v1/avatar/*` | 已登记形象、音频绑定、WHEP、字幕与会话生命周期。 |
 | `/v1/images/jobs` | 可选 Klein 生图任务，提交、查询、下载、取消。 |
 
 Chat 调用方每次提交 messages 和所选记忆；Realtime 引擎维护活跃近期历史并按窗口策略滑动。两个模型由路径和别名显式选择。实时窗口沿用官方 `basic`；通过 `autostart=0` 和首条 `session.update.session.extra_body` 可配置新会话。可选 `context` 保留 24 个近期输入单元与最多 500 tokens 的较早模型生成文本，并重建窗口。长期历史由应用持有并按需选入提示。[窗口参数](../api.md#omni-实时历史窗口)。
@@ -84,11 +81,13 @@ LLM 固定为 `axteam/Qwen3.5-9B-AWQ-4bit@5577b5b71e6f06b9f6a1f3743ef6ba6dc4ecd2
 
 两侧均通过同一工作站网关，使用 [Responses 短提示夹具](../../tools/qualification/concurrency.py) 的 `stream_requests`，温度为 0、CoT 开启、每路最多输出 256 tokens。先跑一次单路预热，再各测一次单路与四路。四路的实际输出区间重叠。吞吐值为本次短测的观测值。
 
-切换后，Ava 和登记的 Inochi2D 原画 `q` 各运行四秒 WHEP，分别解码 101、100 帧视频，两路都收到非静音音频并成功关闭。Omni Chat 返回正确答案。Klein 完成一张 1024×1024 PNG，用时 8.94 秒，仅释放 LLM 的 KV 缓存；恢复后用生图前创建的 Responses ID 续接，成功取回原对话中的数字。
+在该历史版本中，Ava 和登记的 Inochi2D 原画 `q` 各运行四秒 WHEP，分别解码 101、100 帧视频，两路都收到非静音音频并成功关闭。Omni Chat 返回正确答案。Klein 完成一张 1024×1024 PNG，用时 8.94 秒，仅释放 LLM 的 KV 缓存；恢复后用生图前创建的 Responses ID 续接，成功取回原对话中的数字。
 
-### 从旧版 Ditto 部署升级
+### 从旧头像部署升级
 
-在旧版本下，使用现场原有的 Compose 参数先停止 `omni-portrait` 和 `llm-engine`，再停止 `gpu-mps`。这会中断现有推理请求。移除这三个已停止的容器，保留命名卷。更新仓库后，从启动参数去掉 `--portrait`，保留现场启用的 `--images`、`--registered-avatars`、`--vpn` 等选项。重新构建 `llm-engine`、`omni-avatar` 和 `omni-gateway` 并启动，再检查两个模型健康接口和登记原画会话。独立部署的旧 Portrait 节点也需在原项目中停止其 worker。
+使用原版本和原有 Compose 选项停止并移除 `omni-avatar`，独立 Avatar 节点也需停止该服务。更新代码后，去掉 `--registered-avatars`，保留原有的图像与网络选项，重新构建并启动 `omni-gateway`。模型和数据卷可保留。用应用 Bearer 检查两个模型的健康接口、原生实时会话及生图任务。
+
+如果从仍运行 Ditto 的版本升级，先停止 `omni-portrait` 和 `llm-engine`，再停止 `gpu-mps`。移除这三个已停止的容器，去掉 `--portrait` 后重建并启动 `llm-engine`。此步骤会中断当时的 LLM 请求。
 
 ## 可选生图
 
@@ -120,9 +119,11 @@ python tools/compose.py --target images -- up -d --wait
 python tools/compose.py --target gateway --remote-images -- up -d --wait
 ```
 
-## Avatar 与访问
+## 工作站访问
 
 工作站为 `research-2@100.119.17.6`，仓库 `/home/research-2/code/omni-avatar-api`。API 客户端使用 `http://100.119.17.6:8000/v1` 或 `http://100.119.17.6:8000/llm/v1`，各应用使用独立 Bearer。`--vpn` 保留回环监听并发布 `OMNI_GATEWAY_VPN_BIND` 指定地址。
+
+本地运维可在忽略提交的 `.env` 中填写 `WORKSTATION_HOST`、`WORKSTATION_USERNAME` 和可选的 `WORKSTATION_PASSWORD`。这些字段供 SSH 运维使用。调用 API 时使用应用 Bearer 凭据。
 
 浏览器通过可信 localhost 上下文访问：
 
@@ -130,7 +131,7 @@ python tools/compose.py --target gateway --remote-images -- up -d --wait
 ssh -N -L 18080:127.0.0.1:8000 research-2@100.119.17.6
 ```
 
-打开 `http://localhost:18080`。Avatar 使用 host 网络发布 ICE UDP，WHEP 媒体经 LAN／VPN 直连；SSH 隧道承载页面和控制 TCP。私网 HTTPS 由 tailnet 管理员启用 Serve 后配置。[私网访问验证](../../evaluations/results/vpn-api-workstation.json)。
+打开 `http://localhost:18080`。SSH 隧道承载页面与原生语音 WebSocket。私网 HTTPS 由 tailnet 管理员启用 Serve 后配置。[私网访问验证](../../evaluations/results/vpn-api-workstation.json)。
 
 ## 实机准入
 
@@ -145,4 +146,4 @@ ssh -N -L 18080:127.0.0.1:8000 research-2@100.119.17.6
 
 ## 其他部署目标
 
-`--target workstation-omni` 提供双卡 Omni 配置，`--target workstation-bf16` 提供 BF16 对照；`--target orin` 和 `--target orin-cu129` 提供 AGX 配置与兼容性验证。`--portrait` 适用于分卡 `workstation` 目标。直接调用 Docker Compose 时，指定 `--project-directory <仓库根目录>` 和环境文件。AGX 细节见 [Orin](orin.md) 与 [CUDA 12.9](jetpack6-cu129.md)。
+`--target workstation-omni` 提供双卡 Omni 配置，`--target workstation-bf16` 提供 BF16 对照；`--target orin` 和 `--target orin-cu129` 提供 AGX 配置与兼容性验证。分卡 `workstation` 可加 `--images` 启用共享 GPU 生图。直接调用 Docker Compose 时，指定 `--project-directory <仓库根目录>` 和环境文件。AGX 细节见 [Orin](orin.md) 与 [CUDA 12.9](jetpack6-cu129.md)。

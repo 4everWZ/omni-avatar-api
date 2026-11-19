@@ -1,28 +1,25 @@
 # Architecture
 
-The repository provides shared inference and avatar services. Applications own user identity, durable memory, agent orchestration, tool authorization/execution and workspace actions.
+The repository provides shared inference services. Applications own user identity, durable memory, agent orchestration, tool authorization/execution and workspace actions.
 
 ```mermaid
 flowchart LR
     Client[Applications and external orchestrators] --> Gateway[Authenticated gateway]
     Gateway --> Omni[Omni engine]
     Gateway --> LLM[Text LLM]
-    Gateway --> Avatar[Avatar sessions and media]
     Gateway --> Images[Optional Klein worker]
-    Avatar -->|WHEP audio and video| Client
 ```
 
 ## Service boundaries
 
 | Directory | Owns | Runtime dependencies |
 | --- | --- | --- |
-| `services/gateway/` | Authentication, aliases, admission, Responses/Chat/Realtime transport and the browser demo. | Private HTTP/WebSocket engine APIs and a configured Avatar origin or Unix socket. |
+| `services/gateway/` | Authentication, aliases, admission, Responses/Chat/Realtime transport and the browser demo. | Private HTTP/WebSocket engine APIs. |
 | `services/inference/` | Model acquisition, inference launchers, deployment configuration and patches for pinned upstream packages. | Model snapshots and upstream inference libraries. |
 | `services/llm/` | Text model acquisition, launcher, Responses admission, GPU control and reasoning budget patches. | Independently pinned vLLM image and LLM snapshot. |
-| `services/avatar/` | Session ownership, audio generations, playback timeline, renderer protocol and WebRTC tracks. | CPU sprite assets or registered Inochi2D rigs. |
 | `services/images/` | CPU prompt encoding, original-precision Klein inference and task-scoped GPU allocation. | Pinned Klein snapshot and Diffusers, isolated by a worker image. |
 
-Gateway and Avatar are Python packages with importable `app.py` factories and separate `__main__.py` process entrypoints. Imports inside a service are relative. Gateway separates environment/model policy (`config.py`), resource admission (`admission.py`), HTTP application wiring (`app.py`) and backend-specific transport clients. Cross-service communication uses the [API contract](api.md); cross-service Python imports belong in `tests/integration/` only.
+Gateway exposes an importable `app.py` factory and a `__main__.py` process entrypoint. Imports inside a service are relative. Gateway separates environment/model policy (`config.py`), resource admission (`admission.py`), HTTP application wiring (`app.py`) and backend-specific transport clients. Cross-service communication uses the [API contract](api.md); cross-service Python imports belong in `tests/integration/` only.
 
 `services/inference/configs/` contains model stage configuration. `patches/` contains version-checked upstream adapters and their helper. `docker/` contains CUDA/Jetson compatibility build variants; the primary inference Dockerfile stays at the service root. Container inference files are installed under `/opt/tuber-omni/`, with configuration and patch subdirectories.
 
@@ -46,11 +43,11 @@ Omni、LLM 与 Klein 各自生成可独立发布的服务镜像。工作站 linu
 
 在本地 WSL2 的 linux/amd64 Docker 中已分别构建 Omni、LLM、Klein、Portrait CUDA Graph 和 Portrait TensorRT。五个标签同时存在时，LLM 显示 23.4 GB，其中独占 177.1 kB；Klein 独占 86.42 MB。Portrait 两个变体共享 25.25 GB，TRT 变体独占 4.665 GB，标准变体可单独拉取。TRT 容器离线导入 TensorRT 11.4.0.106 成功，Torch 来自基座的系统包目录。这里的独占量取决于本机保留的其他镜像；空节点只部署一个服务时，仍需下载它的全部基础层。 当时工作站的 Omni、LLM、Klein 与 Portrait TRT 四个运行镜像按 digest 核对，共享连续的 40 个底层文件系统层。[部署镜像与层数](../evaluations/results/infra-thermal-tuning-workstation.json)
 
-复核时用 `docker exec -i <container> <worker-python> -B - < tools/diagnostics/runtime_dependencies.py` 检查实际解释器，并对照 `docker image inspect` 的 RootFS.Layers、`docker history` 与 `docker system df -v`。随后验证 Omni duplex、LLM Responses、CPU Avatar 音画和 Klein 图像输出。依赖声明、导入检查与完整 GPU 推理分别记录。
+复核时用 `docker exec -i <container> <worker-python> -B - < tools/diagnostics/runtime_dependencies.py` 检查实际解释器，并对照 `docker image inspect` 的 RootFS.Layers、`docker history` 与 `docker system df -v`。随后验证 Omni duplex、LLM Responses和 Klein 图像输出。依赖声明、导入检查与完整 GPU 推理分别记录。
 
 `deploy/compose/` contains the base stack and composable hardware/service layers. `tools/compose.py` selects supported combinations and passes an explicit repository project directory and environment file to Docker Compose. The Compose project remains `tuber-omni-infra`, preserving existing named volumes.
 
-The Compose defaults select GPU 1 for Omni and GPU 0 for the LLM. The workstation overrides both by UUID. Avatar renders on the CPU. Omni and LLM admission are independent. [Workstation deployment](deployment/workstation.md)
+The Compose defaults select GPU 1 for Omni and GPU 0 for the LLM. The workstation overrides both by UUID. Omni and LLM admission are independent. [Workstation deployment](deployment/workstation.md)
 
 The optional image overlay exposes caller-owned jobs through the gateway. In the colocated profile its coordinator drains LLM generation, grants the image worker one GPU lease and restores LLM admission after the worker has drained. A dedicated image worker has its own device allocation and accepts private HTTP calls from the gateway. The gateway owns the job queue and results in both modes.
 
@@ -59,7 +56,7 @@ Weights live in ignored `data/` paths. Control sockets and compiler caches use n
 ## Validation and documentation
 
 - Service-local tests cover that service's contracts and lifecycle.
-- `tests/integration/` covers gateway-to-Avatar transport with a fixture inference engine.
+- `tests/integration/` covers gateway-to-image-worker routing and job ownership.
 - `tests/tooling/` covers deployment entrypoint selection and path resolution.
 - `tools/qualification/` calls real public APIs and consumes media; `tools/diagnostics/` contains model-boundary investigations.
 - `evaluations/fixtures/` owns shared audio and text inputs for qualification and diagnostics; `evaluations/results/` retains real-device evidence. Each result records the code, configuration and measurement conditions of its run.

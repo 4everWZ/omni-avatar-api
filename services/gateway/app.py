@@ -9,11 +9,10 @@ from pathlib import Path
 from time import monotonic
 from contextlib import AsyncExitStack
 
-from aiohttp import ClientError, ClientSession, ClientTimeout, ClientWSTimeout, DummyCookieJar, UnixConnector, WSMsgType, web
+from aiohttp import ClientError, ClientSession, ClientTimeout, ClientWSTimeout, DummyCookieJar, WSMsgType, web
 from .admission import Admission, Busy, BudgetExceeded
 from .token_budget import reservation, ReservationRejected
 from .config import Config, MODEL_ALIAS
-from .avatar_proxy import AvatarProxy
 from .responses_proxy import ResponsesProxy
 from .input_transcription import CAPABILITY as TRANSCRIPTION_CAPABILITY, InputTranscription
 from .image_jobs import DedicatedImageJobs, ImageJobs
@@ -34,7 +33,6 @@ class Gateway:
         self.admission = Admission(config)
         self.capabilities = None
         self.chat_observed = False
-        self.avatar = AvatarProxy(config.avatar_url, config.avatar_token)
         self.browser_tickets = {}
         self.responses = ResponsesProxy(self) if not config.realtime_enabled else None
 
@@ -68,12 +66,10 @@ class Gateway:
         try:
             body = await request.json()
             path = body['path']
-            if path != '/v1/realtime' and not (
-                    isinstance(path, str) and path.startswith('/v1/avatar/sessions/')
-                    and path.endswith('/events') and len(path.split('/')) == 6):
+            if path != '/v1/realtime':
                 raise ValueError()
         except (ValueError, KeyError, TypeError):
-            return failure(400, 'invalid_ticket_path', 'Select a Realtime or Avatar event socket.')
+            return failure(400, 'invalid_ticket_path', 'Use /v1/realtime.')
         self.browser_tickets = {key: value for key, value in self.browser_tickets.items()
                                 if value['expires'] > monotonic()}
         if len(self.browser_tickets) >= 256:
@@ -90,15 +86,11 @@ class Gateway:
             timeout=ClientTimeout(total=None, connect=self.config.health_timeout), trust_env=False,
         ) as session:
             self.engine = session
-            async with ClientSession(timeout=ClientTimeout(total=None, connect=3),
-                                     connector=UnixConnector(path=self.config.avatar_socket) if self.config.avatar_socket else None,
-                                     cookie_jar=DummyCookieJar(), trust_env=False) as avatar_http:
-                app['avatar_http'] = avatar_http
-                try:
-                    yield
-                finally:
-                    if self.responses:
-                        await self.responses.close()
+            try:
+                yield
+            finally:
+                if self.responses:
+                    await self.responses.close()
 
     async def responses_request(self, request):
         try:
@@ -271,29 +263,18 @@ class Gateway:
         if "model" in request.query:
             query["model"] = self.config.model
         try:
-            avatar_live = request.query.get('avatar') == '1' and bool(self.config.avatar_url)
-            async with self.admission.program(program or avatar_live), self.admission.hold("realtime"), AsyncExitStack() as stack:
+            async with self.admission.program(program), self.admission.hold("realtime"), AsyncExitStack() as stack:
                 async with asyncio.timeout(self.config.health_timeout):
                     upstream = await stack.enter_async_context(self.engine.ws_connect(
                         "/v1/realtime", params=query, heartbeat=20, max_msg_size=MAX_FRAME,
                         timeout=ClientWSTimeout(ws_close=3),
                     ))
                 await downstream.prepare(request)
-                tap = None
-                if avatar_live and self.config.avatar_token:
-                    source_id = secrets.token_urlsafe(24)
-                    tap = await stack.enter_async_context(self.avatar.tap(
-                        request.app['avatar_http'], source_id, request['owner']))
-                    await downstream.send_json({'type': 'gateway.session.created',
-                                                'source_session_id': source_id, 'avatar_available': not tap.failed})
-                elif request.query.get('avatar') == '1':
-                    await downstream.send_json({'type': 'gateway.session.created',
-                                                'source_session_id': None, 'avatar_available': False})
                 transcription = None
                 if not program and request.query.get("ticket") and request.query.get("input_transcription") == "explicit":
                     transcription = InputTranscription(self, downstream, request["service_token"], request.query["ticket"])
                     stack.push_async_callback(transcription.stop)
-                await self.relay(upstream, downstream, tap, transcription)
+                await self.relay(upstream, downstream, transcription)
                 return downstream
         except Busy:
             return failure(429, "gateway_busy", "The realtime lane is at capacity.", headers={"Retry-After": "1"})
@@ -314,7 +295,7 @@ class Gateway:
                 pass
         return raw
 
-    async def relay(self, upstream, downstream, tap=None, transcription=None):
+    async def relay(self, upstream, downstream, transcription=None):
         loop = asyncio.get_running_loop()
         last_activity = loop.time()
 
@@ -340,8 +321,6 @@ class Gateway:
                         except (ValueError, AttributeError, KeyError):
                             pass
                     text = self.alias_realtime_update(frame.data) if source is downstream else (modified or frame.data)
-                    if tap:
-                        tap.publish(text, 'downstream' if source is downstream else 'upstream')
                     await target.send_str(text)
                 elif frame.type == WSMsgType.BINARY:
                     last_activity = loop.time()
@@ -422,7 +401,6 @@ def create_app(config=None, text_config=None, *, image_factory=None):
     app.add_routes([
         web.get("/v1/realtime", gateway.realtime if inference else unavailable),
         web.post('/v1/browser-tickets', gateway.browser_ticket),
-        web.route('*', '/v1/avatar/{tail:.*}', gateway.avatar.handle),
     ])
     static_root = Path(__file__).with_name('web')
     async def static(request):

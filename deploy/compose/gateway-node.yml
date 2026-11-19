@@ -31,7 +31,5 @@ services:
       LLM_QUEUE_LIMIT: ${LLM_QUEUE_LIMIT:-}
       LLM_QUEUE_TIMEOUT: ${LLM_QUEUE_TIMEOUT:-}
       LLM_REQUEST_TIMEOUT: ${LLM_REQUEST_TIMEOUT:-}
-      OMNI_AVATAR_URL: ${OMNI_AVATAR_URL:-}
-      OMNI_AVATAR_INTERNAL_TOKEN: ${OMNI_AVATAR_INTERNAL_TOKEN:-}
     healthcheck:
       test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/livez', timeout=3).close()"]

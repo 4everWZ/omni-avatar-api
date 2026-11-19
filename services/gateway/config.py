@@ -39,9 +39,6 @@ class Config:
     request_timeout: float = 1200
     health_timeout: float = 3
     realtime_idle_timeout: float = 120
-    avatar_url: str = ""
-    avatar_token: str = field(default="", repr=False)
-    avatar_socket: str = ""
     model_alias: str = MODEL_ALIAS
     public_prefix: str = ""
     realtime_enabled: bool = True
@@ -92,9 +89,6 @@ class Config:
             request_timeout=positive("OMNI_REQUEST_TIMEOUT", cls.request_timeout),
             health_timeout=positive("OMNI_HEALTH_TIMEOUT", 3),
             realtime_idle_timeout=positive("OMNI_REALTIME_IDLE_TIMEOUT", 120),
-            avatar_url=os.environ.get("OMNI_AVATAR_URL", ""),
-            avatar_token=os.environ.get("OMNI_AVATAR_INTERNAL_TOKEN", ""),
-            avatar_socket=os.environ.get("OMNI_AVATAR_SOCKET", ""),
         )
 
     def text_backend(self):
@@ -113,5 +107,4 @@ class Config:
                        queue_timeout=override("LLM_QUEUE_TIMEOUT", self.queue_timeout),
                        request_timeout=override("LLM_REQUEST_TIMEOUT", self.request_timeout),
                        batch_cap=override("LLM_MAX_NUM_SEQS", 4, int),
-                       token_budget=override("LLM_TOKEN_BUDGET", 262144, int),
-                       avatar_url="", avatar_token="", avatar_socket="")
+                       token_budget=override("LLM_TOKEN_BUDGET", 262144, int))

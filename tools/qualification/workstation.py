@@ -1,8 +1,4 @@
-"""Real service qualification. Run with services/avatar/requirements.txt, never a GPU fixture.
-
-The report distinguishes decoded media from physical speaker/display confirmation.
-Credentials are read from a private environment file and never written to the report.
-"""
+"""Qualify Omni Chat and native duplex using public inference APIs."""
 import argparse
 import asyncio
 import base64
@@ -21,7 +17,6 @@ from time import monotonic
 
 import av
 from aiohttp import ClientError, ClientSession, ClientTimeout
-from aiortc import RTCConfiguration, RTCPeerConnection, RTCSessionDescription
 from PIL import Image
 from evaluations.fixtures.long_context import DOCUMENTS, NEEDLE
 
@@ -59,18 +54,13 @@ class Qualification:
             raise ValueError('Configure a second independent service token in OMNI_GATEWAY_TOKENS')
         self.report = {'started_utc': datetime.now(timezone.utc).isoformat(),
                        'metrics_collector_host': socket.gethostname(),
-                       'scope': 'avatar_only' if args.avatar_only else 'omni_and_avatar',
+                       'scope': 'omni_chat_and_duplex',
                        'requested_seconds': args.seconds, 'state': 'running', 'checks': [], 'samples': []}
-        self.avatar = None
-        self.voice = self.events = self.peer = None
-        self.frames = {'audio': 0, 'video': 0, 'audible': 0}
+        self.voice = None
+        self.audible_chunks = 0
         self.native_audio = 0
         self.transcript = ''
-        self.first_audio = None
         self.tasks = []
-        self.spans = []
-        self.media_origin = 0
-        self.generation = 0
 
     def save(self):
         path = Path(self.args.report)
@@ -205,31 +195,13 @@ class Qualification:
         assert '5' in reply['choices'][0]['message']['content']
         self.check('stream_disconnect_releases_lane_and_engine_responds')
 
-    async def open_avatar(self):
-        source = {'type': 'audio'}
-        if not self.args.avatar_only:
-            self.voice = await self.socket('/v1/realtime?duplex=1&autostart=0&avatar=1&model=omni-default')
-            await self.voice.send_json({'type': 'session.update', 'session': {
-                'modalities': ['audio', 'text'], 'input_audio_format': 'pcm16', 'output_audio_format': 'pcm16',
-                'playback_commit_policy': 'ack_only', 'extra_body': {
-                    'auto_response': True, 'force_listen_count': 0,
-                    **getattr(self.args, 'realtime_extra_body', {})}}})
-            async with asyncio.timeout(30):
-                while source['type'] != 'realtime':
-                    message = await self.voice.receive_json()
-                    if message['type'] == 'gateway.session.created':
-                        assert message['avatar_available']
-                        source = {'type': 'realtime', 'session_id': message['source_session_id']}
-            self.tasks.append(asyncio.create_task(self.receive_voice()))
-        self.avatar = await self.json('POST', '/v1/avatar/sessions', expected=201,
-                                      json={'avatar_id': getattr(self.args, 'avatar_id', 'ava'), 'source': source})
-        await self.request('GET', '/v1/avatar/sessions/' + self.avatar['id'], other=True, expected=404)
-        await self.request('DELETE', '/v1/avatar/sessions/' + self.avatar['id'], other=True, expected=404)
-        self.events = await self.socket(self.avatar['events_url'])
-        await self.events.receive_json()
-        self.tasks.append(asyncio.create_task(self.receive_events()))
-        await self.open_media()
-        self.check('owned_avatar_created', avatar_id=self.avatar['avatar_id'], driver=self.avatar['format']['driver'])
+    async def open_voice(self):
+        self.voice = await self.socket('/v1/realtime?duplex=1&autostart=0&model=omni-default')
+        await self.voice.send_json({'type': 'session.update', 'session': {
+            'modalities': ['audio', 'text'], 'input_audio_format': 'pcm16', 'output_audio_format': 'pcm16',
+            'extra_body': {'auto_response': True, 'force_listen_count': 0,
+                           **getattr(self.args, 'realtime_extra_body', {})}}})
+        self.tasks.append(asyncio.create_task(self.receive_voice()))
 
     async def receive_voice(self):
         async for frame in self.voice:
@@ -237,69 +209,19 @@ class Qualification:
                 continue
             event = json.loads(frame.data)
             if event['type'] in ('response.audio.delta', 'response.output_audio.delta'):
+                pcm = base64.b64decode(event['delta'], validate=True)
+                if any(abs(sample) > 500 for (sample,) in struct.iter_unpack('<h', pcm)):
+                    self.audible_chunks += 1
                 self.native_audio += 1
-                self.first_audio = self.first_audio or monotonic()
             elif event['type'] == 'error':
                 raise AssertionError('Realtime returned an error event')
             elif event['type'] in ('response.audio_transcript.delta', 'response.output_audio_transcript.delta'):
                 self.transcript = (self.transcript + event.get('delta', ''))[-8192:]
         raise AssertionError('Realtime disconnected during qualification')
 
-    async def receive_events(self):
-        async for frame in self.events:
-            if frame.type.name != 'TEXT':
-                continue
-            event = json.loads(frame.data)
-            if event['type'] == 'avatar.audio.queued':
-                self.spans.append(event)
-                self.spans = self.spans[-120:]
-            elif event['type'] == 'avatar.cleared':
-                self.generation = event['generation']
-                self.spans.clear()
-            elif event['type'] in ('avatar.closed', 'avatar.failed', 'avatar.resync_required'):
-                raise AssertionError('Avatar stopped during qualification: ' + event['type'])
-        raise AssertionError('Avatar event socket disconnected')
-
-    async def open_media(self):
-        if self.peer:
-            await self.peer.close()
-        self.peer = RTCPeerConnection(RTCConfiguration(iceServers=[]))
-        @self.peer.on('track')
-        def track_started(track):
-            self.tasks.append(asyncio.create_task(self.consume(track)))
-        self.peer.addTransceiver('audio', direction='recvonly')
-        self.peer.addTransceiver('video', direction='recvonly')
-        await self.peer.setLocalDescription(await self.peer.createOffer())
-        async with await self.request('POST', self.avatar['media_url'], expected=201,
-                headers={'Content-Type': 'application/sdp'}, data=self.peer.localDescription.sdp) as response:
-            self.media_origin = float(response.headers['X-Avatar-Timeline-Origin-Ms'])
-            await self.peer.setRemoteDescription(RTCSessionDescription(type='answer', sdp=await response.text()))
-        async with asyncio.timeout(20):
-            while self.peer.connectionState != 'connected':
-                await asyncio.sleep(.05)
-
-    async def consume(self, track):
-        while True:
-            frame = await track.recv()
-            self.frames[track.kind] += 1
-            if track.kind == 'audio':
-                pcm = bytes(frame.planes[0])[:frame.samples * 2]
-                if any(abs(sample[0]) > 500 for sample in struct.iter_unpack('<h', pcm)):
-                    self.frames['audible'] += 1
-                timeline = self.media_origin + float(frame.pts * frame.time_base) * 1000
-                if self.frames['audio'] % 25 == 0:
-                    await self.events.send_json({'type': 'playback.ack', 'generation': self.generation,
-                                                 'played_ms': max(0, int(timeline))})
-                    span = next((s for s in reversed(self.spans) if s['start_ms'] <= timeline and
-                                 s.get('response_id') and s['generation'] == self.generation), None)
-                    if span and self.voice:
-                        played = span['source_start_ms'] + min(timeline, span['end_ms']) - span['start_ms']
-                        await self.voice.send_json({'type': 'playback.ack', 'response_id': span['response_id'],
-                                                   'played_ms': int(played), 'committed_ms': int(played)})
-
     async def metrics(self):
         item = {'elapsed_seconds': round(monotonic() - self.started, 2),
-                'frames': self.frames.copy(), 'native_audio_chunks': self.native_audio}
+                'audible_chunks': self.audible_chunks, 'native_audio_chunks': self.native_audio}
         if shutil.which('nvidia-smi'):
             result = await asyncio.to_thread(subprocess.run,
                 ['nvidia-smi', '--query-gpu=index,memory.used,utilization.gpu', '--format=csv,noheader,nounits'],
@@ -315,22 +237,17 @@ class Qualification:
         self.save()
 
     async def exercise(self):
-        chunks = audio_chunks(self.args.wav) if not self.args.avatar_only else None
-        tone = struct.pack('<24000h', *(int(6000 * math.sin(2 * math.pi * 440 * i / 24000)) for i in range(24000)))
+        chunks = audio_chunks(self.args.wav)
         self.started = monotonic()
         self.report['load_started_utc'] = datetime.now(timezone.utc).isoformat()
         async def produce():
             iteration = 0
             while True:
                 tick = monotonic()
-                if self.args.avatar_only:
-                    await self.json('POST', self.avatar['audio_url'], json={
-                        'audio': base64.b64encode(tone).decode(), 'generation': self.generation})
-                else:
-                    phase = iteration % (len(chunks) + 15)
-                    pcm = chunks[phase] if phase < len(chunks) else bytes(32000)
-                    await self.voice.send_json({'type': 'input_audio_buffer.append', 'format': 'pcm16',
-                        'sample_rate_hz': 16000, 'audio': base64.b64encode(pcm).decode(), 'is_speech': phase < len(chunks)})
+                phase = iteration % (len(chunks) + 15)
+                pcm = chunks[phase] if phase < len(chunks) else bytes(32000)
+                await self.voice.send_json({'type': 'input_audio_buffer.append', 'format': 'pcm16',
+                    'sample_rate_hz': 16000, 'audio': base64.b64encode(pcm).decode(), 'is_speech': phase < len(chunks)})
                 iteration += 1
                 await asyncio.sleep(max(0, tick + 1 - monotonic()))
 
@@ -341,28 +258,24 @@ class Qualification:
                 await asyncio.sleep(30)
 
         self.tasks.append(asyncio.create_task(produce()))
-        if not self.args.avatar_only:
-            self.tasks.append(asyncio.create_task(ordinary_calls()))
+        self.tasks.append(asyncio.create_task(ordinary_calls()))
         next_sample = self.started
         while monotonic() - self.started < self.args.seconds:
             for task in tuple(self.tasks):
                 if task.done():
                     task.result()
                     raise AssertionError('A continuous worker stopped unexpectedly')
-            if not self.args.avatar_only and monotonic() - self.started > 90 and self.native_audio == 0:
+            if monotonic() - self.started > 90 and self.native_audio == 0:
                 raise AssertionError('Native duplex produced no audio in the first ninety seconds')
             if monotonic() >= next_sample:
                 await self.metrics()
                 next_sample = monotonic() + 30
             await asyncio.sleep(.2)
-        assert self.frames['audio'] > 0 and self.frames['video'] > 0 and self.frames['audible'] > 0
-        if not self.args.avatar_only:
-            assert self.native_audio > 0, 'Native duplex generated no audio'
-            assert any(value in self.transcript.lower() for value in ('five', '5', '五')), 'Speech reply did not answer the fixture question'
-            self.report['speech_question_transcript'] = self.transcript[:1024]
+        assert self.audible_chunks > 0, 'Native duplex produced no audible PCM'
+        assert any(value in self.transcript.lower() for value in ('five', '5', '五')), 'Unexpected speech reply'
         await self.metrics()
-        self.check('continuous_media', elapsed_seconds=monotonic() - self.started, frames=self.frames,
-                   native_audio_chunks=self.native_audio, playback_evidence='decoded_and_consumed_not_physical_output')
+        self.check('continuous_native_audio', elapsed_seconds=monotonic() - self.started,
+                   native_audio_chunks=self.native_audio, audible_chunks=self.audible_chunks)
 
     async def ordinary_request(self):
         reply = await self.json('POST', '/v1/chat/completions', other=True, json={
@@ -374,31 +287,19 @@ class Qualification:
         for task in self.tasks:
             task.cancel()
         await asyncio.gather(*self.tasks, return_exceptions=True)
-        if self.peer:
-            await self.peer.close()
-        if self.events:
-            await self.events.close()
         if self.voice:
             if not self.voice.closed:
                 with suppress(ClientError):
                     await self.voice.send_json({'type': 'session.close'})
             await self.voice.close()
-        if self.avatar:
-            path = '/v1/avatar/sessions/' + self.avatar['id']
-            await self.request('DELETE', path, expected=204)
-            await self.request('DELETE', path, expected=204)
-            detail = await self.json('GET', path)
-            assert detail['state'] == 'closed'
-            self.check('idempotent_release')
 
     async def run(self):
         self.save()
         async with ClientSession(timeout=ClientTimeout(total=1200), trust_env=False) as self.http:
             try:
-                if not self.args.avatar_only:
-                    await self.chat_checks()
-                    await self.admission_checks()
-                await self.open_avatar()
+                await self.chat_checks()
+                await self.admission_checks()
+                await self.open_voice()
                 await self.exercise()
                 self.report['state'] = 'passed'
             except BaseException as error:
@@ -422,7 +323,6 @@ if __name__ == '__main__':
     parser.add_argument('--gateway', default='http://127.0.0.1:8000')
     parser.add_argument('--env', default='.env')
     parser.add_argument('--seconds', type=int, default=7200)
-    parser.add_argument('--avatar-only', action='store_true')
     parser.add_argument('--wav', default=str(Path(__file__).resolve().parents[2] / 'evaluations/fixtures/question.wav'))
     parser.add_argument('--report', default='tmp/workstation-qualification.json')
     args = parser.parse_args()

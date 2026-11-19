@@ -1,4 +1,4 @@
-"""Measure Omni Chat token throughput, idle and alongside native voice and CPU media."""
+"""Measure Omni Chat token throughput, idle and alongside native voice."""
 import argparse
 import asyncio
 import json
@@ -70,7 +70,7 @@ class OmniThroughputQualification(ThroughputQualification):
         health = await self.json('GET', '/healthz')
         models = await self.json('GET', '/v1/models')
         assert health['checkpoint_root_verified'] and models['data'][0]['max_model_len'] == 8192
-        self.report.update(scope='omni_text_chat_tps_with_native_voice_cpu_avatar_and_four_llm',
+        self.report.update(scope='omni_text_chat_tps_with_native_voice_and_four_llm',
             model=health['configured_model'], checkpoint=health['checkpoint'],
             chat_window=8192, sampling_temperature=0, maximum_output_tokens=256,
             thinking_enabled=self.args.thinking == 'enabled', thinking_token_budget=None,
@@ -88,8 +88,8 @@ class OmniThroughputQualification(ThroughputQualification):
             stream_chat(self.http, self.args.gateway, self.other, thinking=self.thinking),
             stream_group(self.http, self.args.gateway, self.other, request_options=[
                 {'chat_template_kwargs': {'enable_thinking': self.thinking}} for _ in range(4)]))
-        self.check('omni_single_chat_while_native_cpu_avatar_and_four_llm_active', **front)
-        self.check('four_simultaneous_responses_while_cpu_avatar_active', **back)
+        self.check('omni_single_chat_while_native_voice_and_four_llm_active', **front)
+        self.check('four_simultaneous_responses_during_native_voice', **back)
 
 
 if __name__ == '__main__':
@@ -97,13 +97,11 @@ if __name__ == '__main__':
     parser.add_argument('--gateway', default='http://127.0.0.1:8000')
     parser.add_argument('--env', default='.env')
     parser.add_argument('--seconds', type=int, default=90)
-    parser.add_argument('--avatar-id', default='ava')
     parser.add_argument('--sliding-window-mode', choices=('basic', 'context'), default='basic')
     parser.add_argument('--thinking', choices=('enabled', 'disabled'), default='enabled')
     parser.add_argument('--wav', default=str(Path(__file__).resolve().parents[2] / 'evaluations/fixtures/question.wav'))
     parser.add_argument('--report', default='tmp/omni-throughput.json')
     args = parser.parse_args()
-    args.avatar_only = False
     args.realtime_extra_body = {'sliding_window_mode': args.sliding_window_mode}
     if args.sliding_window_mode == 'basic':
         args.realtime_extra_body.update(basic_window_high_tokens=8000, basic_window_low_tokens=6000)

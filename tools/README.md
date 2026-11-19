@@ -6,48 +6,44 @@
 
 ## 工作站实机验证
 
-验证器调用真实网关并消费 WHEP 媒体，依赖使用 `services/avatar/requirements.txt`，隔离运行方式见[开发指南](../docs/development.md)。`.env` 配置主应用及独立的额外应用令牌；报告保存指标与验证结果。共享语音和长文输入由 `evaluations/fixtures/` 维护。
+验证器调用真实网关并读取原生 WebSocket 音频与字幕，依赖使用 `tools/qualification/requirements.txt`，隔离运行方式见[开发指南](../docs/development.md)。`.env` 配置主应用及独立的额外应用令牌；报告保存指标与验证结果。共享语音和长文输入由 `evaluations/fixtures/` 维护。
 
 ```sh
-python -m tools.qualification.workstation --env .env --avatar-only --seconds 60 --report tmp/avatar-check.json
 python -m tools.qualification.inference --env .env --seconds 1200 --report tmp/inference-functional.json
 python -m tools.qualification.concurrency --env .env --report tmp/llm-concurrency.json
 ```
 
 | 工具 | 验证内容 |
 | --- | --- |
-| `qualification.workstation --avatar-only` | Ava 2D 音画、跨调用方隔离与幂等释放。 |
-| `qualification.inference` | Omni 8192 与 LLM 262144 模型配置、Omni 约 7.9K 多轮检索与超限 400、Responses 约 22K 历史及归属续接、JSON Schema、function 输出与夹具结果回填、增量 SSE、后台取消及独立准入；随后进行 1200 秒原生双工／Ava 2D 与每三十秒后台请求。 |
+| `qualification.inference` | Omni 8192 与 LLM 262144 模型配置、Omni 约 7.9K 多轮检索与超限 400、Responses 约 22K 历史及归属续接、JSON Schema、function 输出与夹具结果回填、增量 SSE、后台取消及独立准入；随后进行 1200 秒原生双工 与每三十秒后台请求。 |
 | `qualification.concurrency` | 四路输出区间重叠、约 28K 输入与三路短请求混跑、worker 独立续接、token 压力 429、短 Chat 准入及取消释放。 |
 | `qualification.thinking` | 默认 CoT 完整答案、显式覆盖、思考预算、非法值、JSON Schema 和工具续接。完整答案夹具显式使用 4096 总输出额度。 |
 
 `concurrency --engine-metrics http://<引擎私网地址>:8000/metrics` 可采样实际运行序列并要求达到 4；采样通过引擎私网进行。
 
-`qualification.workstation_capacity --avatar-id <id>` 测两路 Chat、Chat 与双工混跑、两个绑定 CPU 头像的双工会话，以及单路／四路 Qwen。
+`qualification.workstation_capacity` 测两路 Chat、Chat 与双工混跑、两个原生双工会话，以及单路／四路 Qwen。
 
 `qualification.images --reference <portrait.png> --anime-reference <character.png>` 在工作站生成真人参考、动漫参考和文生图，保存 PNG、各阶段耗时、100 ms 间隔的整卡与主机内存峰值和 Responses 续接结果。按相同种子和输入进行目视对比。
-
-吞吐工具默认使用 Ava，也可用 `--avatar-id` 选择部署方已登记的 2D 形象。
 
 ## TPS 与混跑
 
 ```sh
-python -m tools.qualification.throughput --env .env --avatar-id <id> --seconds 90 --report tmp/throughput.json
-python -m tools.qualification.omni_throughput --env .env --avatar-id <id> --seconds 90 --sliding-window-mode basic --report tmp/omni-throughput.json
+python -m tools.qualification.throughput --env .env --seconds 90 --report tmp/throughput.json
+python -m tools.qualification.omni_throughput --env .env --seconds 90 --sliding-window-mode basic --report tmp/omni-throughput.json
 python -m tools.qualification.thinking --env .env --report tmp/thinking.json
 ```
 
-`throughput` 测量后台空闲单路／四路，以及原生语音和 CPU 头像期间的单路／四路。空闲单路至少 45 TPS、通话四路每路至少 15 TPS 为对应负载的回归检查线。`omni_throughput` 测量前台空闲单路、两个同时提交请求，以及原生通话、头像、四路 LLM 共驻期间的额外一路 Omni Chat。报告记录输出区间是否实际重叠。
+`throughput` 测量后台空闲单路／四路，以及原生语音期间的单路／四路。空闲单路至少 45 TPS、通话四路每路至少 15 TPS 为对应负载的回归检查线。`omni_throughput` 测量前台空闲单路、两个同时提交请求，以及原生通话和四路 LLM 共驻期间的额外一路 Omni Chat。报告记录输出区间是否实际重叠。
 
 两个工具默认 `--thinking enabled`，温度 0、相同短提示、每路 256-token 总输出，先预热 32 tokens；`--thinking disabled` 供显式策略对照。端到端 TPS 按引擎 usage 的思考＋正文 tokens 计量，包含预填充、传输与等待。报告分别保留思考／正文首增量、增量数、输出区间及重叠情况；256-token 夹具覆盖总生成吞吐，完整答复由 `thinking` 夹具验证。`thinking_token_budget=-1` 采用上游语义，由总输出和上下文额度约束思考；非法负值使用 -2。
 
-全栈通过条件覆盖实际消费的音视频、非静音音频、四路输出重叠和幂等释放。原生语音按音频块、答复内容及媒体时间线判定。实时窗口通过 `autostart=0` 后的首条会话更新配置，默认 `basic`；`context` 可用于策略对照。当前 TPS 和原始记录见[工作站指南](../docs/deployment/workstation.md#四路并发与计算预算)。
+全栈通过条件覆盖收到非静音 PCM、答复字幕及四路输出重叠。原生语音按音频块、答复内容及媒体时间线判定。实时窗口通过 `autostart=0` 后的首条会话更新配置，默认 `basic`；`context` 可用于策略对照。当前 TPS 和原始记录见[工作站指南](../docs/deployment/workstation.md#四路并发与计算预算)。
 
 ## 采集与验证范围
 
-报告记录持续时间、音画帧、非静音帧、请求数、隔离及释放。`metrics_collector_host` 标明资源采集位置；工作站 GPU 数据应在工作站采集。可使用现有 Avatar 镜像、host 网络和 `--gpus all`，以读取 `.env` 的宿主 UID 运行，挂载代码与单独可写的报告目录。
+报告记录持续时间、音频块、非静音块、请求数、隔离及释放。`metrics_collector_host` 标明资源采集位置；工作站 GPU 数据应在工作站采集。可在工作站的隔离 Python 环境中运行采集器。
 
-自动检查覆盖 API、媒体解码、时间线和资源生命周期。浏览器实物播放、麦克风／屏幕权限、主观口型与持续满载 QoS 由[后续验收计划](../docs/plans/avatar-workstation.md)维护。当前功能检查周期约半小时。
+自动检查覆盖 API、媒体解码、时间线和资源生命周期。浏览器实物播放、麦克风／屏幕权限与持续满载 QoS 由[后续验收计划](../docs/plans/avatar-workstation.md)维护。当前功能检查周期约半小时。
 
 ## 模型诊断
 

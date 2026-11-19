@@ -1,8 +1,8 @@
-# Omni Avatar API
+# Omni Inference API
 
 [English](README.md) | [简体中文](README.zh-CN.md)
 
-Shared, self-hosted inference and talking-avatar services for real-time assistants and applications that need a long-context LLM. One authenticated gateway exposes multimodal Omni, a separate Responses API backend, and pluggable avatar rendering.
+A self-hosted gateway for MiniCPM-o real-time voice and vision, Qwen3.5 long-context inference, and optional FLUX.2-klein image generation.
 
 Applications own their users, conversation memory, agent orchestration and tool execution. This repository provides the inference and media services those applications call.
 
@@ -10,7 +10,7 @@ Applications own their users, conversation memory, agent orchestration and tool 
 
 - **Real-time multimodal assistant:** MiniCPM-o Chat Completions and native duplex Realtime with an 8K recent-context window.
 - **Long-context inference:** a separate Qwen3.5 backend with a 262K per-request window, up to four generation sequences under a shared token budget, Responses, incremental SSE, structured output and function-call output. Chat Completions remains available for compatible clients.
-- **CPU avatars** support built-in Ava 2D sprites and registered Inochi2D rigs. WHEP delivers synchronized audio and video with interruption support.
+- **Image generation** accepts text prompts and optional reference images. The Klein worker can borrow the LLM GPU for a job or run on a dedicated node.
 - **Shared infrastructure:** per-application bearer credentials, independent backend admission, bounded queues, cancellation and caller-owned response continuation.
 - **Pinned deployments:** model revisions and inference images are fixed; model downloads are separate from offline serving.
 
@@ -21,9 +21,9 @@ Applications own their users, conversation memory, agent orchestration and tool 
 | Gateway | Public authentication, model aliases, streaming proxies and independent backend admission. |
 | Omni engine | Low-latency voice/vision interaction and recent conversation context. |
 | LLM engine | Long-context text inference for external applications and orchestrators. |
-| Avatar service | Owned sessions, audio timeline, renderer lifecycle and WHEP media. |
+| Klein image worker (optional) | Generates images from queued jobs and returns PNG results through the gateway. |
 
-The validated workstation layout uses **two RTX 3090s**: Omni runs on one selected device. The text LLM uses the other, which can also serve queued Klein image jobs. Avatar rendering uses the host CPU. AGX Orin profiles provide a separate hardware evaluation path. See [architecture](docs/architecture.md) and [deployment profiles](docs/deployment/workstation.md).
+The validated workstation layout uses **two RTX 3090s**: Omni runs on one selected device. The text LLM uses the other, which can also serve queued Klein image jobs. AGX Orin profiles provide a separate hardware evaluation path. See [architecture](docs/architecture.md) and [deployment profiles](docs/deployment/workstation.md).
 
 ## Quick start
 
@@ -35,35 +35,35 @@ From the repository root:
 cp .env.example .env
 ```
 
-Set **different random values** for `OMNI_GATEWAY_TOKEN`, `OMNI_GATEWAY_ADMIN_TOKEN` and `OMNI_AVATAR_INTERNAL_TOKEN`. Set `OMNI_MODEL_DATA` to storage with enough space for the pinned model snapshots. The [.env example](.env.example) documents the available settings.
+Set **different random values** for `OMNI_GATEWAY_TOKEN` and `OMNI_GATEWAY_ADMIN_TOKEN`. Set `OMNI_MODEL_DATA` to storage with enough space for the pinned model snapshots. The [.env example](.env.example) documents the available settings.
 
 Create the shared application network once, then build, download and start:
 
 ```sh
 docker network create tuber-omni
-python tools/compose.py -- build omni-engine llm-engine omni-gateway omni-avatar
+python tools/compose.py -- build omni-engine llm-engine omni-gateway
 python tools/compose.py -- --profile assets run --rm model-fetch
 python tools/compose.py -- --profile assets run --rm llm-model-fetch
 python tools/compose.py -- up -d --wait
 ```
 
-For independent nodes, the Compose entrypoint also supports `--target gateway|omni|llm|avatar|images` (select one). Configure private endpoints and device placement in the [workstation guide](docs/deployment/workstation.md).
+For independent nodes, the Compose entrypoint also supports `--target gateway|omni|llm|images` (select one). Configure private endpoints and device placement in the [workstation guide](docs/deployment/workstation.md).
 
-The default stack includes Omni, the text LLM, the gateway and Ava 2D. The API listens on **`http://127.0.0.1:8000`**. The browser demo is served at `/`. WHEP media requires direct LAN/VPN connectivity; remote microphone and screen capture need a trusted browser context.
+The default stack includes Omni, the text LLM and the gateway. The API listens on **`http://127.0.0.1:8000`**. The browser demo is served at `/`. Remote microphone and screen capture need a trusted browser context.
 
 The entrypoint anchors `.env`, build contexts and bind mounts to the repository root. Add `--vpn` to publish on `OMNI_GATEWAY_VPN_BIND`, or `--media` for optional MediaMTX transport. Alternative hardware/evaluation stacks use `--target`. See the [workstation guide](docs/deployment/workstation.md) for profile configuration and service updates.
 
 ## API
 
-All inference and avatar endpoints require an application bearer token. Administrative credentials are separate.
+All inference endpoints require an application bearer token. Administrative credentials are separate.
 
 | Base/path | Model | Use |
 | --- | --- | --- |
 | `/v1/chat/completions` | `omni-default` | Multimodal Chat, including streamed text. |
 | `/v1/realtime?duplex=1&model=omni-default` | `omni-default` | Native duplex WebSocket. |
+| `/v1/audio/speech` | `omni-default` | Reads supplied text in a reference voice and returns a WAV after transcript verification. |
 | `/llm/v1/responses` | `llm-default` | Long-context inference and incremental Responses SSE. |
 | `/llm/v1/chat/completions` | `llm-default` | Chat-compatible clients. |
-| `/v1/avatar/*` | — | Registered rigs, sessions, audio and WHEP. |
 | `/v1/images/jobs` | Klein 4B | Optional queued image generation with reference images. |
 | `/healthz`, `/llm/healthz` | — | Authenticated backend identity, readiness and admission. |
 
@@ -97,7 +97,7 @@ services/                 Independently built service boundaries
   gateway/                Authentication and inference/media proxies
   llm/                    Long-context text engine and vLLM patches
   inference/              Launchers, model configs, pinned patches and images
-  avatar/                 Sessions, renderers and WebRTC media
+  images/                 Klein image generation worker
 deploy/                   Compose layers and optional media configuration
 tools/                    Deployment, qualification and diagnostic entrypoints
 tests/                    Cross-service and deployment-tooling tests
@@ -105,13 +105,13 @@ docs/                     Architecture, API, development and deployment guides
 evaluations/              Shared fixtures and retained real-device evidence
 ```
 
-`data/`, `runtime/`, `tmp/` and `.env` are local, ignored artifacts. Service dependencies are isolated by image; services communicate through HTTP/WebSocket/Unix-socket contracts.
+`data/`, `runtime/`, `tmp/` and `.env` are local, ignored artifacts. Service dependencies are isolated by image; services communicate through HTTP and WebSocket contracts.
 
 ## Development and validation
 
 See [development](docs/development.md) for dependency-isolated tests and local service entrypoints, and [tools](tools/README.md) for real-device qualification commands.
 
-Recorded checks cover 8K Omni recall, Responses continuation, about 22K tokens of LLM history, and four simultaneous shorter generations in the historical GPU-sharing configuration.
+On the dual RTX 3090 workstation, retiring the Ditto model freed 1,776 MiB on the LLM GPU. A single benchmark run measured 86.35 output tokens/s for one Qwen request and 323.19 tokens/s combined across four. A Klein image job completed and the LLM then resumed the original Responses conversation. [Measurement conditions and results](docs/deployment/workstation.md#移除-ditto-后的工作站实测)
 
 Omni Chat and LLM Chat/Responses default to CoT, with upstream thinking-budget defaults. Native duplex retains the official model policy. Realtime defaults to `basic` (8000/6000); applications can override window policy at session creation and text reasoning budgets per request. See the [API](docs/api.md#cot-默认与调用方预算).
 

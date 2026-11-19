@@ -7,13 +7,6 @@ from tools.compose import COMPOSE, ROOT, TARGETS, command
 
 
 class ComposeEntrypointTests(unittest.TestCase):
-    def test_workstation_registry_requires_an_avatar_worker(self):
-        for target in ('workstation', 'avatar'):
-            args = command(target, ['config', '--quiet'], registered_avatars=True)
-            self.assertIn(str(COMPOSE / 'registered-avatars.yml'), args)
-        with self.assertRaises(ValueError):
-            command('gateway', ['up'], registered_avatars=True)
-
     def test_default_stack_and_persistent_paths_are_anchored_to_repository(self):
         previous = Path.cwd()
         with tempfile.TemporaryDirectory() as directory:
@@ -26,7 +19,7 @@ class ComposeEntrypointTests(unittest.TestCase):
                                    '--env-file', str(ROOT / '.env')])
         files = [args[i+1] for i, item in enumerate(args) if item == '-f']
         self.assertEqual(files, [str(COMPOSE / f'{name}.yml') for name in
-                                 ('base', 'workstation', 'avatar', 'llm', 'inference')])
+                                 ('base', 'workstation', 'llm', 'inference')])
         self.assertEqual(args[-3:], ['up', '-d', '--wait'])
 
     def test_all_deployment_targets_use_existing_compose_files(self):

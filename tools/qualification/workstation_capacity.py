@@ -1,4 +1,4 @@
-"""Measure two real Omni streams with CPU avatars and Qwen single/four-way throughput."""
+"""Measure two real Omni streams and Qwen single/four-way throughput."""
 import argparse
 import asyncio
 import base64
@@ -53,13 +53,12 @@ class CapacityQualification(InferenceQualification):
             await asyncio.gather(talk, return_exceptions=True)
 
     async def run(self):
-        scope = 'dual_cpu_avatar_single_and_four_qwen' if self.args.avatar_only else 'dual_omni_dual_cpu_avatar_single_and_four_qwen'
-        self.report.update(scope=scope, state='running')
+        self.report.update(scope='dual_omni_duplex_single_and_four_qwen', state='running')
         self.save()
         async with ClientSession(timeout=ClientTimeout(total=1200), trust_env=False) as self.http:
             second = None
             try:
-                if not (self.args.text_only or self.args.avatar_only):
+                if not self.args.text_only:
                     chat = await stream_chat(self.http, self.args.gateway, self.other, concurrency=2)
                     self.check('two_chat_outputs', **chat)
                     assert chat['outputs_overlap'], 'Omni Chat output intervals did not overlap'
@@ -70,35 +69,29 @@ class CapacityQualification(InferenceQualification):
                 if self.args.text_only:
                     self.report.update(scope='idle_qwen_single_and_four', state='passed')
                     return
-                await self.open_avatar()
-                if not self.args.avatar_only:
-                    await self.mixed_omni()
+                await self.open_voice()
+                await self.mixed_omni()
                 second_args = copy(self.args)
                 second_args.report = str(Path(self.args.report).with_suffix('.second.json'))
                 second = CapacityQualification(second_args)
                 second.http = self.http
-                await second.open_avatar()
-                if not self.args.avatar_only:
-                    try:
-                        async with await self.socket('/v1/realtime?duplex=1&model=omni-default'):
-                            raise AssertionError('Third Omni session entered')
-                    except WSServerHandshakeError as error:
-                        assert error.status == 429
-                    assert (await self.json('GET', '/healthz'))['active']['realtime'] == 2
-                for current in (self, second):
-                    detail = await current.json('GET', '/v1/avatar/sessions/' + current.avatar['id'])
-                    assert detail['state'] == 'active', detail
+                await second.open_voice()
+                try:
+                    async with await self.socket('/v1/realtime?duplex=1&model=omni-default'):
+                        raise AssertionError('Third Omni session entered')
+                except WSServerHandshakeError as error:
+                    assert error.status == 429
+                assert (await self.json('GET', '/healthz'))['active']['realtime'] == 2
                 async with asyncio.TaskGroup() as group:
                     group.create_task(self.exercise())
                     group.create_task(second.exercise())
-                    group.create_task(self.text_load('dual_cpu_avatar_qwen'))
-                self.check('second_cpu_avatar_session', checks=second.report['checks'])
+                    group.create_task(self.text_load('dual_duplex_qwen'))
+                self.check('second_duplex_session', checks=second.report['checks'])
                 await second.cleanup()
                 second = None
                 # The first session continues while the second capacity is reused.
-                if not self.args.avatar_only:
-                    async with await self.socket('/v1/realtime?duplex=1&model=omni-default'):
-                        self.check('second_realtime_slot_reusable')
+                async with await self.socket('/v1/realtime?duplex=1&model=omni-default'):
+                    self.check('second_realtime_slot_reusable')
                 self.report['state'] = 'passed'
             except BaseException:
                 self.report['state'] = 'failed'
@@ -116,10 +109,7 @@ if __name__ == '__main__':
     parser.add_argument('--env', default='.env')
     parser.add_argument('--seconds', type=int, default=90)
     parser.add_argument('--repeats', type=int, default=3)
-    workload = parser.add_mutually_exclusive_group()
-    workload.add_argument('--text-only', action='store_true')
-    workload.add_argument('--avatar-only', action='store_true')
-    parser.add_argument('--avatar-id', default='ava')
+    parser.add_argument('--text-only', action='store_true')
     parser.add_argument('--wav', default='evaluations/fixtures/question.wav')
     parser.add_argument('--report', default='tmp/workstation-capacity.json')
     args = parser.parse_args()

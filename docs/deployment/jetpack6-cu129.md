@@ -55,7 +55,7 @@ python tools/compose.py --target orin-cu129 -- --profile assets run --rm model-f
 python tools/compose.py --target orin-cu129 -- up -d
 ```
 
-BF16 探针通过后，从网关核验文字与静态图像，打开真实 Realtime 会话核验 `session.created` 能力、PCM 输入和实际返回音频，随后验收重连、中断、Avatar 和混合负载。若 CUDA API、主机设备节点、C 扩展和某阶段内核分别报错，保留原诊断并按该阶段排查。
+BF16 探针通过后，从网关核验文字与静态图像，打开真实 Realtime 会话核验 `session.created` 能力、PCM 输入和实际返回音频，随后验收重连、中断和混合推理负载。若 CUDA API、主机设备节点、C 扩展和某阶段内核分别报错，保留原诊断并按该阶段排查。
 
 ## 构建 SM 8.7 PyTorch wheel
 

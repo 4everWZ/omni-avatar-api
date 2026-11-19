@@ -1,13 +1,12 @@
 <!doctype html>
 <html lang="zh-CN">
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Ava · 会话验收</title><link rel="icon" href="data:,"><link rel="stylesheet" href="/style.css">
+<title>Omni 实时语音</title><link rel="icon" href="data:,"><link rel="stylesheet" href="/style.css">
 <body>
-<header><strong>Ava <span>会话验收</span></strong><output id="status" role="status">未连接</output></header>
+<header><strong>Omni <span>实时语音</span></strong><output id="status" role="status">未连接</output></header>
 <main>
-  <section class="stage" aria-label="Avatar 音画">
-    <video id="avatar" autoplay playsinline controls></video>
-    <p id="empty">连接会话后，Ava 将在这里与你对话。</p>
+  <section class="stage" aria-label="实时字幕">
+    <h2>实时字幕</h2>
     <div id="subtitles" aria-live="polite"></div>
   </section>
   <aside>
@@ -15,15 +14,11 @@
       <h1>连接共享服务</h1>
       <label for="token">应用凭据</label><input id="token" type="password" required autocomplete="off" placeholder="Bearer token">
       <p class="hint">凭据仅保留在当前页面内存。麦克风和屏幕采集需要 HTTPS 或 localhost。</p>
-      <label for="source">输入来源</label><select id="source"><option value="realtime">原生双工麦克风</option><option value="audio">独立音频验收</option></select>
-      <div class="actions"><button id="connect" type="submit">连接 Ava</button><button id="disconnect" type="button" disabled>关闭会话</button></div>
+      <div class="actions"><button id="connect" type="submit">连接麦克风</button><button id="disconnect" type="button" disabled>关闭会话</button></div>
     </form>
     <section aria-label="会话操作">
       <h2>会话操作</h2>
       <div class="actions"><button id="interrupt" disabled>打断</button><button id="screen" disabled>共享屏幕</button></div>
-      <label for="audio-file">独立音频源 · WAV 文件</label><input id="audio-file" type="file" accept="audio/wav,audio/*" disabled>
-      <button id="tone" disabled>播放一秒测试音</button>
-      <p id="session" class="hint">尚无活动会话</p>
     </section>
     <section aria-label="事件"><h2>状态与事件</h2><pre id="events" role="log" aria-live="polite"></pre></section>
   </aside>

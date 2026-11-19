@@ -1,8 +1,8 @@
-# Omni + Avatar 服务接口
+# Omni 推理服务接口
 
-调用方从配置取得 API 地址和服务凭据。推理服务负责模型版本、原生双工会话、推理资源和 Avatar 会话。业务身份、任务、记忆、外部工具授权及动作回执由调用应用持有。健康状态和会话握手报告可用能力，应用可以独立升级或替换服务地址。
+调用方从配置取得 API 地址和服务凭据。推理服务负责模型版本、原生双工会话和推理资源。业务身份、任务、记忆、外部工具授权及动作回执由调用应用持有。健康状态和会话握手报告可用能力，应用可以独立升级或替换服务地址。
 
-当前采用显式模型分工：`/v1` 的 `omni-default` 负责约 8K 近期窗口的多轮实时助手；`/llm/v1` 的 `llm-default` 提供独立后台长上下文推理，两者有各自的健康状态、模型卡和准入队列。所有服务和 Avatar 均在当前双 3090 工作站。Chat 调用方通过 messages 提交历史和所选记忆，显式选择模型，并负责 Agent 编排与返回工具的执行。
+当前采用显式模型分工：`/v1` 的 `omni-default` 负责约 8K 近期窗口的多轮实时助手；`/llm/v1` 的 `llm-default` 提供独立后台长上下文推理，两者有各自的健康状态、模型卡和准入队列。所有服务 均在当前双 3090 工作站。Chat 调用方通过 messages 提交历史和所选记忆，显式选择模型，并负责 Agent 编排与返回工具的执行。
 
 ## 已有推理接口
 
@@ -16,7 +16,7 @@
 
 Omni 的边界夹具显式关闭 CoT，已验证 20 条消息、7,928 个输入 tokens 的多轮历史检索；超限输入返回 400，调用方可先计量再选择保留的历史与记忆。计量接口允许计算超出窗口的文本，用于压缩预算。[8K 边界证据](../evaluations/results/omni-8k-multi-turn-workstation.json)。
 
-Bearer 鉴权、排队、取消、超时和管理接口由[网关规范](../services/gateway/README.md)维护。原生模型服务的协议和 Avatar 能力独立发布，调用应用根据各自会话实际协商。
+Bearer 鉴权、排队、取消、超时和管理接口由[网关规范](../services/gateway/README.md)维护。原生双工能力由会话握手协商。
 
 双卡工作站默认共享两个 Omni 槽位，Chat 和 Realtime 每次各使用一个。两路可任意组合。第三路按 FIFO 等待，超时或满队列返回 `429` 和 `Retry-After`。活动槽位由 `/api/mode` 报告，Chat 与 Realtime 分别计数。
 
@@ -112,62 +112,13 @@ LLM 单请求上限保留 262144 tokens，引擎和网关默认允许 4 个生�
 
 调用方应显式设置 `max_output_tokens`（Chat 为 `max_completion_tokens`／`max_tokens`），以释放短请求并发空间；省略时保留引擎默认输出上限，可能按整个剩余窗口预留并串行运行。长短请求按 FIFO 等待可用序列与 token；达到队列上限或等待超时返回 429 和 Retry-After，单请求预算本身不可容纳返回 400。`/llm/api/mode` 报告 `reserved_tokens`、`available_tokens`、`token_budget`、活跃序列和排队数。后台及断流保留规则同上，结束或取消后释放预算。
 
-`LLM_MAX_NUM_SEQS` 同时配置引擎和网关（默认 4）；`LLM_TOKEN_BUDGET` 控制全局活跃预留，模型窗口由 `max_model_len` 独立配置。`LLM_QUEUE_LIMIT`、`LLM_QUEUE_TIMEOUT`、`LLM_REQUEST_TIMEOUT` 可独立设置后台排队和总期限，默认继承现有 16／5 秒／1200 秒；Omni 的实时通道保持独立。提高并发或预算必须重新验证显存和头像共驻表现。
+`LLM_MAX_NUM_SEQS` 同时配置引擎和网关（默认 4）；`LLM_TOKEN_BUDGET` 控制全局活跃预留，模型窗口由 `max_model_len` 独立配置。`LLM_QUEUE_LIMIT`、`LLM_QUEUE_TIMEOUT`、`LLM_REQUEST_TIMEOUT` 可独立设置后台排队和总期限，默认继承现有 16／5 秒／1200 秒；Omni 的实时通道保持独立。提高并发或预算必须重新验证显存余量与混合推理吞吐。
 
 当前验收范围是 provider API，具体 Antigravity／agent-orchestrator 客户端接入留在应用项目。[provider 约定](../services/gateway/README.md#external-orchestration-clients)。
 
-## Avatar 会话与音画
+## 浏览器实时语音
 
-Avatar 由独立服务持有，所有外部请求通过共享网关鉴权。用不同客户端创建独立会话，按会话隔离媒体和控制。渲染服务可替换驱动，统一消费带时间戳和代次的音频，输出同步的视频帧及媒体状态。渲染失败时，原生语音和字幕仍可交付。当前 Ava 2D 已通过分卡配置下约 20 分钟原生双工与后台 LLM 共驻检查；浏览器实物交互列入后续人工验收。[当前验收结论](deployment/workstation.md#实机准入)。
-
-| 会话操作 | 目标契约 |
-| --- | --- |
-| `POST /v1/avatar/sessions` | 从获准的 Realtime 会话或显式音频源创建 Avatar 会话。指定已登记的 `avatar_id`，服务校验来源归属、渲染能力与资源，返回会话 ID、实际格式和受限媒体订阅入口。 |
-| `GET /v1/avatar/sessions/{id}` | 查询状态、关联语音会话、已协商的输出能力和失败原因。调用方只读自己或已获授权的会话。 |
-| `DELETE /v1/avatar/sessions/{id}` | 幂等关闭渲染和媒体订阅，释放该会话资源。关联语音会话的关闭和恢复遵循 Realtime 生命周期。 |
-| 音频、字幕与画面 | 首版用 WebRTC/WHEP 交付浏览器可消费的音画，并在会话事件中提供字幕、播放代次和时间戳。样式、编码、Alpha 或色键按协商报告。 |
-| 打断和播放 | 语音取消或播放清除使旧代次的未播音频、字幕和帧失效。服务区分已生成、已传输和客户端确认已播。播放回执由实际消费者提交。 |
-
-客户端直接验收启动、语音和画面同步、插话、失效代次、渲染故障时语音继续、授权隔离和正常释放。用两个独立调用方验证会话及凭据隔离。OBS 可作为后续订阅者，负责节目布局、合成和推流。
-
-### 首版调用
-
-所有请求沿用应用 Bearer，按调用方归属授权；会话查询失败与归属校验失败统一返回 404。媒体订阅同时校验凭据和会话归属。
-
-```json
-{"avatar_id":"ava","source":{"type":"audio"}}
-```
-
-创建返回 201，包含 `id`、`generation`、`state`、`format`、`media_url`、`events_url` 和 `audio_url`。显式音频通过 `POST audio_url` 提交 `{ "audio":"<base64>", "generation":0, "format":"pcm16", "sample_rate_hz":24000 }`，仅接受单声道 PCM16。每块最多五秒，未播缓冲最多三十秒。`{"type":"clear"}` 清除未播媒体并递增代次；旧代次输入返回 400。
-
-Realtime 客户端仍使用原协议。客户端以 `?avatar=1` 选择 Avatar 后，网关额外发送 `gateway.session.created`，提供 `source_session_id` 和 `avatar_available`。将创建参数的 `source` 改为 `{"type":"realtime","session_id":"<source_session_id>"}`，只允许同一应用凭据绑定。内部复用同一路推理的音频和控制事件。`?avatar=1` 在连接期间自动进入 live 模式，工作站仍按共享总容量准入。原有 `program=1` 仍要求媒体专用凭据。未选择 Avatar 的 Realtime 连接保持原事件流。
-
-### 音画与事件
-
-- 向 `media_url` POST `application/sdp` 的完整 ICE offer，同时请求音频和视频；201 返回 SDP answer 和 `Location`。首版为非 trickle WHEP，DELETE `Location` 幂等释放订阅。每会话最多两个订阅者。媒体连接协商 Opus 和浏览器支持的视频编码；2D 输出为 640×720、25 FPS、RGB。
-- `X-Avatar-Timeline-Origin-Ms` 将该订阅的媒体时间零点映射到 Avatar 会话时间。SDP 应答为订阅保留起始采样，两个 RTP 发送器均可取帧时才开始计时。握手期间已排在该起点之后的语音与口型从同一位置按实时速度播放。起播后，迟到的发送器按共同播放时钟跳过已过期的包，RTP 时间戳与取样一同推进。会话保留 15 秒播放历史；连接建立时若订阅起点已超出历史窗口，须重新订阅以取得新起点。字幕事件的 `start_ms` 和播放回执均使用会话时间。
-- `events_url` 是鉴权 WebSocket。事件包括 `avatar.snapshot`、`avatar.audio.queued`、`avatar.subtitle`、`avatar.cleared`、`avatar.failed`、`avatar.closed` 与 `avatar.resync_required`。`source_epoch` 提供上游打断栅栏（显式音频源为 -1），用于与原语音事件对齐。慢消费者收到 resync 后须重新建立会话；字幕与音频均按代次失效。
-- `avatar.audio.queued` 提供音频在媒体时间线的 `start_ms/end_ms`、`response_id` 和原回复的 `source_start_ms`。该事件报告排队状态，实际播放由消费者回执报告。
-- 消费者可在事件连接提交 `{"type":"playback.ack","generation":0,"played_ms":1000}`。服务保存为 `consumer_report`；生成、传输和消费报告分别计量。Realtime 历史回执仍由消费者按上游协议发送到原语音连接，使用回复相对位置。
-- 打断会清除服务端旧代次缓冲；消费者同时停止本地播放并重建 WHEP 接收器，以丢弃已经进入客户端缓冲的旧帧。关闭源连接会关闭绑定的 Avatar；语音恢复后须用新的来源标识重建 Avatar。
-
-浏览器通过鉴权 `POST /v1/browser-tickets` 提交 `{"path":"/v1/realtime"}` 或具体 `events_url`，获取有效三十秒、限定路径且仅用一次的 WebSocket ticket。浏览器把 ticket 放入对应升级请求，普通 HTTP/WHEP 请求继续使用 Bearer。应用长期凭据通过 Authorization 请求头传递。
-
-默认最多四个 Avatar 会话，未活动三分钟回收。浏览器每二十秒查询一次活动会话保活。进程退出释放源连接、会话与媒体。
-
-### 可插拔渲染与后续数字人
-
-`services/avatar/avatars.json` 登记 `avatar_id`、驱动和素材目录；`OMNI_AVATAR_REGISTRY` 可指定替代登记文件。驱动接收带采样起点和代次的原始 PCM，按会话时间戳提供画面，并实现能力声明、代次清除和关闭；音频入队与取帧应保持非阻塞。媒体与权限不依赖具体驱动。`sprite2d` 使用 Ava 四状态素材和共享时间线的音量。已登记驱动共用媒体和会话契约，未来 3D 多视角驱动沿用该接口。后续验收见[当前计划](plans/avatar-workstation.md)。
-
-`inochi2d` 在媒体服务 CPU 上读取 Inochi2D 0.8 的 INP1 文件。在私有登记文件中加入例如 `{"my-avatar":{"driver":"inochi2d","root":"rigs/my-avatar/model.inp"}}`。Compose 部署将该文件命名为 `registry.json`，设置 `OMNI_AVATAR_ASSETS_DIR` 为同时存放登记表和模型的工作站目录，为现有 `tools/compose.py` 命令加上 `--registered-avatars` 以只读方式挂载。登记表应包含仍在使用的全部形象。相对路径以登记文件所在目录为准。通过原有 `POST /v1/avatar/sessions` 传入 `{"avatar_id":"my-avatar","source":{"type":"audio"}}`，向返回的 `audio_url` 提交 PCM，并在 `media_url` 订阅 WHEP。实时会话可沿用 `source.type=realtime`。返回的 `format.driver` 为 `inochi2d`。
-
-该子集在 640×720 画布上支持 Node 与 Part、完整纹理的轴向矩形网格、Normal 混合和线性标量参数。局部平移、缩放与平面旋转依次沿节点树合成，按累计 zsort 递减绘制。平移与角度绑定采用加法，缩放和 Part 不透明度绑定采用乘法；关键点从参数声明的归一化 `axis_points` 读取。口形读取当前播放位置的 20 ms PCM，以及两侧各 60 ms 已入队的音频作局部响度参照。MouthOpen 使用相对能量和鼻音闭合线索，MouthForm 使用上下共振频带的比例；当前窗静音时闭嘴，缺少邻窗时直接使用可用样本。眼睑、视线、头部和呼吸沿用会话时钟。两条嘴部控制量是声学估计；姿态驱动和浏览器实呈分别验收。
-
-Inochi2D 另读取当前窗之前最多 220 ms 的播放历史。弱起音之前已有 200 ms 静默时，口型驱动检查相邻已入队样本的能量分布。能量集中在单个极短脉冲时保持闭口。音轨和两个媒体轨的发送时钟沿用原路径。两套原画的原声对照见[起音重放记录](../evaluations/results/inochi-quiet-onset-20261119.md)。
-
-已登记的 Inochi2D 形象可通过 `GET /v1/avatar/avatars/{avatar_id}` 查询。模型与纹理可加载时返回 `id`、`driver: inochi2d` 和 `state: ready`。未知 ID 返回 404，已登记但素材缺失或损坏返回 503。
-
-旧版 Ditto 的资产上传、准备任务和预览入口返回 404。用旧版生成的形象 ID 创建会话会返回 400；调用方可改用登记表中的 2D 形象。
+浏览器用应用 Bearer 调用 `POST /v1/browser-tickets`，提交 `{"path":"/v1/realtime"}`。返回的 ticket 有效期为 30 秒，仅可使用一次。使用该 ticket 连接 `/v1/realtime?duplex=1&ticket=…`，直接收发原生音频、字幕和播放回执。旧版 `/v1/avatar/*` 接口已退役。
 
 ## 生图任务
 
