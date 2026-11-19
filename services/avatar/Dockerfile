@@ -3,8 +3,8 @@ WORKDIR /srv
 COPY requirements.txt /srv/requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 RUN install -d -o 10001 -g 10001 /run/omni-avatar
-COPY *.py /srv/avatar/
-COPY avatars.json /srv/avatar/
-COPY assets /srv/avatar/assets
+COPY --chown=10001:10001 *.py /srv/avatar/
+COPY --chown=10001:10001 avatars.json /srv/avatar/
+COPY --chown=10001:10001 assets /srv/avatar/assets
 USER 10001:10001
 CMD ["python", "-u", "-m", "avatar"]
