@@ -9,6 +9,7 @@ from time import monotonic
 
 from aiohttp import ClientSession, ClientTimeout, UnixConnector, WSMsgType, web
 from aiortc import RTCConfiguration, RTCPeerConnection, RTCSessionDescription
+from aiortc.codecs import h264, vpx
 
 from .media import PlaybackClock, TimelineTrack
 from .renderers import DRIVERS
@@ -307,6 +308,9 @@ class AvatarService:
 
 
 def create_app(token=None, **options):
+    # aiortc 1.16 uses process-wide packetizer budgets. Leave room on a
+    # 1280-byte path for IPv6/UDP, RTP extensions, RTX and SRTP protection.
+    h264.PACKET_MAX = vpx.PACKET_MAX = 1180
     service = AvatarService(token or os.environ.get('OMNI_AVATAR_INTERNAL_TOKEN'), **options)
     app = web.Application(client_max_size=6 * 1024 * 1024, middlewares=[service.authenticate])
     app['service'] = service
