@@ -163,6 +163,7 @@ class GatewayTest(unittest.IsolatedAsyncioTestCase):
             async with client.ws_connect("/v1/realtime?duplex=1&input_transcription=explicit&ticket="+ticket) as ws:
                 caps = (await ws.receive_json())["session"]["capabilities"]
                 self.assertEqual(caps["gateway_input_transcription"]["mode"], "explicit_once")
+                self.assertEqual(caps["gateway_input_transcription"]["transcript_receipt"], "hmac-sha256-v1")
                 self.assertEqual(self.realtime_query, {"duplex":"1"})
                 async def echo(event):
                     await ws.send_json(event)
@@ -181,11 +182,15 @@ class GatewayTest(unittest.IsolatedAsyncioTestCase):
                 fields = ["omni.mic.v1", hashlib.sha256(ticket.encode()).hexdigest(), capture, 2, "ok"]
                 signed = json.dumps(fields, ensure_ascii=False, separators=(",", ":")).encode()
                 self.assertEqual(result.pop("receipt"), hmac.digest(b"fixture-client", signed, "sha256").hex())
+                fields[0] = "omni.asr.v1"
+                signed = json.dumps(fields, ensure_ascii=False, separators=(",", ":")).encode()
+                self.assertEqual(result.pop("transcript_receipt"), hmac.digest(b"fixture-client", signed, "sha256").hex())
                 self.assertEqual(result, {"type":PREFIX+"completed", "capture_id":capture,
                                  "samples":2, "source":"explicit_user_audio", "transcript":"ok"})
                 message = self.chat_payload["messages"][-1]
                 self.assertEqual(message["role"], "user")
-                part, = message["content"]
+                prompt, part = message["content"]
+                self.assertEqual(prompt, {"type":"text", "text":"请仔细听这段音频片段，并将其内容逐字记录。"})
                 with wave.open(io.BytesIO(base64.b64decode(part["input_audio"]["data"]))) as wav:
                     self.assertEqual((wav.getframerate(), wav.getnchannels(), wav.readframes(100)), (16000, 1, bytes([1,2,3,4])))
                 self.assertNotIn("assistant answer", str(self.chat_payload))

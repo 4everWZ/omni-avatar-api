@@ -55,6 +55,8 @@ Omni Chat、后台 LLM Chat／Responses 默认 `chat_template_kwargs.enable_thin
 
 使用一次性票据的私有连接可在 WebSocket URL 加 `input_transcription=explicit`。客户端收到 `session.created.session.capabilities.gateway_input_transcription` 的 `mode=explicit_once` 和 `receipt=hmac-sha256-v1` 后可显示转认操作。连接协商本身不会保存音频或发起转写。`program=1` 不提供该能力。
 
+来话转写将逐字转写请求与录音放在同一用户消息中。完成事件保留原有的 `receipt`，并在 `transcript_receipt` 提供以 `omni.asr.v1` 为协议标识的 HMAC，便于调用方区分可直接分流的转写。两份签名均绑定同一个票据摘要、录音段编号、采样数与转写文字。协商字段 `transcript_receipt=hmac-sha256-v1` 表示支持这一回执。[MiniCPM-o 音频理解](https://github.com/OpenBMB/MiniCPM-V/blob/main/docs/minicpm_o4dot5_zh.md)
+
 | 方向 | 事件与含义 |
 | --- | --- |
 | 客户端 → 网关 | 用户选择开始后发 `gateway.input_transcription.start`。网关返回 `.started` 及本次 `capture_id`。使用原连接后续的单声道 16 kHz PCM16 `input_audio_buffer.append`，最长 15 秒。 |
