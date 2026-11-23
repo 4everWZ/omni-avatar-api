@@ -18,6 +18,7 @@ from .input_transcription import CAPABILITY as TRANSCRIPTION_CAPABILITY, InputTr
 from .image_jobs import DedicatedImageJobs, ImageJobs
 from .thinking import apply_thinking_default
 from .speech import speech
+from .transcription import AudioTranscriptionProxy
 
 MAX_BODY = 32 * 1024 * 1024
 MAX_FRAME = 8 * 1024 * 1024
@@ -352,7 +353,7 @@ class Gateway:
         await asyncio.gather(downstream.close(code=code, message=reason), upstream.close(code=code, message=reason))
 
 
-def create_app(config=None, text_config=None, *, image_factory=None):
+def create_app(config=None, text_config=None, *, image_factory=None, asr_factory=None):
     if config is None:
         config = Config.from_env()
         if os.environ.get("LLM_ENGINE_URL"):
@@ -364,6 +365,8 @@ def create_app(config=None, text_config=None, *, image_factory=None):
             if placement == 'shared' and text_config is None:
                 raise ValueError('Shared image placement requires a text engine')
             image_factory = DedicatedImageJobs.from_env if placement == 'dedicated' else ImageJobs.from_env
+        if os.environ.get("OMNI_ASR_WORKER_URL"):
+            asr_factory = AudioTranscriptionProxy.from_env
     gateway = Gateway(config)
     app = web.Application(client_max_size=MAX_BODY, middlewares=[gateway.authenticate])
     app['gateway'] = gateway
@@ -375,9 +378,18 @@ def create_app(config=None, text_config=None, *, image_factory=None):
     async def unavailable(request):
         return failure(503, "model_unavailable", "Omni inference is disabled on this gateway.")
 
+    async def asr_unavailable(request):
+        return failure(503, "asr_unavailable", "ASR worker is not configured on this gateway.")
+
     inference = bool(config.engine_url)
     if config.realtime_enabled:
         app.router.add_post("/v1/audio/speech", speech if inference else unavailable)
+        if asr_factory is not None:
+            asr = asr_factory()
+            app.cleanup_ctx.append(asr.lifecycle)
+            app.router.add_post("/v1/audio/transcriptions", asr.transcribe)
+        else:
+            app.router.add_post("/v1/audio/transcriptions", asr_unavailable)
     app.add_routes([
         web.get("/livez", livez), web.get("/healthz", gateway.health if inference else unavailable),
         web.get("/api/mode", gateway.mode), web.put("/api/mode", gateway.mode),

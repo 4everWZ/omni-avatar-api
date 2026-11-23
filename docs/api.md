@@ -11,6 +11,7 @@
 | `GET /livez`、`GET /healthz`、`GET /v1/models` | 分别确认网关存活、上游可用性和模型卡。客户端读取认证模型卡的实际 `max_model_len`，健康状态报告锁定版本和已验证能力。 |
 | `POST /v1/chat/completions` | 普通与流式推理共用入口。使用服务配置的模型别名，按实际能力使用视觉、音频和结构化回复。 |
 | `POST /v1/audio/speech` | 使用普通应用 Bearer，提交模型别名、台词和该角色的内联参考 WAV。返回通过转写核对的 WAV。 |
+| `POST /v1/audio/transcriptions` | 使用普通应用 Bearer，提交 `multipart/form-data` 音频文件、可选 `language` 与 `response_format`（`verbose_json`/`json`/`text`），返回 CPU Whisper 离线转写与分段时间戳；未启用 ASR worker 时返回 `503 asr_unavailable`。 |
 | `POST /v1/chat/prompt_tokens` | 文本按同一聊天模板计量，供需要精确上下文预算的客户端使用。 |
 | `GET /v1/realtime?duplex=1` | Realtime WebSocket。以 `session.created` 报告的能力确定输入模态、切片、字幕、打断、恢复和播放确认。 |
 
@@ -144,3 +145,11 @@ LLM 单请求上限保留 262144 tokens，引擎和网关默认允许 4 个生�
 ### 独立图像节点
 
 Gateway 可用 `--remote-images` 将上述生图任务交给专用 worker。提交、归属校验、轮询、取消及下载沿用同一接口；专用节点独立执行准备和生成，端到端耗时包含排队与跨机传输。专用模式不需要文本服务、共享 GPU 卷或 LLM 控制凭据，结果不含同卡切换特有的 `gpu_release`。每个 worker 由一个 Gateway 作业队列驱动，作业元数据和结果保存在该 Gateway 的 image-jobs 卷。
+
+## 离线音频转写
+
+通过 `POST /v1/audio/transcriptions` 接入可选独立 CPU ASR worker（`faster-whisper`，默认 `small` + CPU `int8`，无 GPU 争抢）：
+
+- 鉴权沿用普通应用 Bearer，提交 `multipart/form-data`（必填音频 `file`，上限 25 MiB；可选 `language`，可选 `response_format` 为 `verbose_json` / `json` / `text`）。
+- 启用 `deploy/compose/asr.yml` 后返回标准 Whisper 转写结构与带精确 `start`/`end`（秒）的分段数组 `segments`，供无官方 CC 字幕的视频按时间段对齐补看关键帧。
+- 未配置 `OMNI_ASR_WORKER_URL` 时返回 `503 asr_unavailable`，不影响已有文本、语音、双工与生图路由。

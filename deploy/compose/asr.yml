@@ -1,0 +1,28 @@
+# Optional standalone CPU faster-whisper ASR worker.
+services:
+  omni-asr:
+    build: ./services/asr
+    image: omni-api-asr:small-int8
+    restart: unless-stopped
+    init: true
+    environment:
+      OMNI_ASR_INTERNAL_TOKEN: ${OMNI_ASR_INTERNAL_TOKEN:?set ASR worker token}
+      OMNI_ASR_MODEL: ${OMNI_ASR_MODEL:-small}
+      OMNI_ASR_DEVICE: cpu
+      OMNI_ASR_COMPUTE_TYPE: ${OMNI_ASR_COMPUTE_TYPE:-int8}
+      OMNI_ASR_MODEL_DIR: /models/asr
+      OMNI_ASR_MAX_CONCURRENCY: ${OMNI_ASR_MAX_CONCURRENCY:-1}
+    volumes:
+      - ${OMNI_ASR_MODEL_DATA:-./data/models/asr}:/models/asr
+    networks: [engine-private, asset-download]
+    healthcheck:
+      test: [CMD, python3, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/livez', timeout=3).close()"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+
+  omni-gateway:
+    environment:
+      OMNI_ASR_WORKER_URL: http://omni-asr:8000
+      OMNI_ASR_INTERNAL_TOKEN: ${OMNI_ASR_INTERNAL_TOKEN:?set ASR worker token}
+      OMNI_ASR_TIMEOUT: ${OMNI_ASR_TIMEOUT:-180}
