@@ -1,6 +1,8 @@
 """Thread-safe lazy loader and transcriber backed by faster-whisper."""
 
 from pathlib import Path
+import shutil
+import subprocess
 import tempfile
 from threading import Lock
 
@@ -52,8 +54,40 @@ class WhisperBackend:
         with tempfile.TemporaryDirectory(prefix="omni-asr-") as tmpdir:
             audio_path = Path(tmpdir) / f"input{suffix}"
             audio_path.write_bytes(audio_bytes)
+            source: object = str(audio_path)
+            if shutil.which("ffmpeg"):
+                try:
+                    import numpy as np
+
+                    proc = subprocess.run(
+                        [
+                            "ffmpeg",
+                            "-nostdin",
+                            "-v",
+                            "error",
+                            "-i",
+                            str(audio_path),
+                            "-vn",
+                            "-ac",
+                            "1",
+                            "-ar",
+                            "16000",
+                            "-f",
+                            "f32le",
+                            "pipe:1",
+                        ],
+                        capture_output=True,
+                        check=True,
+                        timeout=60,
+                    )
+                except subprocess.CalledProcessError as err:
+                    detail = err.stderr.decode("utf-8", errors="ignore").strip()
+                    raise ValueError(f"Unsupported or unreadable audio input: {detail or err}") from err
+                if not proc.stdout:
+                    raise ValueError("Decoded audio stream is empty")
+                source = np.frombuffer(proc.stdout, dtype=np.float32)
             segments_iter, info = model.transcribe(
-                str(audio_path),
+                source,
                 language=language or None,
                 vad_filter=True,
             )
