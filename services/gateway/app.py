@@ -17,6 +17,7 @@ from .responses_proxy import ResponsesProxy
 from .input_transcription import CAPABILITY as TRANSCRIPTION_CAPABILITY, InputTranscription
 from .image_jobs import DedicatedImageJobs, ImageJobs
 from .thinking import apply_thinking_default
+from .schema_compat import apply_xgrammar_schema_compat
 from .speech import speech
 from .transcription import AudioTranscriptionProxy
 
@@ -188,6 +189,7 @@ class Gateway:
             return None, failure(400, "unsupported_media", "Use llm-default Responses for image input.")
         payload["model"] = self.config.model
         apply_thinking_default(payload, default_budget=self.config.default_thinking_token_budget)
+        apply_xgrammar_schema_compat(payload)
         if payload.get("modalities") is None:
             payload["modalities"] = ["text"]
         return payload, None

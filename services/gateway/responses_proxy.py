@@ -11,6 +11,7 @@ from aiohttp import ClientError, web
 from .admission import BudgetExceeded
 from .token_budget import ReservationRejected, measure, reservation
 from .thinking import apply_thinking_default
+from .schema_compat import apply_xgrammar_schema_compat
 
 
 def inline_image(url):
@@ -100,6 +101,7 @@ class ResponsesProxy:
         payload['request_id'] = 'resp_' + nonce + '_' + self.signature(owner, nonce)
         payload['model'] = self.gateway.config.model
         apply_thinking_default(payload, default_budget=self.gateway.config.default_thinking_token_budget)
+        apply_xgrammar_schema_compat(payload)
         return payload, None
 
     async def prompt_tokens(self, request):

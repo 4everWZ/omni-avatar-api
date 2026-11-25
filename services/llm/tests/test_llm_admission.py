@@ -117,6 +117,20 @@ class InferenceAdmissionTests(unittest.TestCase):
                      '--enable-auto-tool-choice'):
             self.assertNotIn(flag, omitted)
 
+    def test_structured_outputs_backend_configuration(self):
+        pinned = self.launch({'LLM_STRUCTURED_OUTPUTS_BACKEND': 'xgrammar'})
+        self.assertEqual(
+            json.loads(pinned[pinned.index('--structured-outputs-config') + 1]),
+            {'backend': 'xgrammar'},
+        )
+        for empty_val in ('', '   '):
+            with self.subTest(empty_val=empty_val):
+                self.assertNotIn(
+                    '--structured-outputs-config',
+                    self.launch({'LLM_STRUCTURED_OUTPUTS_BACKEND': empty_val}),
+                )
+        self.assertNotIn('--structured-outputs-config', self.launch({}))
+
     def test_env_validation_rejects_invalid_values(self):
         invalid_envs = [
             {'LLM_TENSOR_PARALLEL_SIZE': '0'},

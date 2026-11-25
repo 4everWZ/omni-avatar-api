@@ -136,6 +136,8 @@ def serve(model, revision, path):
         command.extend(['--reasoning-parser', reasoning_parser])
     if tool_call_parser := os.environ.get('LLM_TOOL_CALL_PARSER', 'qwen3_coder').strip():
         command.extend(['--enable-auto-tool-choice', '--tool-call-parser', tool_call_parser])
+    if structured_backend := os.environ.get('LLM_STRUCTURED_OUTPUTS_BACKEND', '').strip():
+        command.extend(['--structured-outputs-config', json.dumps({'backend': structured_backend})])
     if enable_mtp:
         mtp_tokens = _env_int('LLM_MTP_NUM_SPECULATIVE_TOKENS', 3)
         command.extend(['--speculative-config', json.dumps({
