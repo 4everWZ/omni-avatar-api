@@ -73,7 +73,8 @@ def create_app(
     default_chunk_size = int(os.environ.get("TTS_STREAM_CHUNK_SIZE", "4"))
     if not 1 <= default_chunk_size <= 64:
         raise ValueError("TTS_STREAM_CHUNK_SIZE must be between 1 and 64")
-    root_display = f"{str(model_root).rstrip('/\\\\')}/{checkpoint}"
+    clean_root = str(model_root).rstrip('/\\')
+    root_display = f"{clean_root}/{checkpoint}"
 
     @web.middleware
     async def authenticate(request: web.Request, handler):
