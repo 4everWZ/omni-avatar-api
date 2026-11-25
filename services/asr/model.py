@@ -86,10 +86,15 @@ class WhisperBackend:
                 if not proc.stdout:
                     raise ValueError("Decoded audio stream is empty")
                 source = np.frombuffer(proc.stdout, dtype=np.float32)
+            transcribe_kwargs = {
+                "language": language or None,
+                "vad_filter": True,
+            }
+            if str(language or "").lower().startswith("zh"):
+                transcribe_kwargs["initial_prompt"] = "以下是普通话的简体中文句子，可能包含英文技术词汇。"
             segments_iter, info = model.transcribe(
                 source,
-                language=language or None,
-                vad_filter=True,
+                **transcribe_kwargs,
             )
             segments = []
             texts = []

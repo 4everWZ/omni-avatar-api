@@ -2,6 +2,7 @@
 import asyncio
 import base64
 import binascii
+from difflib import SequenceMatcher
 import io
 import json
 import re
@@ -17,6 +18,22 @@ def spoken_words(value):
     # Preserve lexical symbols and decimal points. ASR supplies its own sentence punctuation.
     # Keep word boundaries in Latin text and numeric separators in dates or decimals.
     return re.findall(r"[A-Za-z0-9]+(?:[.,:][0-9]+)*|[^\s，。！？、；：‘’“”《》,.!?;:\"「」『』…]", value)
+
+
+def transcript_matches(expected: str, heard: str) -> bool:
+    """Verify ASR transcript against expected line, allowing minor homophone drift on long lines."""
+    exp = [w.lower() for w in spoken_words(expected)]
+    got = [w.lower() for w in spoken_words(heard)]
+    if not exp or not got:
+        return False
+    if exp == got:
+        return True
+    if len(exp) <= 4:
+        return False
+    ratio_len = len(got) / len(exp)
+    if not (0.60 <= ratio_len <= 1.40):
+        return False
+    return SequenceMatcher(None, exp, got).ratio() >= 0.65
 
 
 def validate_wav(data, *, output=False):
@@ -125,6 +142,8 @@ async def synthesize_via_workers(gateway, line, reference):
 
             form = FormData()
             form.add_field("file", data, filename="speech.wav", content_type="audio/wav")
+            if re.search(r"[\u4e00-\u9fff]", line):
+                form.add_field("language", "zh")
             form.add_field("response_format", "json")
             async with asyncio.timeout(gateway.config.asr_timeout):
                 async with session.post(
@@ -142,7 +161,7 @@ async def synthesize_via_workers(gateway, line, reference):
     if not isinstance(payload, dict):
         raise ValueError("Invalid ASR response payload")
     transcript = payload["text"]
-    if not isinstance(transcript, str) or spoken_words(transcript) != spoken_words(line):
+    if not isinstance(transcript, str) or not transcript_matches(line, transcript):
         raise ValueError("Spoken words mismatch")
     return data, transcript
 

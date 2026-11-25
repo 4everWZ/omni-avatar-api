@@ -193,6 +193,7 @@ class WorkerSpeechTest(unittest.IsolatedAsyncioTestCase):
                 "filename": "speech.wav",
                 "content_type": "audio/wav",
                 "bytes": self.wav,
+                "language": "zh",
                 "response_format": "json",
             },
         }])
@@ -203,10 +204,24 @@ class WorkerSpeechTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual((await mismatch.json())["error"]["code"], "speech_unverified")
         self.assertNotIn("X-Omni-Transcript", mismatch.headers)
 
+        # Longer mixed Chinese-English line tolerates minor ASR homophone/loanword drift.
+        long_input = dict(self.input, input="写 Python 小工具最危险的时刻，就是它刚刚跑通。")
+        self.asr_text = "写拍森小工具最危险的时刻，就是他刚刚跑通。"
+        long_ok = await self.client.post("/v1/audio/speech", headers=self.auth, json=long_input)
+        self.assertEqual(long_ok.status, 200)
+        self.assertEqual(base64.b64decode(long_ok.headers["X-Omni-Transcript"]).decode(), self.asr_text)
+
+        # Unrelated long transcript still fails verification.
+        self.asr_text = "今天外面下着大雨大家记得带伞。"
+        long_bad = await self.client.post("/v1/audio/speech", headers=self.auth, json=long_input)
+        self.assertEqual(long_bad.status, 422)
+        self.assertEqual((await long_bad.json())["error"]["code"], "speech_unverified")
+
+        self.asr_text = "收到。"
         self.tts_body = self.bad_wav
         bad_format = await self.client.post("/v1/audio/speech", headers=self.auth, json=self.input)
         self.assertEqual(bad_format.status, 422)
-        self.assertEqual(len(self.asr_calls), 2)
+        self.assertEqual(len(self.asr_calls), 4)
 
     async def test_worker_speech_error_and_timeout_mapping(self):
         async with self.gateway["gateway"].admission.hold("chat"):
