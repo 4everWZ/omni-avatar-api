@@ -12,6 +12,7 @@ RUN pip install --no-cache-dir -r /srv/tts-requirements.txt \
     && useradd -u 10001 -m -s /usr/sbin/nologin tts \
     && install -d -o 10001 -g 10001 /models
 
+RUN install -d -m 0755 /srv/tts
 COPY --chmod=0644 *.py /srv/tts/
 USER 10001:10001
 ENV HOME=/tmp
