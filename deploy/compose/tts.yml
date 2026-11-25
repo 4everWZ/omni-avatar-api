@@ -1,0 +1,54 @@
+# Zero-shot voice-cloning TTS worker (Qwen3-TTS-12Hz-0.6B-Base primary on GPU 1, Genie-TTS CPU adapter slot).
+x-tts: &tts
+  TTS_BACKEND: ${TTS_BACKEND:-qwen3}
+  TTS_MODEL_ID: ${TTS_MODEL_ID:-Qwen/Qwen3-TTS-12Hz-0.6B-Base}
+  TTS_CHECKPOINT: ${TTS_CHECKPOINT:-5d83992436eae1d760afd27aff78a71d676296fc}
+
+services:
+  tts-model-fetch:
+    profiles: [assets]
+    image: omni-api-tts:qwen3-0.6b
+    pull_policy: never
+    command: [fetch]
+    environment: *tts
+    volumes:
+      - ${OMNI_MODEL_DATA:-./data/models}:/models
+    networks: [asset-download]
+
+  omni-tts:
+    build: ./services/tts
+    image: omni-api-tts:qwen3-0.6b
+    restart: unless-stopped
+    init: true
+    runtime: nvidia
+    gpus:
+      - driver: nvidia
+        device_ids: ["${TTS_GPU_DEVICE:-1}"]
+    command: [serve]
+    environment:
+      <<: *tts
+      HF_HUB_OFFLINE: '1'
+      TRANSFORMERS_OFFLINE: '1'
+      OMNI_TTS_INTERNAL_TOKEN: ${OMNI_TTS_INTERNAL_TOKEN:?set TTS worker token}
+      OMNI_ASR_WORKER_URL: http://omni-asr:8000
+      OMNI_ASR_INTERNAL_TOKEN: ${OMNI_ASR_INTERNAL_TOKEN:?set ASR worker token}
+      OMNI_ASR_TIMEOUT: ${OMNI_ASR_TIMEOUT:-60}
+      TTS_MAX_SEQ_LEN: ${TTS_MAX_SEQ_LEN:-2048}
+      TTS_VOICE_CACHE_MAX: ${TTS_VOICE_CACHE_MAX:-32}
+      TTS_DEFAULT_REF_AUDIO_PATH: ${TTS_DEFAULT_REF_AUDIO_PATH:-}
+      TTS_DEFAULT_REF_TEXT: ${TTS_DEFAULT_REF_TEXT:-}
+    volumes:
+      - ${OMNI_MODEL_DATA:-./data/models}:/models:ro
+    networks: [engine-private]
+    healthcheck:
+      test: [CMD, python3, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3).close()"]
+      interval: 15s
+      timeout: 5s
+      start_period: 3m
+      retries: 4
+
+  omni-gateway:
+    environment:
+      OMNI_TTS_WORKER_URL: http://omni-tts:8000
+      OMNI_TTS_INTERNAL_TOKEN: ${OMNI_TTS_INTERNAL_TOKEN:?set TTS worker token}
+      OMNI_TTS_TIMEOUT: ${OMNI_TTS_TIMEOUT:-60}

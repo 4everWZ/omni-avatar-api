@@ -1,0 +1,4 @@
+faster-qwen3-tts==0.5.4
+transformers==5.15.1
+aiohttp>=3.11,<4
+huggingface-hub>=0.28

@@ -1,26 +1,46 @@
 # 双 RTX 3090 工作站部署
 
-由 OMNI_GPU_DEVICE 选择 MiniCPM-o 的 Thinker、Talker、Code2Wav 所用的卡，LLM_GPU_DEVICE 选择后台长上下文 LLM 的卡，按需与 Klein 生图共享。网关统一暴露推理 API，应用负责身份、历史、长期记忆、Agent 编排及工具执行。
+默认 `--target workstation` 采用 Personal-Agent-First 双卡并行布局：
+
+- **LLM (`llm-engine`)**：`RedHatAI/Qwen3.8-27B-INT4`（SHA `71dface38d4cbfa34121f1d446d4a0fa1025f13c`）基于 `vllm/vllm-openai:v0.34.0@sha256:20fdb089454afbb324efa4110a2c025ff7b27cc1a086e07aa580b18df8ad1ce1`（镜像 `omni-api-llm:0.34.0`），`TP=2` 横跨双 3090（`LLM_GPU_DEVICE_0=0`、`LLM_GPU_DEVICE_1=1`，`LLM_TP2_GPU_MEMORY_UTILIZATION=0.80`，`shm_size: 16gb`），默认 131072 上下文、MTP=3、`align` 前缀缓存、8 并发序列。
+- **TTS (`omni-tts`)**：默认 `Qwen/Qwen3-TTS-12Hz-0.6B-Base`（SHA `5d83992436eae1d760afd27aff78a71d676296fc`；内含 `speech_tokenizer`）运行于 GPU 1（`TTS_GPU_DEVICE=1`，`pytorch/pytorch:2.9.1-cuda12.8-cudnn9-runtime@sha256:7b324d212a4450795b49edba9949b7cdc72429148a64e974334bfe5774d51385`，镜像 `omni-api-tts:qwen3-0.6b`）。
+- **全双工与 ASR (`omni-engine` + `omni-asr`)**：纯 CPU 运行，零显存占用。`omni-engine`（`python:3.12-slim-bookworm@sha256:44cf1793efa7c7a476bb0f2cff81443f4a072c90c1cb127e2924933daa3e8c64`，镜像 `omni-api-duplex:1.0`）使用 `onnx-community/silero-vad`（SHA `e71cae966052b992a7eca6b17738916ce0eca4ec`）串联 `omni-asr`（`omni-api-asr:small-int8`）、`llm-engine` 与 `omni-tts`；`OMNI_DUPLEX_CAP=4`。
+- **可选生图 (`omni-images`)**：默认放在 GPU 0（`IMAGE_GPU_DEVICE=0`），避开 GPU 1 的常驻 `omni-tts`；作业期间按 `OMNI_IMAGE_LLM_SLEEP_STRATEGY=auto` 自动释放 TP=2 KV 或休眠卸载权重，完成后恢复。
+
+网关统一暴露推理 API，应用负责身份、历史、长期记忆、Agent 编排及工具执行。
 
 ## 主线组合
 
-### 双卡放置与热降频
+### 双卡放置、1.7B-Base 与 Genie-TTS 切换
 
-双 3090 工作站按 GPU UUID 放置引擎。本站将 Omni 放在 GPU0，将 LLM 和按需运行的 Klein 放在散热余量较大的 GPU1。旧 Ditto 混跑配置的温度、功耗和吞吐已保存在[历史测量](../../evaluations/results/infra-thermal-tuning-workstation.json)。
+双 3090 工作站可在 `.env` 中使用索引或 GPU UUID 绑定 `LLM_GPU_DEVICE_0`、`LLM_GPU_DEVICE_1`、`TTS_GPU_DEVICE`（默认 1）与 `IMAGE_GPU_DEVICE`（默认 0）。注意：TP=2 按双卡剩余显存较小的那一侧切分 KV，因此**不要**把 `omni-images` 放到与 `omni-tts` 相同的 GPU 1。
+
+- **升级 `Qwen3-TTS-12Hz-1.7B-Base`**：将 `.env` 中的 `TTS_MODEL_ID` 设为 `Qwen/Qwen3-TTS-12Hz-1.7B-Base`、`TTS_CHECKPOINT` 设为 `fd4b254389122332181a7c3db7f27e918eec64e3`，并把 `LLM_TP2_GPU_MEMORY_UTILIZATION` 从 `0.80` 下调至 `0.72`（为 GPU 1 留出 ~6.7 GiB 余量后即可常驻），再执行 `tts-model-fetch` 并重启 `omni-tts`。
+- **切换 CPU `Genie-TTS`（0 MiB 显存）**：在 `.env` 设置 `TTS_BACKEND=genie`（及 `GENIE_DATA_DIR` / `GENIE_MODEL_DIR` / `GENIE_CHARACTER_NAME`），可完全腾空 GPU 1 上的 TTS 显存，为 `llm-engine` 释放更高 `LLM_TP2_GPU_MEMORY_UTILIZATION` 或 `262144` 上下文。
+- **可控开关与回退**：思考默认上限由 `LLM_DEFAULT_THINKING_TOKEN_BUDGET=16384` 控制；`LLM_TP2_ENABLE_MTP`、`LLM_TP2_ASYNC_SCHEDULING`、`LLM_TP2_ENABLE_PREFIX_CACHING`、`LLM_TP2_ENABLE_LORA` 均可在 `.env` 单独切换，无需改镜像。
 
 ### 组合启动
 
-统一入口组合 `deploy/compose/base.yml`、`workstation.yml`、`llm.yml` 和 `inference.yml`；`--vpn` 添加私网监听。
+统一入口默认组合 `base.yml`、`workstation.yml`、`llm.yml`、`inference.yml`、`asr.yml`、`llm-tp2.yml`、`tts.yml` 与 `omni-duplex.yml`；`--vpn` 添加私网监听，`--images` 添加 Klein 4B 生图。
 
 ```sh
 python tools/compose.py --vpn -- config --quiet
-python tools/compose.py -- build omni-engine llm-engine omni-gateway
-python tools/compose.py -- --profile assets run --rm model-fetch
+python tools/compose.py -- build llm-engine omni-tts omni-asr omni-engine omni-gateway
 python tools/compose.py -- --profile assets run --rm llm-model-fetch
+python tools/compose.py -- --profile assets run --rm tts-model-fetch
+python tools/compose.py -- --profile assets run --rm vad-model-fetch
 python tools/compose.py --vpn -- up -d --wait
 ```
 
-首次配置与共享网络创建见[快速开始](../../README.zh-CN.md#快速开始)。模型使用精确快照和独立目录，服务离线加载。应用和管理令牌在根目录 `.env` 中分别配置；凭据与模型资产由本地忽略目录持有。引擎使用 Docker 私网。宿主发布回环及指定 VPN 地址的网关 8000 端口。
+### 回退旧版单卡栈（`--target workstation-legacy`）
+
+保留原 `Qwen3.5-9B-AWQ-4bit@5577b5b71e6f06b9f6a1f3743ef6ba6dc4ecd2df`（`omni-api-llm:0.32.0`）与 `MiniCPM-o-4_5-awq@927faefa0bce96e557945e106f3b3d8b4d39f4b2`（`omni-api-engine:0.32.0-workstation`）的 4 文件栈及各自镜像标签，模型快照与 `tuber-omni-infra` 命名卷互不覆盖。如需回退，一条命令切换回原部署（按需附加 `--images`、`--asr`、`--vpn`）：
+
+```sh
+python tools/compose.py --target workstation-legacy --images --asr --vpn -- up -d --wait
+```
+
+首次配置与共享网络创建见[快速开始](../../README.zh-CN.md#快速开始)。模型使用精确快照和独立目录，服务离线加载。应用、管理以及内部 worker 令牌（`OMNI_ASR_INTERNAL_TOKEN`、`OMNI_TTS_INTERNAL_TOKEN`）在根目录 `.env` 中分别配置；凭据与模型资产由本地忽略目录持有。引擎使用 Docker 私网。宿主发布回环及指定 VPN 地址的网关 8000 端口。
 
 ### 独立 LLM 节点
 
@@ -45,22 +65,23 @@ python tools/compose.py --target llm -- stop llm-engine
 
 | 入口 | 职责与配置 |
 | --- | --- |
-| `/v1`，`omni-default` | 实时语音／视觉助手与普通、流式 Chat；Chat 窗口 8192。 |
-| `/v1/realtime?duplex=1` | 原生双工，默认 basic 历史水位 8000／6000。 |
-| `/llm/v1`，`llm-default` | 长上下文 Responses HTTP／增量 SSE，兼容 Chat，支持文本、内嵌图片、结构化与 function 输出；单请求窗口 262144。 |
+| `/v1`，`omni-default` | CPU 全双工编排器（Silero VAD + `omni-asr` + `llm-engine` + `omni-tts`）；Chat 窗口跟随 `LLM_TP2_MAX_MODEL_LEN`（默认 131072），`--target workstation-legacy` 下为 8192。 |
+| `/v1/realtime?duplex=1` | WebSocket 实时语音（16 kHz PCM16 输入 / 24 kHz PCM16 输出、打断 `epoch` 隔离与 `video_frames` 视觉注入），`OMNI_DUPLEX_CAP=4`（默认 4 路并发）。 |
+| `/v1/audio/speech` | 零样本参考音色朗读；默认经 `omni-tts` 合成并由 CPU `omni-asr` 盲转写核对后返回 24 kHz WAV。 |
+| `/v1/audio/transcriptions` | CPU `faster-whisper` 离线转写与分段时间戳；默认随 `workstation` 启用，旧目标可用 `--asr` 开启。 |
+| `/llm/v1`，`llm-default` | 长上下文 Responses HTTP／增量 SSE，兼容 Chat，支持文本、内嵌图片、结构化与 function 输出；TP=2 默认窗口 131072（可调至 262144）、并发 8（可调至 16）。 |
 | `/healthz`、`/llm/healthz` | 各自后端的身份、根目录校验、就绪和准入状态。 |
-| `/v1/images/jobs` | 可选 Klein 生图任务，提交、查询、下载、取消。 |
+| `/v1/images/jobs` | 可选 Klein 生图任务，提交、查询、下载、取消（默认 GPU 0）。 |
 
 现有 Qwen 权重包含视觉部分。升级时用原模型卷重建并重启 `llm-engine`，`LLM_MAX_IMAGES_PER_REQUEST` 默认 8，填写 0 可切回只加载语言部分。以 Responses 同一请求体先计量再生成，核对实际计量和图像内容。变更图片上限、推理并发或 KV 预留后按实测显存复核。
 
+默认开启 CoT 时，`omni-gateway` 会在未显式指定 `thinking_token_budget` 时注入 `LLM_DEFAULT_THINKING_TOKEN_BUDGET=16384`（由 `vLLM 0.34.0` 原生预算采样控制，防止长上下文思考循环）；调用方可显式覆盖模板开关、思考预算与总输出上限；`omni-engine` 语音对话自动设置 `enable_thinking=false` 以压低首字延迟。[预算字段](../api.md#cot-默认与调用方预算)。
 
-Chat 调用方每次提交 messages 和所选记忆；Realtime 引擎维护活跃近期历史并按窗口策略滑动。两个模型由路径和别名显式选择。实时窗口沿用官方 `basic`；通过 `autostart=0` 和首条 `session.update.session.extra_body` 可配置新会话。可选 `context` 保留 24 个近期输入单元与最多 500 tokens 的较早模型生成文本，并重建窗口。长期历史由应用持有并按需选入提示。[窗口参数](../api.md#omni-实时历史窗口)。
+## 并发与计算预算（新默认 vs legacy 基线）
 
-Omni Chat 和后台 Chat／Responses 默认开启 CoT，思考预算沿用固定上游默认；Omni Chat 总输出默认 2048。调用方可覆盖模板开关、思考预算与总输出上限；Realtime 采用模型原生监听／说话策略。[预算字段](../api.md#cot-默认与调用方预算)。
+新默认 `workstation` 下：`OMNI_DUPLEX_CAP=4` 控制纯 CPU 全双工与 Omni Chat 共有 4 个实时槽位；`LLM_TP2_MAX_NUM_SEQS=8` 与 `LLM_TP2_TOKEN_BUDGET=262144` 控制 `llm-engine` 的活跃请求预留与 FIFO 排队（单请求默认上限 `LLM_TP2_MAX_MODEL_LEN=131072`）。
 
-## 四路并发与计算预算
-
-`OMNI_WORKSTATION_CAP=2` 同时配置网关、Omni duplex 活跃窗口和三个阶段。Chat 与 Realtime 共用两个槽位。
+以下为历史单卡回滚目标（`--target workstation-legacy`，`OMNI_WORKSTATION_CAP=2`、`LLM_MAX_NUM_SEQS=4`）的实机基线记录，供回滚对照参考：
 
 双路 Omni 已实测两个 Chat 同时输出、两个 Realtime 的语音区间重叠，以及 Chat 和 Realtime 混跑。两个 Realtime 占用期间，第三个连接收到 `429`。
 
@@ -169,11 +190,11 @@ ssh -N -L 18080:127.0.0.1:8000 research-2@100.119.17.6
 
 ## 其他部署目标
 
-`--target workstation-omni` 提供双卡 Omni 配置，`--target workstation-bf16` 提供 BF16 对照；`--target orin` 和 `--target orin-cu129` 提供 AGX 配置与兼容性验证。分卡 `workstation` 可加 `--images` 启用共享 GPU 生图。直接调用 Docker Compose 时，指定 `--project-directory <仓库根目录>` 和环境文件。AGX 细节见 [Orin](orin.md) 与 [CUDA 12.9](jetpack6-cu129.md)。
+`--target workstation-legacy` 保留原有 `Qwen3.5-9B + MiniCPM-o-4_5` 分卡组合；`--target workstation-omni` 提供双卡 Omni 配置，`--target workstation-bf16` 提供 BF16 对照；`--target orin` 和 `--target orin-cu129` 提供 AGX 配置与兼容性验证。`workstation` 与 `workstation-legacy` 均支持 `--images` 启用共享 GPU 生图；非纯工作站目标可用 `--asr` 追加 CPU ASR worker（默认 `workstation` 已内置）。直接调用 Docker Compose 时，指定 `--project-directory <仓库根目录>` 和环境文件。AGX 细节见 [Orin](orin.md) 与 [CUDA 12.9](jetpack6-cu129.md)。
 
 
 ## 容量与发布后的清理
 
-在工作站分别检查 `nvidia-smi`、`free -h`、`df -h` 和 `docker system df`。现行后台限制为 4 个生成序列与总量 262144 tokens。所有请求按实际模板和输出额度准入，结束或取消后释放。Klein 按作业取得显存，完成后恢复后台引擎。当前前台和后台常驻已加载的模型，因此空闲仍占用基线显存。调整任何常驻容量或上限后复核前台延迟、混跑与剩余显存。
+在工作站分别检查 `nvidia-smi`、`free -h`、`df -h` 和 `docker system df`。默认 `workstation` 限制为 TP=2 8 个生成序列（可调 16）与总量 `LLM_TP2_TOKEN_BUDGET=262144`、`OMNI_DUPLEX_CAP=4`；`omni-tts`（0.6B-Base）常驻 GPU 1。所有 LLM 请求按实际模板和输出额度准入，结束或取消后释放。Klein 默认在 GPU 0 上按作业取得显存，通过 `OMNI_IMAGE_LLM_SLEEP_STRATEGY=auto` 先尝试释放 TP=2 KV、不足时直接休眠卸载权重，完成后恢复后台引擎。调整任何常驻容量或上限后复核前台延迟、混跑与剩余显存。
 
 在放大容量之前先确认实际瓶颈。发布完成后删除本次临时传输包和测试容器。核对候选镜像引用后，回收过时的 Docker 构建缓存与已退役镜像，保留当前镜像、最近回滚镜像、模型卷、业务卷和待核对应用数据。清理后重测剩余空间与已部署服务健康状态。

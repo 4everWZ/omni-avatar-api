@@ -99,7 +99,7 @@ class ResponsesProxy:
         nonce = secrets.token_hex(16)
         payload['request_id'] = 'resp_' + nonce + '_' + self.signature(owner, nonce)
         payload['model'] = self.gateway.config.model
-        apply_thinking_default(payload)
+        apply_thinking_default(payload, default_budget=self.gateway.config.default_thinking_token_budget)
         return payload, None
 
     async def prompt_tokens(self, request):

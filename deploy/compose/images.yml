@@ -1,4 +1,4 @@
-# Optional queued image worker on physical GPU 0.
+# Optional queued Klein image worker (defaults to GPU 0 via IMAGE_GPU_DEVICE, or falls back to LLM_GPU_DEVICE).
 services:
   image-model-fetch:
     profiles: [assets]
@@ -18,7 +18,7 @@ services:
     runtime: nvidia
     gpus:
       - driver: nvidia
-        device_ids: ["${LLM_GPU_DEVICE:-0}"]
+        device_ids: ["${IMAGE_GPU_DEVICE:-${LLM_GPU_DEVICE:-0}}"]
     environment:
       HF_HUB_OFFLINE: '1'
       TRANSFORMERS_OFFLINE: '1'
@@ -46,7 +46,8 @@ services:
       OMNI_IMAGE_DATA: /image-data
       OMNI_GPU_SWITCH_ROOT: /run/omni-gpu
       OMNI_IMAGE_MIN_FREE_MIB: ${OMNI_IMAGE_MIN_FREE_MIB:-13312}
-      LLM_KV_CACHE_BYTES: ${LLM_KV_CACHE_BYTES:-9663676416}
+      LLM_KV_CACHE_BYTES: ${LLM_KV_CACHE_BYTES:-}
+      OMNI_IMAGE_LLM_SLEEP_STRATEGY: ${OMNI_IMAGE_LLM_SLEEP_STRATEGY:-auto}
       OMNI_IMAGE_INTERNAL_TOKEN: ${OMNI_IMAGE_INTERNAL_TOKEN:?set image worker token}
       LLM_GPU_CONTROL_TOKEN: ${LLM_GPU_CONTROL_TOKEN:?set separate LLM GPU control token}
     volumes:

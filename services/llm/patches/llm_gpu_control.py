@@ -22,19 +22,25 @@ def attach_gpu_control(app):
             engine = request.app.state.engine_client
             try:
                 if action == 'state':
-                    return {'phase': phase}
-                if action == 'wake' and phase in ('kv_released', 'weights_offloaded'):
-                    tags = ['kv_cache'] if phase == 'kv_released' else None
-                    if not await engine.wake_up(tags):
-                        raise RuntimeError('Engine did not completely wake')
-                    phase = 'awake'
+                    state = {'phase': phase}
+                    if hasattr(engine, 'is_sleeping'):
+                        state['is_sleeping'] = bool(await engine.is_sleeping())
+                    return state
+                if action == 'wake' and phase in ('kv_released', 'weights_offloaded', 'unknown'):
+                    if phase == 'unknown' and hasattr(engine, 'is_sleeping') and not await engine.is_sleeping():
+                        phase = 'awake'
+                    else:
+                        tags = ['kv_cache'] if phase == 'kv_released' else None
+                        if not await engine.wake_up(tags):
+                            raise RuntimeError('Engine did not completely wake')
+                        phase = 'awake'
                 elif action == 'wake' and phase == 'awake':
                     return {'phase': phase}
                 elif action == 'release_kv' and phase == 'awake':
                     await engine.sleep(0, 'wait')
                     await engine.release_kv_cache_memory()
                     phase = 'kv_released'
-                elif action == 'offload' and phase == 'awake':
+                elif action == 'offload' and phase in ('awake', 'kv_released'):
                     await engine.sleep(1, 'wait')
                     phase = 'weights_offloaded'
                 else:

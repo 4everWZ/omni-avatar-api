@@ -12,7 +12,8 @@ TARGETS = {
     'gateway': ('gateway-node',),
     'images': ('image-node',),
     'llm': ('llm', 'llm-endpoint'),
-    'workstation': ('base', 'workstation', 'llm', 'inference'),
+    'workstation': ('base', 'workstation', 'llm', 'inference', 'asr', 'llm-tp2', 'tts', 'omni-duplex'),
+    'workstation-legacy': ('base', 'workstation', 'llm', 'inference'),
     'workstation-omni': ('base', 'workstation'),
     'workstation-bf16': ('base', 'workstation', 'workstation-bf16'),
     'orin': ('base',),
@@ -20,19 +21,21 @@ TARGETS = {
 }
 
 
-def command(target, compose_args, *, images=False, remote_images=False, vpn=False, media=False,
+def command(target, compose_args, *, images=False, remote_images=False, asr=False, vpn=False, media=False,
             env_file=None):
     if target not in TARGETS:
         raise ValueError(f'Unknown deployment target: {target}')
-    if images and target != 'workstation':
-        raise ValueError('The images overlay requires the split workstation target')
+    if images and target not in ('workstation', 'workstation-legacy'):
+        raise ValueError('The images overlay requires a split workstation target')
     if images and remote_images:
         raise ValueError('Choose either shared or dedicated image placement')
-    if (remote_images or vpn or media) and target in ('images', 'llm', 'omni'):
+    if (remote_images or asr or vpn or media) and target in ('images', 'llm', 'omni', 'asr'):
         raise ValueError('Gateway overlays require a deployment target containing the gateway')
     if media and target == 'gateway':
         raise ValueError('The program media overlay requires the shared stack network')
     files = list(TARGETS[target])
+    if asr and 'asr' not in files:
+        files.append('asr')
     files.extend(name for name, enabled in [('images', images), ('remote-images', remote_images),
                                           ('vpn', vpn), ('media', media)] if enabled)
     env_file = Path(env_file).resolve() if env_file else ROOT / '.env'
@@ -51,6 +54,7 @@ def main(argv=None):
     parser.add_argument('--target', choices=TARGETS, default='workstation')
     parser.add_argument('--images', action='store_true', help='Enable queued Klein image generation')
     parser.add_argument('--remote-images', action='store_true', help='Route image jobs to a dedicated worker')
+    parser.add_argument('--asr', action='store_true', help='Enable standalone CPU faster-whisper ASR worker')
     parser.add_argument('--vpn', action='store_true', help='Publish on OMNI_GATEWAY_VPN_BIND as well as loopback')
     parser.add_argument('--media', action='store_true', help='Enable optional MediaMTX transport')
     parser.add_argument('--env-file', type=Path, help='Defaults to the repository .env, even from another directory')
@@ -60,8 +64,8 @@ def main(argv=None):
         parser.error('Specify Docker Compose arguments after --')
     try:
         args = command(options.target, argv[split + 1:],
-                       images=options.images, remote_images=options.remote_images, vpn=options.vpn, media=options.media,
-                       env_file=options.env_file)
+                       images=options.images, remote_images=options.remote_images, asr=options.asr,
+                       vpn=options.vpn, media=options.media, env_file=options.env_file)
     except ValueError as error:
         parser.error(str(error))
     if options.dry_run:

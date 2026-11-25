@@ -5,19 +5,28 @@ The repository provides shared inference services. Applications own user identit
 ```mermaid
 flowchart LR
     Client[Applications and external orchestrators] --> Gateway[Authenticated gateway]
-    Gateway --> Omni[Omni interactive engine]
-    Gateway --> LLM[Background Qwen text and image]
-    Gateway --> Images[Optional Klein worker]
+    Gateway --> Omni[CPU duplex omni-engine]
+    Gateway --> LLM[TP=2 Qwen3.8-27B text and image]
+    Gateway --> ASR[CPU faster-whisper ASR]
+    Gateway --> TTS[GPU 1 Qwen3-TTS worker]
+    Gateway --> Images[Optional GPU 0 Klein worker]
+    Omni --> ASR
+    Omni --> Gateway
+    Omni --> TTS
+    TTS --> ASR
 ```
 
 ## Service boundaries
 
 | Directory | Owns | Runtime dependencies |
 | --- | --- | --- |
-| `services/gateway/` | Authentication, aliases, admission, Responses/Chat/Realtime transport and the browser demo. | Private HTTP/WebSocket engine APIs. |
-| `services/inference/` | Model acquisition, inference launchers, deployment configuration and patches for pinned upstream packages. | Model snapshots and upstream inference libraries. |
-| `services/llm/` | Text-and-image model acquisition, launcher, Responses admission, GPU control and reasoning budget patches. | Independently pinned vLLM image and LLM snapshot. |
+| `services/gateway/` | Authentication, aliases, admission, Responses/Chat/Realtime/Speech/ASR transport and the browser demo. | Private HTTP/WebSocket engine APIs. |
+| `services/omni/` | Pure-CPU engineered full-duplex orchestrator (Silero VAD ONNX + `omni-asr` + `llm-engine` + `omni-tts`), zero VRAM. | `python:3.12-slim-bookworm`, `onnxruntime`, `aiohttp`, pinned Silero VAD ONNX snapshot. |
+| `services/tts/` | Zero-shot voice-cloning TTS worker (`Qwen3-TTS-12Hz-0.6B-Base` primary, optional `1.7B-Base` / CPU `Genie-TTS` slot). | `pytorch/pytorch:2.9.1-cuda12.8-cudnn9-runtime`, `faster-qwen3-tts`, bundled `speech_tokenizer`. |
+| `services/asr/` | Standalone CPU offline transcription worker (`/transcribe`). | `python:3.12-slim`, `faster-whisper` (`small` + `int8`), `ffmpeg`. |
+| `services/llm/` | Text-and-image model acquisition, launcher (TP=2/TP=1), Responses admission, GPU control and reasoning budget adapters. | Independently pinned `vllm/vllm-openai:v0.34.0` image and LLM snapshot (`v0.32.0` for legacy rollback). |
 | `services/images/` | CPU prompt encoding, original-precision Klein inference and task-scoped GPU allocation. | Pinned Klein snapshot and Diffusers, isolated by a worker image. |
+| `services/inference/` | Legacy MiniCPM-o model acquisition, launcher, configs and patches retained for `--target workstation-legacy` rollback. | Model snapshots and pinned `vllm/vllm-omni:v0.32.0-x86_64` image. |
 
 Gateway exposes an importable `app.py` factory and a `__main__.py` process entrypoint. Imports inside a service are relative. Gateway separates environment/model policy (`config.py`), resource admission (`admission.py`), HTTP application wiring (`app.py`) and backend-specific transport clients. Cross-service communication uses the [API contract](api.md); cross-service Python imports belong in `tests/integration/` only.
 
@@ -47,9 +56,14 @@ Omni、LLM 与 Klein 各自生成可独立发布的服务镜像。工作站 linu
 
 `deploy/compose/` contains the base stack and composable hardware/service layers. `tools/compose.py` selects supported combinations and passes an explicit repository project directory and environment file to Docker Compose. The Compose project remains `tuber-omni-infra`, preserving existing named volumes.
 
-The Compose defaults select GPU 1 for Omni and GPU 0 for the LLM. The workstation overrides both by UUID. Omni and LLM admission are independent. [Workstation deployment](deployment/workstation.md)
+The default `--target workstation` profile implements the Personal-Agent-First Dual-3090 layout:
+- `llm-engine` (`RedHatAI/Qwen3.8-27B-INT4@71dface38d4cbfa34121f1d446d4a0fa1025f13c` on `vllm/vllm-openai:v0.34.0`) spans GPU 0 and GPU 1 (`TP=2`, `gpu_memory_utilization=0.80`).
+- `omni-tts` (`Qwen/Qwen3-TTS-12Hz-0.6B-Base@5d83992436eae1d760afd27aff78a71d676296fc`) resides on GPU 1 (`TTS_GPU_DEVICE=1`), or runs CPU-only via `TTS_BACKEND=genie`.
+- `omni-engine` (`omni-api-duplex:1.0`, Silero VAD ONNX `@e71cae966052b992a7eca6b17738916ce0eca4ec`) and `omni-asr` (`faster-whisper` `small` `int8`) run on CPU (0 MiB VRAM).
+- Optional `--images` places Klein 4B on GPU 0 (`IMAGE_GPU_DEVICE=0`, away from `omni-tts` on GPU 1) and coordinates TP=2 KV release / weight offload via `gpu-switch`.
+- `--target workstation-legacy` keeps the prior single-GPU `Qwen3.5-9B + MiniCPM-o-4_5` layout intact for one-command rollback. [Workstation deployment](deployment/workstation.md)
 
-The optional image overlay exposes caller-owned jobs through the gateway. In the colocated profile its coordinator drains LLM generation, grants the image worker one GPU lease and restores LLM admission after the worker has drained. A dedicated image worker has its own device allocation and accepts private HTTP calls from the gateway. The gateway owns the job queue and results in both modes.
+The optional image overlay exposes caller-owned jobs through the gateway. In the colocated profile its coordinator drains LLM generation, releases KV or offloads LLM weights across TP=2 (`OMNI_IMAGE_LLM_SLEEP_STRATEGY=auto`), grants the image worker one GPU lease, and restores LLM admission after the worker has drained. A dedicated image worker has its own device allocation and accepts private HTTP calls from the gateway. The gateway owns the job queue and results in both modes.
 
 Weights live in ignored `data/` paths. Control sockets and compiler caches use named volumes. Application credentials live in the ignored root `.env`. The wrapper anchors local paths to the repository root.
 

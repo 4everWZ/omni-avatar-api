@@ -22,6 +22,34 @@ def positive(name, default, convert=float):
     return value
 
 
+def optional_non_negative_int(name):
+    raw = os.environ.get(name)
+    if raw is None:
+        return None
+    if isinstance(raw, (bool, float)):
+        raise ValueError(f"{name} must be a non-negative integer")
+    text = raw.strip() if isinstance(raw, str) else str(raw)
+    if not text:
+        return None
+    if not text.isascii():
+        raise ValueError(f"{name} must be a non-negative integer")
+    value = int(text)
+    if value < 0:
+        raise ValueError(f"{name} must be a non-negative integer")
+    return value
+
+
+def optional_origin(name):
+    value = os.environ.get(name, "").strip().rstrip("/")
+    if value:
+        validate_origin(value, name)
+    return value
+
+
+def optional_positive(name, default):
+    return positive(name, default) if os.environ.get(name, "").strip() else default
+
+
 @dataclass(frozen=True)
 class Config:
     engine_url: str
@@ -45,6 +73,13 @@ class Config:
     prompt_tokens_path: str = "/v1/chat/prompt_tokens"
     token_budget: int = 0
     shared_capacity: bool = False
+    default_thinking_token_budget: int | None = None
+    tts_worker_url: str = ""
+    tts_internal_token: str = field(default="", repr=False)
+    tts_timeout: float = 60.0
+    asr_worker_url: str = ""
+    asr_internal_token: str = field(default="", repr=False)
+    asr_timeout: float = 180.0
 
     @classmethod
     def from_env(cls):
@@ -73,8 +108,8 @@ class Config:
             raise ValueError("OMNI_LIVE_CAP is fixed at one pending mixed-load verification")
         capacity = (positive("OMNI_WORKSTATION_CAP", 2, int) if shared_capacity
                     else positive("OMNI_BATCH_CAP", 1, int))
-        if shared_capacity and capacity not in (1, 2):
-            raise ValueError("OMNI_WORKSTATION_CAP must be 1 or 2")
+        if shared_capacity and not (1 <= capacity <= 16):
+            raise ValueError("OMNI_WORKSTATION_CAP must be between 1 and 16")
         checkpoint = required("OMNI_CHECKPOINT") if engine_url else ""
         model_root = f"/models/{checkpoint}" if os.environ.get("OMNI_REQUIRE_CHECKPOINT_ROOT") == "1" else ""
         return cls(
@@ -89,6 +124,12 @@ class Config:
             request_timeout=positive("OMNI_REQUEST_TIMEOUT", cls.request_timeout),
             health_timeout=positive("OMNI_HEALTH_TIMEOUT", 3),
             realtime_idle_timeout=positive("OMNI_REALTIME_IDLE_TIMEOUT", 120),
+            tts_worker_url=optional_origin("OMNI_TTS_WORKER_URL"),
+            tts_internal_token=os.environ.get("OMNI_TTS_INTERNAL_TOKEN", "").strip(),
+            tts_timeout=optional_positive("OMNI_TTS_TIMEOUT", cls.tts_timeout),
+            asr_worker_url=optional_origin("OMNI_ASR_WORKER_URL"),
+            asr_internal_token=os.environ.get("OMNI_ASR_INTERNAL_TOKEN", "").strip(),
+            asr_timeout=optional_positive("OMNI_ASR_TIMEOUT", cls.asr_timeout),
         )
 
     def text_backend(self):
@@ -101,10 +142,12 @@ class Config:
             raise ValueError("LLM model and checkpoint are required")
         return replace(self, engine_url=origin, model=model, checkpoint=revision,
                        model_root=f"/models/{revision}", engine_token=os.environ.get("LLM_ENGINE_TOKEN", ""),
-                       engine_version="vLLM 0.32.0", model_alias="llm-default", public_prefix="/llm",
+                       engine_version=os.environ.get("LLM_ENGINE_VERSION", "").strip() or "vLLM 0.34.0",
+                       model_alias="llm-default", public_prefix="/llm",
                        realtime_enabled=False, prompt_tokens_path="/tokenize", program_token="",
                        queue_limit=override("LLM_QUEUE_LIMIT", self.queue_limit, int),
                        queue_timeout=override("LLM_QUEUE_TIMEOUT", self.queue_timeout),
                        request_timeout=override("LLM_REQUEST_TIMEOUT", self.request_timeout),
                        batch_cap=override("LLM_MAX_NUM_SEQS", 4, int),
-                       token_budget=override("LLM_TOKEN_BUDGET", 262144, int))
+                       token_budget=override("LLM_TOKEN_BUDGET", 262144, int),
+                       default_thinking_token_budget=optional_non_negative_int("LLM_DEFAULT_THINKING_TOKEN_BUDGET"))

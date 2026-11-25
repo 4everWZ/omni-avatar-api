@@ -1,0 +1,60 @@
+# Pure-CPU engineered full-duplex omni-engine (0 MiB VRAM: Silero VAD ONNX + omni-asr + llm-engine + omni-tts).
+x-vad: &vad
+  VAD_MODEL_ID: ${VAD_MODEL_ID:-onnx-community/silero-vad}
+  VAD_CHECKPOINT: ${VAD_CHECKPOINT:-e71cae966052b992a7eca6b17738916ce0eca4ec}
+
+services:
+  model-fetch:
+    profiles: !override [legacy-assets]
+
+  vad-model-fetch:
+    profiles: [assets]
+    image: omni-api-duplex:1.0
+    pull_policy: never
+    command: [fetch]
+    environment: *vad
+    volumes:
+      - ${OMNI_MODEL_DATA:-./data/models}:/models
+    networks: [asset-download]
+
+  omni-engine:
+    build: !override
+      context: ./services/omni
+    image: omni-api-duplex:1.0
+    platform: linux/amd64
+    runtime: runc
+    gpus: !reset []
+    shm_size: 2gb
+    command: [serve]
+    volumes: !override
+      - ${OMNI_MODEL_DATA:-./data/models}:/models:ro
+    environment:
+      <<: *vad
+      HF_HUB_OFFLINE: '1'
+      TRANSFORMERS_OFFLINE: '1'
+      OMNI_MODEL_ID: ${OMNI_DUPLEX_MODEL_ID:-omni-duplex-qwen38}
+      OMNI_CHECKPOINT: ${OMNI_DUPLEX_CHECKPOINT:-e71cae966052b992a7eca6b17738916ce0eca4ec}
+      OMNI_MAX_MODEL_LEN: ${LLM_TP2_MAX_MODEL_LEN:-131072}
+      OMNI_WORKSTATION_CAP: ${OMNI_DUPLEX_CAP:-4}
+      OMNI_ASR_WORKER_URL: http://omni-asr:8000
+      OMNI_ASR_INTERNAL_TOKEN: ${OMNI_ASR_INTERNAL_TOKEN:?set ASR worker token}
+      OMNI_TTS_WORKER_URL: http://omni-tts:8000
+      OMNI_TTS_INTERNAL_TOKEN: ${OMNI_TTS_INTERNAL_TOKEN:?set TTS worker token}
+      OMNI_LLM_RESPONSES_URL: http://omni-gateway:8000/llm/v1/responses
+      OMNI_LLM_CHAT_URL: http://omni-gateway:8000/llm/v1/chat/completions
+      OMNI_LLM_TOKENIZE_URL: http://omni-gateway:8000/llm/v1/chat/prompt_tokens
+      OMNI_LLM_API_KEY: ${OMNI_GATEWAY_TOKEN:?set OMNI_GATEWAY_TOKEN in .env}
+      OMNI_LLM_MODEL: llm-default
+    healthcheck:
+      test: [CMD, python3, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3).close()"]
+      interval: 15s
+      timeout: 5s
+      start_period: 30s
+      retries: 4
+
+  omni-gateway:
+    environment:
+      OMNI_MODEL_ID: ${OMNI_DUPLEX_MODEL_ID:-omni-duplex-qwen38}
+      OMNI_CHECKPOINT: ${OMNI_DUPLEX_CHECKPOINT:-e71cae966052b992a7eca6b17738916ce0eca4ec}
+      OMNI_ENGINE_VERSION: omni-duplex 1.0
+      OMNI_WORKSTATION_CAP: ${OMNI_DUPLEX_CAP:-4}

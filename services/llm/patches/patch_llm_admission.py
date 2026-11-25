@@ -17,7 +17,7 @@ def patch_api_source(source):
 
 def main():
     package = distribution('vllm')
-    if package.version.split('+', 1)[0] != '0.32.0':
+    if package.version.split('+', 1)[0] not in ('0.32.0', '0.34.0'):
         raise RuntimeError('Recheck the admission renderer hooks for this vLLM version')
     target = package.locate_file('vllm/entrypoints/openai/responses/api_router.py')
     source = patch_api_source(target.read_text())

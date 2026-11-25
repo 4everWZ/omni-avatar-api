@@ -3,7 +3,7 @@ from pathlib import Path
 import tempfile
 import unittest
 
-from tools.compose import COMPOSE, ROOT, TARGETS, command
+from tools.compose import COMPOSE, ROOT, TARGETS, command, main
 
 
 class ComposeEntrypointTests(unittest.TestCase):
@@ -19,8 +19,13 @@ class ComposeEntrypointTests(unittest.TestCase):
                                    '--env-file', str(ROOT / '.env')])
         files = [args[i+1] for i, item in enumerate(args) if item == '-f']
         self.assertEqual(files, [str(COMPOSE / f'{name}.yml') for name in
-                                 ('base', 'workstation', 'llm', 'inference')])
+                                 ('base', 'workstation', 'llm', 'inference', 'asr', 'llm-tp2', 'tts', 'omni-duplex')])
         self.assertEqual(args[-3:], ['up', '-d', '--wait'])
+
+    def test_workstation_legacy_preserves_original_four_file_stack(self):
+        args = command('workstation-legacy', ['config', '--quiet'])
+        files = [Path(args[i+1]).stem for i, item in enumerate(args) if item == '-f']
+        self.assertEqual(files, ['base', 'workstation', 'llm', 'inference'])
 
     def test_all_deployment_targets_use_existing_compose_files(self):
         for target in TARGETS:
@@ -39,10 +44,28 @@ class ComposeEntrypointTests(unittest.TestCase):
         args = command('workstation', ['--profile', 'assets', 'run', '--rm', 'image-model-fetch'],
                        images=True, vpn=True, media=True)
         files = [Path(args[i+1]).stem for i, item in enumerate(args) if item == '-f']
-        self.assertEqual(files[-3:], ['images', 'vpn', 'media'])
+        self.assertEqual(files, ['base', 'workstation', 'llm', 'inference', 'asr', 'llm-tp2', 'tts', 'omni-duplex',
+                                 'images', 'vpn', 'media'])
         self.assertEqual(args[-5:], ['--profile', 'assets', 'run', '--rm', 'image-model-fetch'])
 
-    def test_shared_images_cannot_allocate_workstation_gpu_on_legacy_or_orin_targets(self):
-        for target in set(TARGETS) - {'workstation'}:
+    def test_shared_images_allowed_on_workstation_targets_and_rejected_elsewhere(self):
+        for target in ('workstation', 'workstation-legacy'):
+            with self.subTest(target=target):
+                args = command(target, ['up'], images=True)
+                files = [Path(args[i+1]).stem for i, item in enumerate(args) if item == '-f']
+                self.assertEqual(files[-1], 'images')
+        for target in set(TARGETS) - {'workstation', 'workstation-legacy'}:
             with self.subTest(target=target), self.assertRaises(ValueError):
                 command(target, ['up'], images=True)
+
+    def test_asr_overlay_deduplicates_workstation_appends_legacy_and_rejects_non_gateway(self):
+        workstation_args = command('workstation', ['up'], asr=True)
+        workstation_files = [Path(workstation_args[i+1]).stem for i, item in enumerate(workstation_args) if item == '-f']
+        self.assertEqual(workstation_files.count('asr'), 1)
+        legacy_args = command('workstation-legacy', ['up'], asr=True, images=True)
+        legacy_files = [Path(legacy_args[i+1]).stem for i, item in enumerate(legacy_args) if item == '-f']
+        self.assertEqual(legacy_files, ['base', 'workstation', 'llm', 'inference', 'asr', 'images'])
+        for target in ('images', 'llm', 'omni'):
+            with self.subTest(target=target), self.assertRaises(ValueError):
+                command(target, ['up'], asr=True)
+        self.assertEqual(main(['--target', 'workstation-legacy', '--asr', '--dry-run', '--', 'config', '--quiet']), 0)

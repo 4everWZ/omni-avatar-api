@@ -187,7 +187,7 @@ class Gateway:
         ):
             return None, failure(400, "unsupported_media", "Use llm-default Responses for image input.")
         payload["model"] = self.config.model
-        apply_thinking_default(payload)
+        apply_thinking_default(payload, default_budget=self.config.default_thinking_token_budget)
         if payload.get("modalities") is None:
             payload["modalities"] = ["text"]
         return payload, None

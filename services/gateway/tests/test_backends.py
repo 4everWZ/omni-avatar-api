@@ -23,7 +23,70 @@ class BackendPolicyTest(unittest.TestCase):
         self.assertEqual((self.parent.queue_limit, self.parent.queue_timeout, self.parent.request_timeout), (9, 2, 7))
         self.assertEqual(child.batch_cap, 4)
         self.assertEqual(child.token_budget, 262144)
+        self.assertEqual(child.engine_version, 'vLLM 0.34.0')
+        self.assertIsNone(child.default_thinking_token_budget)
         self.assertFalse(child.realtime_enabled)
+
+    def test_workstation_cap_thinking_budget_engine_version_and_worker_configs(self):
+        base_env = {
+            'OMNI_GATEWAY_TOKEN': 'client',
+            'OMNI_GATEWAY_ADMIN_TOKEN': 'admin',
+            'OMNI_CHECKPOINT': 'a' * 40,
+            'OMNI_MODEL_ID': 'omni-fixture',
+            'OMNI_SHARED_CAPACITY': '1',
+        }
+        for cap in ('1', '4', '16'):
+            with self.subTest(cap=cap), patch.dict(os.environ, base_env | {'OMNI_WORKSTATION_CAP': cap}, clear=True):
+                cfg = Config.from_env()
+                self.assertEqual(cfg.batch_cap, int(cap))
+        for bad_cap in ('0', '-1', '17', '1.5'):
+            with self.subTest(bad_cap=bad_cap), patch.dict(os.environ, base_env | {'OMNI_WORKSTATION_CAP': bad_cap}, clear=True):
+                with self.assertRaises(ValueError):
+                    Config.from_env()
+
+        with patch.dict(os.environ, base_env | self.environment | {
+            'LLM_ENGINE_VERSION': 'vLLM 0.32.0',
+            'LLM_DEFAULT_THINKING_TOKEN_BUDGET': '16384',
+            'OMNI_TTS_WORKER_URL': 'http://omni-tts:8000/',
+            'OMNI_TTS_INTERNAL_TOKEN': 'tts-secret',
+            'OMNI_TTS_TIMEOUT': '45',
+            'OMNI_ASR_WORKER_URL': 'http://omni-asr:8000/',
+            'OMNI_ASR_INTERNAL_TOKEN': 'asr-secret',
+            'OMNI_ASR_TIMEOUT': '90',
+        }, clear=True):
+            root = Config.from_env()
+            child = root.text_backend()
+        self.assertIsNone(root.default_thinking_token_budget)
+        self.assertEqual((root.tts_worker_url, root.tts_internal_token, root.tts_timeout),
+                         ('http://omni-tts:8000', 'tts-secret', 45.0))
+        self.assertEqual((root.asr_worker_url, root.asr_internal_token, root.asr_timeout),
+                         ('http://omni-asr:8000', 'asr-secret', 90.0))
+        self.assertEqual(child.engine_version, 'vLLM 0.32.0')
+        self.assertEqual(child.default_thinking_token_budget, 16384)
+
+        for raw, expected in [('', None), ('0', 0), ('8192', 8192)]:
+            with self.subTest(budget=raw), patch.dict(os.environ, self.environment | {'LLM_DEFAULT_THINKING_TOKEN_BUDGET': raw}, clear=True):
+                self.assertEqual(self.parent.text_backend().default_thinking_token_budget, expected)
+
+        for bad in ('-1', '1.5', '1.0', 'True', 'False', 'true', 'false', 'nan', 'inf', 'abc'):
+            with self.subTest(bad_budget=bad), patch.dict(os.environ, self.environment | {'LLM_DEFAULT_THINKING_TOKEN_BUDGET': bad}, clear=True):
+                with self.assertRaises(ValueError):
+                    self.parent.text_backend()
+
+        for bad_raw in (True, False, 1.5):
+            with self.subTest(bad_raw=bad_raw), patch.object(os, 'environ', self.environment | {'LLM_DEFAULT_THINKING_TOKEN_BUDGET': bad_raw}):
+                with self.assertRaises(ValueError):
+                    self.parent.text_backend()
+
+        for key, bad_val in [
+            ('OMNI_TTS_WORKER_URL', 'http://omni-tts:8000/bad'),
+            ('OMNI_ASR_WORKER_URL', 'not-an-origin'),
+            ('OMNI_TTS_TIMEOUT', '0'),
+            ('OMNI_ASR_TIMEOUT', '-5'),
+        ]:
+            with self.subTest(key=key, bad_val=bad_val), patch.dict(os.environ, base_env | {key: bad_val}, clear=True):
+                with self.assertRaises(ValueError):
+                    Config.from_env()
 
     def test_unset_or_empty_values_inherit(self):
         for extra in ({}, {'LLM_QUEUE_LIMIT': '', 'LLM_QUEUE_TIMEOUT': '', 'LLM_REQUEST_TIMEOUT': ''}):
@@ -55,6 +118,8 @@ class BackendIsolationTest(unittest.IsolatedAsyncioTestCase):
         self.release = asyncio.Event()
         self.responses = {}
         self.counted = []
+        self.chat_payloads = []
+        self.response_payloads = []
 
         async def engine(model):
             async def models(request):
@@ -62,6 +127,7 @@ class BackendIsolationTest(unittest.IsolatedAsyncioTestCase):
 
             async def chat(request):
                 payload = await request.json()
+                self.chat_payloads.append((model, payload))
                 self.assertEqual(payload['model'], model)
                 if payload.get('stream'):
                     response = web.StreamResponse(headers={'Content-Type': 'text/event-stream'})
@@ -85,6 +151,7 @@ class BackendIsolationTest(unittest.IsolatedAsyncioTestCase):
             async def responses(request):
                 if request.method == 'POST' and 'response_id' not in request.match_info:
                     payload = await request.json()
+                    self.response_payloads.append((model, payload))
                     self.assertEqual(payload['model'], model)
                     response_id = payload['request_id']
                     data = {'id': response_id, 'object': 'response', 'model': model,
@@ -288,3 +355,39 @@ class BackendIsolationTest(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(response.status, 429)
         async with self.http.post('/llm/v1/responses/' + response_id + '/cancel') as response:
             self.assertEqual((await response.json())['status'], 'cancelled')
+
+    async def test_default_thinking_budget_applies_only_to_text_backend(self):
+        url = await self.serve(create_app(
+            self.parent_config,
+            replace(self.text_config, default_thinking_token_budget=16384),
+        ))
+        async with ClientSession(base_url=url, headers={'Authorization': 'Bearer client'}) as http:
+            async with http.post('/v1/chat/completions', json={
+                'model': 'omni-default', 'messages': [{'role': 'user', 'content': 'hi'}],
+            }) as response:
+                self.assertEqual(response.status, 200)
+            self.assertNotIn('thinking_token_budget', self.chat_payloads[-1][1])
+
+            async with http.post('/llm/v1/chat/completions', json={
+                'model': 'llm-default', 'messages': [{'role': 'user', 'content': 'hi'}],
+            }) as response:
+                self.assertEqual(response.status, 200)
+            self.assertEqual(self.chat_payloads[-1][1]['thinking_token_budget'], 16384)
+
+            async with http.post('/llm/v1/responses', json={
+                'model': 'llm-default', 'input': 'hi',
+            }) as response:
+                self.assertEqual(response.status, 200)
+            self.assertEqual(self.response_payloads[-1][1]['thinking_token_budget'], 16384)
+
+            async with http.post('/llm/v1/responses', json={
+                'model': 'llm-default', 'input': 'hi', 'thinking_token_budget': 0,
+            }) as response:
+                self.assertEqual(response.status, 200)
+            self.assertEqual(self.response_payloads[-1][1]['thinking_token_budget'], 0)
+
+            async with http.post('/llm/v1/responses', json={
+                'model': 'llm-default', 'input': 'hi', 'reasoning': {'effort': 'none'},
+            }) as response:
+                self.assertEqual(response.status, 200)
+            self.assertNotIn('thinking_token_budget', self.response_payloads[-1][1])

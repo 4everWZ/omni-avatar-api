@@ -7,7 +7,7 @@ import json
 import re
 import wave
 
-from aiohttp import ClientError, web
+from aiohttp import ClientError, ClientSession, ClientTimeout, DummyCookieJar, FormData, web
 
 from .admission import BudgetExceeded, Busy
 from .token_budget import ReservationRejected, reservation
@@ -69,6 +69,15 @@ def transcription_request(model, audio):
     }
 
 
+async def _read_bounded(response, limit=8_000_000):
+    raw = bytearray()
+    async for chunk in response.content.iter_chunked(65536):
+        raw.extend(chunk)
+        if len(raw) > limit:
+            raise ValueError("Response too large")
+    return bytes(raw)
+
+
 async def complete(gateway, payload):
     budget = await reservation(gateway, "chat", payload)
     async with gateway.admission.hold("chat", **budget):
@@ -76,15 +85,66 @@ async def complete(gateway, payload):
             if upstream.status == 429:
                 raise Busy()
             upstream.raise_for_status()
-            raw = bytearray()
-            async for chunk in upstream.content.iter_chunked(65536):
-                raw.extend(chunk)
-                if len(raw) > 8_000_000:
-                    raise ValueError("Response too large")
-            choices = json.loads(raw)["choices"]
+            choices = json.loads(await _read_bounded(upstream))["choices"]
             if not choices or any(c["finish_reason"] != "stop" for c in choices):
                 raise ValueError("Incomplete response")
             return [c["message"] for c in choices]
+
+
+async def synthesize_via_workers(gateway, line, reference):
+    if not gateway.config.asr_worker_url:
+        raise ClientError("ASR worker URL is not configured.")
+    tts_url = gateway.config.tts_worker_url.rstrip("/") + "/v1/tts/synthesize"
+    asr_url = gateway.config.asr_worker_url.rstrip("/") + "/transcribe"
+    tts_headers = ({"Authorization": f"Bearer {gateway.config.tts_internal_token}"}
+                   if gateway.config.tts_internal_token else {})
+    asr_headers = ({"Authorization": f"Bearer {gateway.config.asr_internal_token}"}
+                   if gateway.config.asr_internal_token else {})
+    connect_timeout = min(5.0, gateway.config.tts_timeout, gateway.config.asr_timeout)
+
+    async with gateway.admission.hold("chat"):
+        async with ClientSession(
+            cookie_jar=DummyCookieJar(),
+            timeout=ClientTimeout(total=None, connect=connect_timeout),
+            trust_env=False,
+        ) as session:
+            async with asyncio.timeout(gateway.config.tts_timeout):
+                async with session.post(
+                    tts_url,
+                    json={"text": line.strip(), "reference_audio_base64": reference},
+                    headers=tts_headers,
+                    allow_redirects=False,
+                ) as upstream:
+                    if upstream.status == 429:
+                        raise Busy()
+                    if upstream.status >= 300:
+                        upstream.raise_for_status()
+                        raise ClientError(f"Unexpected redirect from TTS worker: {upstream.status}")
+                    data = await _read_bounded(upstream)
+            validate_wav(data, output=True)
+
+            form = FormData()
+            form.add_field("file", data, filename="speech.wav", content_type="audio/wav")
+            form.add_field("response_format", "json")
+            async with asyncio.timeout(gateway.config.asr_timeout):
+                async with session.post(
+                    asr_url,
+                    data=form,
+                    headers=asr_headers,
+                    allow_redirects=False,
+                ) as upstream:
+                    if upstream.status == 429:
+                        raise Busy()
+                    if upstream.status >= 300:
+                        upstream.raise_for_status()
+                        raise ClientError(f"Unexpected redirect from ASR worker: {upstream.status}")
+                    payload = json.loads(await _read_bounded(upstream))
+    if not isinstance(payload, dict):
+        raise ValueError("Invalid ASR response payload")
+    transcript = payload["text"]
+    if not isinstance(transcript, str) or spoken_words(transcript) != spoken_words(line):
+        raise ValueError("Spoken words mismatch")
+    return data, transcript
 
 
 def failure(status, code, message, *, headers=None):
@@ -113,17 +173,20 @@ async def speech(request):
 
     try:
         async with asyncio.timeout(gateway.config.request_timeout):
-            messages = await complete(gateway, synthesis_request(gateway.config.model, line.strip(), ref["data"]))
-            words = [m["content"] for m in messages if m.get("content")]
-            clips = [m["audio"]["data"] for m in messages if m.get("audio")]
-            if len(words) != 1 or spoken_words(words[0]) != spoken_words(line) or len(clips) != 1:
-                raise ValueError("Text mismatch")
-            data = base64.b64decode(clips[0], validate=True)
-            validate_wav(data, output=True)
-            heard, = await complete(gateway, transcription_request(gateway.config.model, clips[0]))
-            transcript = json.loads(heard["content"])["transcript"]
-            if not isinstance(transcript, str) or spoken_words(transcript) != spoken_words(line):
-                raise ValueError("Spoken words mismatch")
+            if gateway.config.tts_worker_url:
+                data, transcript = await synthesize_via_workers(gateway, line, ref["data"])
+            else:
+                messages = await complete(gateway, synthesis_request(gateway.config.model, line.strip(), ref["data"]))
+                words = [m["content"] for m in messages if m.get("content")]
+                clips = [m["audio"]["data"] for m in messages if m.get("audio")]
+                if len(words) != 1 or spoken_words(words[0]) != spoken_words(line) or len(clips) != 1:
+                    raise ValueError("Text mismatch")
+                data = base64.b64decode(clips[0], validate=True)
+                validate_wav(data, output=True)
+                heard, = await complete(gateway, transcription_request(gateway.config.model, clips[0]))
+                transcript = json.loads(heard["content"])["transcript"]
+                if not isinstance(transcript, str) or spoken_words(transcript) != spoken_words(line):
+                    raise ValueError("Spoken words mismatch")
             return web.Response(body=data, content_type="audio/wav", headers={
                 "X-Omni-Transcript": base64.b64encode(transcript.encode()).decode("ascii"), "Cache-Control": "no-store",
             })

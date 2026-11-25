@@ -184,23 +184,30 @@ class ImageQueue:
 
 class ImageJobs(ImageQueue):
     def __init__(self, text, root, switch_root, worker_url, worker_token, llm_token, minimum_mib,
-                 kv_bytes=0):
+                 kv_bytes=0, sleep_strategy='auto'):
         super().__init__(root, worker_url, worker_token, text.config.request_timeout)
+        if sleep_strategy not in ('auto', 'kv_first', 'offload'):
+            raise ValueError('Unknown LLM sleep strategy')
         self.text = text
         self.marker = Path(switch_root) / 'image-active'
         self.llm_token = llm_token
         self.minimum_free = minimum_mib * 1024 ** 2
         self.kv_bytes = kv_bytes
+        self.sleep_strategy = sleep_strategy
 
     @classmethod
     def from_env(cls, text):
         minimum_mib = int(os.environ.get('OMNI_IMAGE_MIN_FREE_MIB', '13312'))
-        kv_bytes = int(os.environ.get('LLM_KV_CACHE_BYTES', '9663676416'))
-        if minimum_mib <= 0 or kv_bytes <= 0:
-            raise ValueError('Image GPU memory threshold and LLM KV allocation must be positive')
+        raw_kv = os.environ.get('LLM_KV_CACHE_BYTES', '').strip()
+        kv_bytes = int(raw_kv) if raw_kv else 0
+        if minimum_mib <= 0 or kv_bytes < 0:
+            raise ValueError('Image GPU memory threshold must be positive and LLM KV allocation non-negative')
+        sleep_strategy = os.environ.get('OMNI_IMAGE_LLM_SLEEP_STRATEGY', 'auto').strip() or 'auto'
+        if sleep_strategy not in ('auto', 'kv_first', 'offload'):
+            raise ValueError('OMNI_IMAGE_LLM_SLEEP_STRATEGY must be auto, kv_first, or offload')
         return cls(text, os.environ['OMNI_IMAGE_DATA'], os.environ['OMNI_GPU_SWITCH_ROOT'],
                    os.environ['OMNI_IMAGE_WORKER_URL'], os.environ['OMNI_IMAGE_INTERNAL_TOKEN'],
-                   os.environ['LLM_GPU_CONTROL_TOKEN'], minimum_mib, kv_bytes)
+                   os.environ['LLM_GPU_CONTROL_TOKEN'], minimum_mib, kv_bytes, sleep_strategy=sleep_strategy)
 
     async def llm(self, action):
         async with self.http.post(self.text.config.engine_url + '/internal/gpu-control/' + action,
@@ -267,18 +274,20 @@ class ImageJobs(ImageQueue):
             timing['queue'] = max(0, time() - job['created_at'] - timing['drain_llm'] - timing['prepare'])
             self.save(job, state='running')
             started = monotonic()
-            free_before = (await self.worker('GET', '/state'))['free_bytes']
-            check_kv_first = not self.kv_bytes or free_before + self.kv_bytes >= self.minimum_free
-            if check_kv_first:
-                await self.llm('release_kv')
-            if (not check_kv_first or (not cancel.is_set() and
-                    (await self.worker('GET', '/state'))['free_bytes'] < self.minimum_free)):
-                if check_kv_first:
-                    await self.llm('wake')
+            if self.sleep_strategy == 'offload':
                 await self.llm('offload')
                 strategy = 'weights_and_kv'
             else:
-                strategy = 'kv_only'
+                free_before = (await self.worker('GET', '/state'))['free_bytes']
+                check_kv_first = not self.kv_bytes or free_before + self.kv_bytes >= self.minimum_free
+                if check_kv_first:
+                    await self.llm('release_kv')
+                if (not check_kv_first or (not cancel.is_set() and
+                        (await self.worker('GET', '/state'))['free_bytes'] < self.minimum_free)):
+                    await self.llm('offload')
+                    strategy = 'weights_and_kv'
+                else:
+                    strategy = 'kv_only'
             timing['release_llm'] = monotonic() - started
             result['gpu_release'] = strategy
             if cancel.is_set():

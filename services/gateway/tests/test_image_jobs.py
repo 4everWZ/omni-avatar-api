@@ -1,8 +1,11 @@
 import asyncio
 import base64
+import os
 import tempfile
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
+from unittest.mock import patch
 
 from aiohttp.test_utils import TestClient, TestServer
 
@@ -85,7 +88,7 @@ class ImageJobTests(unittest.IsolatedAsyncioTestCase):
                 async with admission.hold('chat', tokens=1):
                     self.fail('Generation entered during a drain')
         await self.until(lambda: self.jobs.run_phase == 'running')
-        self.assertEqual(self.jobs.calls, ['release_kv', 'wake', 'offload'])
+        self.assertEqual(self.jobs.calls, ['release_kv', 'offload'])
         self.jobs.run_phase = 'completed'
         await self.until(lambda: self.jobs.active is None)
         self.assertEqual(self.jobs.engine_phase, 'awake')
@@ -125,3 +128,50 @@ class ImageJobTests(unittest.IsolatedAsyncioTestCase):
         self.jobs.broken_wake = False
         await self.until(lambda: self.jobs.text.admission.paused is None)
         self.assertFalse(self.jobs.marker.exists())
+
+    async def test_offload_strategy_skips_release_kv(self):
+        self.jobs.sleep_strategy = 'offload'
+        self.jobs.calls.clear()
+        path = await self.submit()
+        await self.until(lambda: self.jobs.run_phase == 'running')
+        self.assertEqual(self.jobs.calls, ['offload'])
+        self.jobs.run_phase = 'completed'
+        await self.until(lambda: self.jobs.active is None)
+        async with await self.client.get(path, headers=self.auth) as reply:
+            data = await reply.json()
+            self.assertEqual(data['state'], 'completed')
+            self.assertEqual(data['gpu_release'], 'weights_and_kv')
+
+
+class ImageJobsEnvTests(unittest.TestCase):
+    def test_from_env_allows_zero_or_empty_kv_bytes_and_sleep_strategy(self):
+        text = SimpleNamespace(config=Config('http://text', 'text', 'pin', ('client',), 'admin'))
+        base_env = {
+            'OMNI_IMAGE_DATA': '/tmp/img-data',
+            'OMNI_GPU_SWITCH_ROOT': '/tmp/gpu-switch',
+            'OMNI_IMAGE_WORKER_URL': 'http://omni-images:8000',
+            'OMNI_IMAGE_INTERNAL_TOKEN': 'img-token',
+            'LLM_GPU_CONTROL_TOKEN': 'llm-token',
+        }
+        for extra in ({}, {'LLM_KV_CACHE_BYTES': ''}, {'LLM_KV_CACHE_BYTES': '0'}):
+            with self.subTest(extra=extra), patch.dict(os.environ, base_env | extra, clear=True):
+                jobs = ImageJobs.from_env(text)
+                self.assertEqual(jobs.kv_bytes, 0)
+                self.assertEqual(jobs.sleep_strategy, 'auto')
+
+        with patch.dict(os.environ, base_env | {
+            'LLM_KV_CACHE_BYTES': '9663676416',
+            'OMNI_IMAGE_LLM_SLEEP_STRATEGY': 'offload',
+        }, clear=True):
+            jobs = ImageJobs.from_env(text)
+            self.assertEqual(jobs.kv_bytes, 9663676416)
+            self.assertEqual(jobs.sleep_strategy, 'offload')
+
+        for bad_env in (
+            {'LLM_KV_CACHE_BYTES': '-1'},
+            {'OMNI_IMAGE_MIN_FREE_MIB': '0'},
+            {'OMNI_IMAGE_LLM_SLEEP_STRATEGY': 'invalid'},
+        ):
+            with self.subTest(bad_env=bad_env), patch.dict(os.environ, base_env | bad_env, clear=True):
+                with self.assertRaises(ValueError):
+                    ImageJobs.from_env(text)
