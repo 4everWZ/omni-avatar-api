@@ -113,23 +113,36 @@ class Gateway:
             self.admission.set_mode(value["mode"])
         return web.json_response(self.admission.view())
 
-    async def list_engine_models(self):
+    async def list_engine_model_map(self):
+        """Fetch upstream /v1/models and index items by model ID."""
         async with self.engine.get("/v1/models", allow_redirects=False) as response:
             response.raise_for_status()
             data = (await response.json())["data"]
-        model = next((item for item in data if item["id"] == self.config.model), None)
+        return {item["id"]: item for item in data}
+
+    def _verified_base_model(self, model_map):
+        model = model_map.get(self.config.model)
         if self.config.model_root and model and model.get("root") != self.config.model_root:
             return None
         return model
 
-    async def ready_model(self):
+    async def list_engine_models(self):
+        return self._verified_base_model(await self.list_engine_model_map())
+
+    async def ready_models(self):
         try:
             async with asyncio.timeout(self.config.health_timeout):
                 async with self.engine.get("/health", allow_redirects=False) as response:
                     if response.status == 200:
-                        return await self.list_engine_models()
+                        model_map = await self.list_engine_model_map()
+                        return self._verified_base_model(model_map), model_map
         except (TimeoutError, ClientError, ValueError, TypeError, KeyError):
             pass
+        return None, {}
+
+    async def ready_model(self):
+        model, _ = await self.ready_models()
+        return model
 
     async def engine_version(self):
         try:
@@ -142,7 +155,8 @@ class Gateway:
         return (self.config.engine_version, "deployment") if self.config.engine_version else (None, None)
 
     async def health(self, request):
-        model, (version, version_source) = await asyncio.gather(self.ready_model(), self.engine_version())
+        (model, model_map), (version, version_source) = await asyncio.gather(
+            self.ready_models(), self.engine_version())
         state = 'ready' if model else 'unavailable'
         if self.admission.paused == 'image_gpu_switch':
             state = 'busy'
@@ -150,8 +164,13 @@ class Gateway:
             state = 'unavailable'
         if not model:
             self.capabilities, self.chat_observed = None, False
+        extra_aliases = (
+            [alias for alias, upstream in self.config.model_aliases if upstream in model_map]
+            if model else []
+        )
         return web.json_response({
             "state": state, "alias": self.config.model_alias,
+            "extra_aliases": extra_aliases,
             "model": model["id"] if model else None, "configured_model": self.config.model,
             "model_root": model.get("root") if model else None,
             "checkpoint": self.config.checkpoint, "checkpoint_source": "deployment",
@@ -164,12 +183,17 @@ class Gateway:
     async def aliased_models(self, request):
         try:
             async with asyncio.timeout(self.config.health_timeout):
-                model = await self.list_engine_models()
+                model_map = await self.list_engine_model_map()
+                model = self._verified_base_model(model_map)
         except (TimeoutError, ClientError, ValueError, TypeError, KeyError):
-            model = None
+            model_map, model = {}, None
         if model is None:
             return failure(503, "model_unavailable", "The configured engine model is unavailable.")
-        return web.json_response({"object": "list", "data": [model | {"id": self.config.model_alias, "root": self.config.model_alias}]})
+        data = [model | {"id": self.config.model_alias, "root": self.config.model_alias}]
+        for alias, upstream in self.config.model_aliases:
+            if (extra := model_map.get(upstream)) is not None:
+                data.append(extra | {"id": alias, "root": alias})
+        return web.json_response({"object": "list", "data": data})
 
     async def chat_payload(self, request):
         try:
@@ -179,15 +203,16 @@ class Gateway:
             return None, failure(400, "invalid_json", "Expected a JSON Chat Completions request.")
         except TimeoutError:
             return None, failure(408, "request_timeout", "The request body did not arrive in time.")
-        if not isinstance(payload, dict) or payload.get("model") != self.config.model_alias:
-            return None, failure(400, "model_not_found", f"Use the {self.config.model_alias} alias.")
+        if not isinstance(payload, dict) or (upstream_model := self.config.resolve_upstream_model(payload.get("model"))) is None:
+            accepted = ", ".join(self.config.accepted_aliases())
+            return None, failure(400, "model_not_found", f"Unknown model alias. Use one of: {accepted}.")
         if self.responses is not None and isinstance(payload.get("messages"), list) and any(
             isinstance(part, dict) and part.get("type") != "text"
             for message in payload.get("messages", []) if isinstance(message, dict) and isinstance(message.get("content"), list)
             for part in message["content"]
         ):
             return None, failure(400, "unsupported_media", "Use llm-default Responses for image input.")
-        payload["model"] = self.config.model
+        payload["model"] = upstream_model
         apply_thinking_default(payload, default_budget=self.config.default_thinking_token_budget)
         apply_xgrammar_schema_compat(payload)
         if payload.get("modalities") is None:

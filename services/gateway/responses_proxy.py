@@ -79,8 +79,9 @@ class ResponsesProxy:
                 payload = await request.json()
         except (ValueError, UnicodeError, TimeoutError):
             return None, error(400, 'invalid_json', 'Expected a Responses request.')
-        if not isinstance(payload, dict) or payload.get('model') != self.gateway.config.model_alias:
-            return None, error(400, 'model_not_found', 'Use the llm-default alias.')
+        if not isinstance(payload, dict) or (upstream_model := self.gateway.config.resolve_upstream_model(payload.get('model'))) is None:
+            accepted = ', '.join(self.gateway.config.accepted_aliases())
+            return None, error(400, 'model_not_found', f'Unknown model alias. Use one of: {accepted}.')
         previous = payload.get('previous_response_id')
         if previous is not None and (not isinstance(previous, str) or not self.owns(owner, previous)):
             return None, error(404, 'response_not_found', 'Response not found.')
@@ -99,7 +100,7 @@ class ResponsesProxy:
             return None, error(400, 'invalid_image_source', 'Use inline PNG, JPEG, or WebP image data.')
         nonce = secrets.token_hex(16)
         payload['request_id'] = 'resp_' + nonce + '_' + self.signature(owner, nonce)
-        payload['model'] = self.gateway.config.model
+        payload['model'] = upstream_model
         apply_thinking_default(payload, default_budget=self.gateway.config.default_thinking_token_budget)
         apply_xgrammar_schema_compat(payload)
         return payload, None

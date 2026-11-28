@@ -2,9 +2,9 @@
 
 默认 `--target workstation` 采用 Personal-Agent-First 双卡并行布局：
 
-- **LLM (`llm-engine`)**：`RedHatAI/Qwen3.8-27B-INT4`（SHA `71dface38d4cbfa34121f1d446d4a0fa1025f13c`）基于 `vllm/vllm-openai:v0.34.0@sha256:20fdb089454afbb324efa4110a2c025ff7b27cc1a086e07aa580b18df8ad1ce1`（镜像 `omni-api-llm:0.34.0`），`TP=2` 横跨双 3090（`LLM_GPU_DEVICE_0=0`、`LLM_GPU_DEVICE_1=1`，`LLM_TP2_GPU_MEMORY_UTILIZATION=0.80`，`shm_size: 16gb`），默认 131072 上下文、MTP=3、`align` 前缀缓存、8 并发序列。
+- **LLM (`llm-engine`)**：默认锁定 A/B 胜出配置 **B1**：基座 `ukisai/Swift-1.5-Qwen3.8-27b-INT4`（SHA `81a28ee75eb1cd469f209813a368a79a7e3db3bc`），`LLM_TP2_SPECULATIVE_METHOD=mtp`（`MTP=3`）、`LLM_TP2_ENABLE_LORA=0`、`LLM_TP2_COMPILATION_MODE=0`（沿用 vLLM 0.34.0 对 Qwen3.5 默认启用的可打断 CUDA Graphs）、`LLM_TP2_MAX_NUM_BATCHED_TOKENS=8192`、`LLM_TP2_MAMBA_CACHE_MODE` 留空；基于 `vllm/vllm-openai:v0.34.0@sha256:20fdb089454afbb324efa4110a2c025ff7b27cc1a086e07aa580b18df8ad1ce1`（镜像 `omni-api-llm:0.34.0`），`TP=2` 横跨双 3090（`LLM_GPU_DEVICE_0=0`、`LLM_GPU_DEVICE_1=1`，`LLM_TP2_GPU_MEMORY_UTILIZATION=0.80`，`shm_size: 16gb`），默认 262144 上下文、8 并发序列、持久化 `vllm-compile-cache` 与 `triton-cache` 命名卷及 `healthcheck.start_period=8m`（同时保留可选 LoRA / `LLM_EXTRA_MODEL_ALIASES` 与 `dspark` / `dflash` 配置入口）。
 - **TTS (`omni-tts`)**：默认 `Qwen/Qwen3-TTS-12Hz-0.6B-Base`（SHA `5d83992436eae1d760afd27aff78a71d676296fc`；内含 `speech_tokenizer`）运行于 GPU 1（`TTS_GPU_DEVICE=1`，`pytorch/pytorch:2.9.1-cuda12.8-cudnn9-runtime@sha256:7b324d212a4450795b49edba9949b7cdc72429148a64e974334bfe5774d51385`，镜像 `omni-api-tts:qwen3-0.6b`）。
-- **全双工与 ASR (`omni-engine` + `omni-asr`)**：纯 CPU 运行，零显存占用。`omni-engine`（`python:3.12-slim-bookworm@sha256:44cf1793efa7c7a476bb0f2cff81443f4a072c90c1cb127e2924933daa3e8c64`，镜像 `omni-api-duplex:1.0`）使用 `onnx-community/silero-vad`（SHA `e71cae966052b992a7eca6b17738916ce0eca4ec`）串联 `omni-asr`（`omni-api-asr:small-int8`）、`llm-engine` 与 `omni-tts`；`OMNI_DUPLEX_CAP=4`。
+- **全双工与 ASR (`omni-engine` + `omni-asr`)**：纯 CPU 运行，零显存占用。`omni-engine`（`python:3.12-slim-bookworm@sha256:44cf1793efa7c7a476bb0f2cff81443f4a072c90c1cb127e2924933daa3e8c64`，镜像 `omni-api-duplex:1.0`）使用 `onnx-community/silero-vad`（SHA `e71cae966052b992a7eca6b17738916ce0eca4ec`）串联 `omni-asr`（`omni-api-asr:small-int8`）、`llm-engine`（默认路由到 `OMNI_DUPLEX_LLM_MODEL=llm-default`，窗口 `262144`）与 `omni-tts`；`OMNI_DUPLEX_CAP=4`。
 - **可选生图 (`omni-images`)**：默认放在 GPU 0（`IMAGE_GPU_DEVICE=0`），避开 GPU 1 的常驻 `omni-tts`；作业期间按 `OMNI_IMAGE_LLM_SLEEP_STRATEGY=auto` 自动释放 TP=2 KV 或休眠卸载权重，完成后恢复。
 
 网关统一暴露推理 API，应用负责身份、历史、长期记忆、Agent 编排及工具执行。
@@ -17,11 +17,17 @@
 
 - **升级 `Qwen3-TTS-12Hz-1.7B-Base`**：将 `.env` 中的 `TTS_MODEL_ID` 设为 `Qwen/Qwen3-TTS-12Hz-1.7B-Base`、`TTS_CHECKPOINT` 设为 `fd4b254389122332181a7c3db7f27e918eec64e3`，并把 `LLM_TP2_GPU_MEMORY_UTILIZATION` 从 `0.80` 下调至 `0.72`（为 GPU 1 留出 ~6.7 GiB 余量后即可常驻），再执行 `tts-model-fetch` 并重启 `omni-tts`。
 - **切换 CPU `Genie-TTS`（0 MiB 显存）**：在 `.env` 设置 `TTS_BACKEND=genie`（及 `GENIE_DATA_DIR` / `GENIE_MODEL_DIR` / `GENIE_CHARACTER_NAME`），可完全腾空 GPU 1 上的 TTS 显存，为 `llm-engine` 释放更高 `LLM_TP2_GPU_MEMORY_UTILIZATION` 或 `262144` 上下文。
-- **可控开关与回退**：思考默认上限由 `LLM_DEFAULT_THINKING_TOKEN_BUDGET=16384` 控制；`LLM_TP2_ENABLE_MTP`、`LLM_TP2_ASYNC_SCHEDULING`、`LLM_TP2_ENABLE_PREFIX_CACHING`、`LLM_TP2_ENABLE_LORA` 均可在 `.env` 单独切换，无需改镜像。
+- **可控开关与回退**：
+  - 思考默认上限由 `LLM_DEFAULT_THINKING_TOKEN_BUDGET=16384` 控制；`LLM_TP2_ASYNC_SCHEDULING`、`LLM_TP2_ENABLE_PREFIX_CACHING`、`LLM_TP2_ENABLE_LORA` 均可在 `.env` 单独切换，无需改镜像（`LLM_TP2_MAMBA_CACHE_MODE` 默认留空，避免 vLLM 0.34.0 弃用参数告警）。
+  - **编译模式与持久化缓存**：`llm-engine` 默认 `LLM_TP2_COMPILATION_MODE=0`（vLLM 0.34.0 对 `_QWEN3_5_ARCHITECTURES` 自动启用 `VLLM_USE_BREAKABLE_CUDAGRAPH=1` 并设为 `CompilationMode.NONE`；保留 `/models:ro` 只读绑定及持久化命名卷 `vllm-compile-cache:/root/.cache/vllm`、`triton-cache:/root/.triton`，供未来升级编译支持后直接复用）。
+  - **投机解码（MTP / DSpark-zh / DFlash）与可选 LoRA**：
+    - 默认 `LLM_TP2_SPECULATIVE_METHOD=mtp`（`MTP=3`、`LLM_TP2_MTP_NUM_SPECULATIVE_TOKENS=3`），为当前唯一兼顾 `>= 1.0x` 262K KV 余量与最高实测吞吐的方案；可按需在 `.env` 设 `dspark`/`dflash`（需配置 `LLM_TP2_DRAFT_MODEL_ID` / `LLM_TP2_DRAFT_CHECKPOINT` 并视显存下调 `LLM_TP2_MAX_MODEL_LEN`）或 `none`。
+    - 可选 LoRA 与网关多别名：`LLM_TP2_ENABLE_LORA` 默认为 `0`，需要加载 LoRA 时在 `.env` 填写 `LLM_TP2_ENABLE_LORA=1`、`LLM_TP2_LORA_NAME`、`LLM_TP2_LORA_REPO_ID`、`LLM_TP2_LORA_CHECKPOINT` 与 `LLM_TP2_EXTRA_MODEL_ALIASES=<alias>=<lora_name>`（`llm-model-fetch` 会自动对 VLM LoRA 规范化键名前缀）。
+    - 回退上一版基座模型：在 `.env` 设置 `LLM_TP2_MODEL_ID=RedHatAI/Qwen3.8-27B-INT4`、`LLM_TP2_CHECKPOINT=71dface38d4cbfa34121f1d446d4a0fa1025f13c`，确认快照已拉取后 `up -d` 即可热切回。
 
 ### 组合启动
 
-统一入口默认组合 `base.yml`、`workstation.yml`、`llm.yml`、`inference.yml`、`asr.yml`、`llm-tp2.yml`、`tts.yml` 与 `omni-duplex.yml`；`--vpn` 添加私网监听，`--images` 添加 Klein 4B 生图。
+统一入口默认组合 `base.yml`、`workstation.yml`、`llm.yml`、`inference.yml`、`asr.yml`、`llm-tp2.yml`、`tts.yml` 与 `omni-duplex.yml`；`--vpn` 添加私网监听，`--images` 添加 Klein 4B 生图。`llm-model-fetch` 除拉取基座模型外，在 `.env` 配置了 LoRA 或草稿模型时也会一并拉取（并自动规范化 VLM LoRA 键名前缀）。
 
 ```sh
 python tools/compose.py --vpn -- config --quiet
@@ -65,11 +71,11 @@ python tools/compose.py --target llm -- stop llm-engine
 
 | 入口 | 职责与配置 |
 | --- | --- |
-| `/v1`，`omni-default` | CPU 全双工编排器（Silero VAD + `omni-asr` + `llm-engine` + `omni-tts`）；Chat 窗口跟随 `LLM_TP2_MAX_MODEL_LEN`（默认 131072），`--target workstation-legacy` 下为 8192。 |
+| `/v1`，`omni-default` | CPU 全双工编排器（Silero VAD + `omni-asr` + `llm-engine` + `omni-tts`）；默认将语音 LLM 轮次路由至 `OMNI_DUPLEX_LLM_MODEL=llm-default`，Chat 窗口跟随 `LLM_TP2_MAX_MODEL_LEN`（默认 262144），`--target workstation-legacy` 下为 8192。 |
 | `/v1/realtime?duplex=1` | WebSocket 实时语音（16 kHz PCM16 输入 / 24 kHz PCM16 输出、打断 `epoch` 隔离与 `video_frames` 视觉注入），`OMNI_DUPLEX_CAP=4`（默认 4 路并发）。 |
 | `/v1/audio/speech` | 零样本参考音色朗读；默认经 `omni-tts` 合成并由 CPU `omni-asr` 盲转写核对后返回 24 kHz WAV。 |
 | `/v1/audio/transcriptions` | CPU `faster-whisper` 离线转写与分段时间戳；默认随 `workstation` 启用，旧目标可用 `--asr` 开启。 |
-| `/llm/v1`，`llm-default` | 长上下文 Responses HTTP／增量 SSE，兼容 Chat，支持文本、内嵌图片、结构化与 function 输出；TP=2 默认窗口 131072（可调至 262144）、并发 8（可调至 16）。 |
+| `/llm/v1`，`llm-default` | 长上下文 Responses HTTP／增量 SSE，兼容 Chat，支持文本、内嵌图片、结构化与 function 输出；默认指向 `ukisai/Swift-1.5-Qwen3.8-27b-INT4`（若配置 `LLM_TP2_EXTRA_MODEL_ALIASES` 可额外注册 LoRA 别名并共享同一准入槽位与 token 预算）；TP=2 默认窗口 262144、并发 8（可调至 16）。 |
 | `/healthz`、`/llm/healthz` | 各自后端的身份、根目录校验、就绪和准入状态。 |
 | `/v1/images/jobs` | 可选 Klein 生图任务，提交、查询、下载、取消（默认 GPU 0）。 |
 
@@ -79,7 +85,26 @@ python tools/compose.py --target llm -- stop llm-engine
 
 ## 并发与计算预算（新默认 vs legacy 基线）
 
-新默认 `workstation` 下：`OMNI_DUPLEX_CAP=4` 控制纯 CPU 全双工与 Omni Chat 共有 4 个实时槽位；`LLM_TP2_MAX_NUM_SEQS=8` 与 `LLM_TP2_TOKEN_BUDGET=262144` 控制 `llm-engine` 的活跃请求预留与 FIFO 排队（单请求默认上限 `LLM_TP2_MAX_MODEL_LEN=131072`）。
+新默认 `workstation` 下：`OMNI_DUPLEX_CAP=4` 控制纯 CPU 全双工与 Omni Chat 共有 4 个实时槽位（默认 `OMNI_DUPLEX_LLM_MODEL=llm-default`）；`LLM_TP2_MAX_NUM_SEQS=8` 与 `LLM_TP2_TOKEN_BUDGET=262144` 控制 `llm-engine` 的活跃请求预留与 FIFO 排队（单请求默认上限 `LLM_TP2_MAX_MODEL_LEN=262144`）。
+
+### Swift-1.5 TP=2 工作站实测 A/B 门禁（2026-11-29）
+
+在双 RTX 3090（`Qwen3-TTS-12Hz-0.6B-Base` 常驻 GPU 1、`LLM_TP2_GPU_MEMORY_UTILIZATION=0.80`、`LLM_TP2_MAX_NUM_BATCHED_TOKENS=8192`、`262144` 上下文）上对比各候选组合：
+
+| 配置方案 | 262K KV 门禁 | GPU0 已用/空闲 (MiB) | GPU1 已用/空闲 (MiB) | KV 容量 / 262K 倍数 | 冷/热 TTFT (s) | 单路中文 tok/s (e2e/dec) | 单路代码 tok/s (e2e/dec) | 单路 ~8.2K 长提示 tok/s | 4 路合计 tok/s | 平均投机接受长度 (接受率) |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| **B1：`mtp=3`（`LORA=0`，breakable）** | **PASS（胜出）** | `17007 / 7120` | `20861 / 3266` | **`7.83 GiB` (`1.011x`)** | `1.70 / 0.56` | **`76.31 / 78.44`** | **`123.01 / 127.50`** | **`24.40 / 85.84`** | **`191.27`** | **`2.242` (`41.4%`)** |
+| **B2**：`mtp=3`（`LORA=0`，`BREAKABLE=0`，`mode=3`） | **PASS**（compile 跳过） | `17007 / 7120` | `20861 / 3266` | `7.83 GiB` (`1.011x`) | `1.71 / 0.56` | `72.24 / 74.19` | `123.17 / 128.14` | `23.66 / 82.53` | `173.18` | `2.165` (`38.8%`) |
+| **B3**：`mtp=4`（`LORA=0`，breakable） | **FAIL**（`257,920` est） | — | — | `4.67 < 4.75 GiB` | — | — | — | — | — | — |
+| **B4**：`dspark`（`draft_tp=2`，`LORA=0`，`8192`） | **FAIL**（`246,272` est） | — | — | `6.60 < 6.98 GiB` | — | — | — | — | — | — |
+| **B4b**：`dspark`（`draft_tp=2`，`LORA=0`，`4096`） | **FAIL** | — | — | `< 6.98 GiB` | — | — | — | — | — | — |
+| **B4c**：`dspark`（`draft_tp=2`，`LORA=0`，`@65536`） | 不适用（仅 64K） | `16591 / 7536` | `20445 / 3682` | `6.61 GiB` (`1.26x @64K`) | `1.71 / 0.52` | `43.67 / 44.26` | `113.03 / 116.92` | `20.44 / 50.39` | `101.19` | `1.662` (`9.5%`) |
+| `mtp=3 + LoRA`（`chinese-taste-sft-lora`） | **PASS** | `17763 / 6364` | `20857 / 3270` | `7.12 GiB` (`1.011x`) | `1.69 / 0.56` | base `75.50 / 78.09`<br>LoRA `41.35 / 42.00` | `120.85 / 126.67` | `24.63 / 85.67` | base `180.15`<br>LoRA `125.00` | overall `1.850` (`28.4%`)<br>LoRA `1.356` |
+
+默认关闭以下三项（但代码与 Compose 变量入口完整保留，可按需通过 `.env` 启用）：
+1. **关闭 `chinese-taste-sft-lora`（`LLM_TP2_ENABLE_LORA=0`）**：LoRA 额外占用 ~1.47 GiB/GPU 显存，使单路中文吞吐从 `76.31 tok/s` 降至 `41.35 tok/s`（4 路 `180.15` → `125.00 tok/s`）；且 5 组中文日常/情绪/人设 A/B 抽样显示该小说 SFT LoRA 存在输出空串、思考耗尽预算及幻觉漂移，而基座 `Swift-1.5`（`llm-default`）中文对话自然稳定。
+2. **关闭 `dspark-zh`（改用 `LLM_TP2_SPECULATIVE_METHOD=mtp`）**：在 GPU 1 常驻 `Qwen3-TTS-0.6B` 时，`dspark-zh` 无法通过 `>= 1.0x` 262K KV 门禁（`6.60 < 6.98 GiB`，即使关闭 LoRA 并降 `max_num_batched_tokens=4096` 仍不足）；即便在 64K 下其单路中文（`43.67 tok/s`）与 4 路合计（`101.19 tok/s`）也明显低于 B1（`76.31` / `191.27 tok/s`）。
+3. **保持 `LLM_TP2_COMPILATION_MODE=0`**：vLLM 0.34.0 会为 `_QWEN3_5_ARCHITECTURES` 自动启用 `VLLM_USE_BREAKABLE_CUDAGRAPH=1`（强制 `CompilationMode.NONE`）；强行设 `VLLM_USE_BREAKABLE_CUDAGRAPH=0` 与 `mode=3`（B2）时引擎日志告警 `model does not support torch.compile`、不生成 `torch_compile_cache`、冷/热重启均为 `103.5s`，且吞吐低于 B1（`72.24` vs `76.31 tok/s`，4 路 `173.18` vs `191.27 tok/s`）。
 
 以下为历史单卡回滚目标（`--target workstation-legacy`，`OMNI_WORKSTATION_CAP=2`、`LLM_MAX_NUM_SEQS=4`）的实机基线记录，供回滚对照参考：
 

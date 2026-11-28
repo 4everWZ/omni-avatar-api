@@ -2,7 +2,7 @@
 
 调用方从配置取得 API 地址和服务凭据。推理服务负责模型版本、原生双工会话和推理资源。业务身份、任务、记忆、外部工具授权及动作回执由调用应用持有。健康状态和会话握手报告可用能力，应用可以独立升级或替换服务地址。
 
-当前采用显式模型分工：`/v1` 的 `omni-default` 负责约 8K 近期窗口的多轮实时助手；`/llm/v1` 的 `llm-default` 提供独立后台长上下文文本和图像推理，两者有各自的健康状态、模型卡和准入队列。所有服务 均在当前双 3090 工作站。Chat 调用方通过 messages 提交历史和所选记忆，显式选择模型，并负责 Agent 编排与返回工具的执行。
+当前采用显式模型分工：`/v1` 的 `omni-default` 负责实时语音助手与全双工编排（默认将 LLM 轮次路由至 `OMNI_DUPLEX_LLM_MODEL=llm-default`，窗口 `262144`）；`/llm/v1` 默认暴露 `llm-default`（基座 `ukisai/Swift-1.5-Qwen3.8-27b-INT4`），并支持通过可选环境变量 `LLM_EXTRA_MODEL_ALIASES`（例 `llm-zh-chat=llm-zh-chat`）注册额外 LoRA 模型别名，所有别名共享同一上游准入队列与 token 预算。所有服务均在当前双 3090 工作站。Chat 调用方通过 messages 提交历史和所选记忆，显式选择模型，并负责 Agent 编排与返回工具的执行。
 
 ## 已有推理接口
 
@@ -103,23 +103,23 @@ Omni Chat、后台 LLM Chat／Responses 默认 `chat_template_kwargs.enable_thin
 
 ## 后台 Responses
 
-使用 `POST /llm/v1/responses`，模型 `llm-default`，设置 `stream: true` 接收原生增量 SSE。支持文本、内嵌图片、多轮 `previous_response_id`、JSON Schema 及 function 工具调用输出；工具由应用执行。`GET /llm/v1/responses/{id}` 与 `POST /llm/v1/responses/{id}/cancel` 只允许原调用方访问，其他调用方得到 404。
+使用 `POST /llm/v1/responses`，模型 `llm-default`（或通过 `LLM_EXTRA_MODEL_ALIASES` 配置并在 `/llm/v1/models`、`GET /llm/healthz` 的 `extra_aliases` 字段中报告就绪的扩展别名），设置 `stream: true` 接收原生增量 SSE。支持文本、内嵌图片、多轮 `previous_response_id`、JSON Schema 及 function 工具调用输出；工具由应用执行。`GET /llm/v1/responses/{id}` 与 `POST /llm/v1/responses/{id}/cancel` 只允许原调用方访问，其他调用方得到 404。
 
-当前实现 vLLM 0.32 的上述 HTTP／SSE 子集。响应与续接关系保存在引擎进程内；业务历史由调用方持久化，重启后可用保存的历史发起新请求。后台任务在客户端断开后保留准入直到结束或取消；前台流式请求断开会取消。详见[网关规范](../services/gateway/README.md)。
+当前实现 vLLM 0.34.0 TP=2 的上述 HTTP／SSE 子集（默认采用 A/B 胜出配置 **B1**：`Swift-1.5-Qwen3.8-27b-INT4`、`MTP=3`、`LLM_TP2_ENABLE_LORA=0`、`LLM_TP2_COMPILATION_MODE=0`、`LLM_TP2_MAX_NUM_BATCHED_TOKENS=8192`；支持按需在 `.env` 开启可选 LoRA + `LLM_EXTRA_MODEL_ALIASES`、`dspark`/`dflash` 或回滚 `RedHatAI/Qwen3.8-27B-INT4` 基座，实测 A/B 数据见[工作站部署](deployment/workstation.md#swift-15-tp2-工作站实测-ab-门禁2026-11-29)）。响应与续接关系保存在引擎进程内；业务历史由调用方持久化，重启后可用保存的历史发起新请求。后台任务在客户端断开后保留准入直到结束或取消；前台流式请求断开会取消。详见[网关规范](../services/gateway/README.md)。
 
-读图继续使用 `llm-default`。消息 content 可按顺序包含 `{"type":"input_text","text":"描述这个时码的画面"}` 和 `{"type":"input_image","image_url":"data:image/jpeg;base64,…","detail":"auto"}`。使用 JPEG、PNG 或 WebP 的内嵌数据，每次请求最多八张，实际部署可下调。普通文本继续用 Responses 或 Chat。看图与生成新图是不同接口。
+读图继续使用 `llm-default`（或已配置的在线别名）。消息 content 可按顺序包含 `{"type":"input_text","text":"描述这个时码的画面"}` 和 `{"type":"input_image","image_url":"data:image/jpeg;base64,…","detail":"auto"}`。使用 JPEG、PNG 或 WebP 的内嵌数据，每次请求最多八张，实际部署可下调。普通文本继续用 Responses 或 Chat。看图与生成新图是不同接口。
 
 `POST /llm/v1/responses/prompt_tokens` 接收同一 Responses 请求体，返回 `{"count": N}`。它只调用引擎的计量渲染器，既不生成，也不创建续接记录。图像、文字、工具及续接历史使用同一计量口径，不可用 Chat 计量替代。
 
 ## 外部 Swarm／orchestrator 调用
 
-外部编排器统一使用后台 `base_url=http://100.119.17.6:8000/llm/v1`、模型 `llm-default` 和应用 Bearer，优先调用 Responses；Chat 保留兼容。每个逻辑 worker 单独持有历史或 `previous_response_id` 分支；任务、交接、工具执行、共享记忆和工作区操作由应用项目负责。
+外部编排器统一使用后台 `base_url=http://100.119.17.6:8000/llm/v1`、模型 `llm-default`（或配置的 `LLM_EXTRA_MODEL_ALIASES` 别名）和应用 Bearer，优先调用 Responses；Chat 保留兼容。每个逻辑 worker 单独持有历史或 `previous_response_id` 分支；任务、交接、工具执行、共享记忆和工作区操作由应用项目负责。
 
-LLM 单请求上限保留 262144 tokens，引擎和网关默认允许 4 个生成序列；四路短请求以实际输出重叠验收，多路满窗口按显存与总预算独立评估。所有活跃 Chat／Responses 共用 `LLM_TOKEN_BUDGET=262144`：每次准入预留完整模板输入（含 instructions、tools 和已保存续接历史）加最大输出，Chat 多候选分别计入序列和预算。计量使用同一引擎渲染器的实际 token 数。模型使用 W4A16 权重，保留 9 GiB BF16 KV 和 FP32 SSM。
+LLM 单请求上限保留 `262144` tokens，TP=2 工作站默认允许 `8` 个生成序列（`LLM_TP2_MAX_NUM_SEQS=8`）；legacy 单卡目标（`--target workstation-legacy`）为 4 个生成序列与 9 GiB BF16 KV。所有活跃 Chat／Responses（含 `llm-default` 与任意 `LLM_EXTRA_MODEL_ALIASES` 扩展别名）共用 `LLM_TOKEN_BUDGET=262144`：每次准入预留完整模板输入（含 instructions、tools 和已保存续接历史）加最大输出，Chat 多候选分别计入序列和预算。计量使用同一引擎渲染器的实际 token 数。B1 实测单路中文 `76.31 tok/s`、单路代码 `123.01 tok/s`、4 路合计 `191.27 tok/s`，详情见[工作站部署](deployment/workstation.md#swift-15-tp2-工作站实测-ab-门禁2026-11-29)。
 
 调用方应显式设置 `max_output_tokens`（Chat 为 `max_completion_tokens`／`max_tokens`），以释放短请求并发空间；省略时保留引擎默认输出上限，可能按整个剩余窗口预留并串行运行。长短请求按 FIFO 等待可用序列与 token；达到队列上限或等待超时返回 429 和 Retry-After，单请求预算本身不可容纳返回 400。`/llm/api/mode` 报告 `reserved_tokens`、`available_tokens`、`token_budget`、活跃序列和排队数。后台及断流保留规则同上，结束或取消后释放预算。
 
-`LLM_MAX_NUM_SEQS` 同时配置引擎和网关（默认 4）；`LLM_TOKEN_BUDGET` 控制全局活跃预留，模型窗口由 `max_model_len` 独立配置。`LLM_QUEUE_LIMIT`、`LLM_QUEUE_TIMEOUT`、`LLM_REQUEST_TIMEOUT` 可独立设置后台排队和总期限，默认继承现有 16／5 秒／1200 秒；Omni 的实时通道保持独立。提高并发或预算必须重新验证显存余量与混合推理吞吐。
+`LLM_TP2_MAX_NUM_SEQS`（legacy 目标为 `LLM_MAX_NUM_SEQS`）同时配置引擎和网关；`LLM_TOKEN_BUDGET` 控制全局活跃预留，模型窗口由 `max_model_len` 独立配置。`LLM_QUEUE_LIMIT`、`LLM_QUEUE_TIMEOUT`、`LLM_REQUEST_TIMEOUT` 可独立设置后台排队和总期限，默认继承现有 16／5 秒／1200 秒；Omni 的实时通道保持独立。提高并发或预算必须重新验证显存余量与混合推理吞吐。
 
 当前验收范围是 provider API，具体 Antigravity／agent-orchestrator 客户端接入留在应用项目。[provider 约定](../services/gateway/README.md#external-orchestration-clients)。
 

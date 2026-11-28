@@ -6,6 +6,7 @@ from unittest.mock import patch
 
 from aiohttp import ClientSession, web
 from services.gateway.app import Config, create_app
+from services.gateway.config import parse_model_aliases
 
 
 class BackendPolicyTest(unittest.TestCase):
@@ -101,6 +102,45 @@ class BackendPolicyTest(unittest.TestCase):
                             'LLM_REQUEST_TIMEOUT': ['0', 'inf'], 'LLM_QUEUE_LIMIT': ['0', '1.5']}.items():
             for value in values:
                 with self.subTest(key=key, value=value), patch.dict(os.environ, self.environment | {key: value}, clear=True):
+                    with self.assertRaises(ValueError):
+                        self.parent.text_backend()
+
+    def test_extra_model_aliases_parsing_and_validation(self):
+        for raw in ('', '   '):
+            with self.subTest(raw=raw), patch.dict(os.environ, self.environment | {'LLM_EXTRA_MODEL_ALIASES': raw}, clear=True):
+                child = self.parent.text_backend()
+            self.assertEqual(child.model_aliases, ())
+            self.assertEqual(child.accepted_aliases(), ('llm-default',))
+            self.assertEqual(child.resolve_upstream_model('llm-default'), 'text')
+            self.assertIsNone(child.resolve_upstream_model('llm-zh-chat'))
+            self.assertIsNone(child.resolve_upstream_model(None))
+
+        with patch.dict(os.environ, self.environment | {
+            'LLM_EXTRA_MODEL_ALIASES': ' llm-zh-chat = llm-zh-chat , alt-chat = custom-lora ',
+        }, clear=True):
+            child = self.parent.text_backend()
+        self.assertEqual(child.model_aliases, (('llm-zh-chat', 'llm-zh-chat'), ('alt-chat', 'custom-lora')))
+        self.assertEqual(child.accepted_aliases(), ('llm-default', 'llm-zh-chat', 'alt-chat'))
+        self.assertEqual(child.resolve_upstream_model('llm-default'), 'text')
+        self.assertEqual(child.resolve_upstream_model('llm-zh-chat'), 'llm-zh-chat')
+        self.assertEqual(child.resolve_upstream_model('alt-chat'), 'custom-lora')
+        self.assertIsNone(child.resolve_upstream_model('unknown'))
+
+        for bad in (
+            'llm-zh-chat',
+            '=llm-zh-chat',
+            'llm-zh-chat=',
+            'a=b=c',
+            'llm-default=override',
+            'llm-zh-chat=a,llm-zh-chat=b',
+            'llm-zh-chat=a,',
+            ',llm-zh-chat=a',
+            ',',
+        ):
+            with self.subTest(bad=bad):
+                with self.assertRaises(ValueError):
+                    parse_model_aliases(bad, 'llm-default')
+                with patch.dict(os.environ, self.environment | {'LLM_EXTRA_MODEL_ALIASES': bad}, clear=True):
                     with self.assertRaises(ValueError):
                         self.parent.text_backend()
 
@@ -391,3 +431,218 @@ class BackendIsolationTest(unittest.IsolatedAsyncioTestCase):
             }) as response:
                 self.assertEqual(response.status, 200)
             self.assertNotIn('thinking_token_budget', self.response_payloads[-1][1])
+
+
+class ExtraModelAliasRoutingTest(unittest.IsolatedAsyncioTestCase):
+    async def serve(self, app):
+        runner = web.AppRunner(app, handler_cancellation=True, access_log=None)
+        await runner.setup()
+        self.addAsyncCleanup(runner.cleanup)
+        await web.TCPSite(runner, '127.0.0.1', 0).start()
+        return 'http://127.0.0.1:' + str(runner.addresses[0][1])
+
+    async def asyncSetUp(self):
+        self.exposed_models = [
+            {'id': 'text', 'root': '/models/text'},
+            {'id': 'llm-zh-chat', 'root': '/models/lora/rev'},
+        ]
+        self.chat_models = []
+        self.tokenize_models = []
+        self.response_models = []
+        self.admission_calls = []
+        self.responses = {}
+        self.release = asyncio.Event()
+        self.stream_ended = asyncio.Event()
+
+        async def omni_models(request):
+            return web.json_response({'data': [{'id': 'omni', 'root': '/models/omni'}]})
+
+        async def llm_models(request):
+            return web.json_response({'data': list(self.exposed_models)})
+
+        async def llm_chat(request):
+            payload = await request.json()
+            self.chat_models.append(payload['model'])
+            if payload.get('stream'):
+                response = web.StreamResponse(headers={'Content-Type': 'text/event-stream'})
+                await response.prepare(request)
+                try:
+                    await response.write(b'data: {"choices":[]}\n\n')
+                    await self.release.wait()
+                    await response.write(b'data: [DONE]\n\n')
+                finally:
+                    self.stream_ended.set()
+                return response
+            return web.json_response({'model': payload['model'], 'choices': [{'message': {'content': payload['model']}}]})
+
+        async def llm_tokenize(request):
+            payload = await request.json()
+            self.tokenize_models.append(payload['model'])
+            return web.json_response({'count': 23, 'tokens': [1, 2]})
+
+        async def llm_responses(request):
+            if request.method == 'POST' and 'response_id' not in request.match_info:
+                payload = await request.json()
+                self.response_models.append(payload['model'])
+                response_id = payload['request_id']
+                data = {
+                    'id': response_id, 'object': 'response', 'model': payload['model'],
+                    'status': 'in_progress' if payload.get('background') else 'completed', 'output': [],
+                }
+                self.responses[response_id] = data
+                return web.json_response(data)
+            data = self.responses.get(request.match_info['response_id'])
+            if data is None:
+                return web.Response(status=404)
+            if request.method == 'POST':
+                data['status'] = 'cancelled'
+            return web.json_response(data)
+
+        async def llm_admission(request):
+            payload = await request.json()
+            self.admission_calls.append((request.path, payload['model']))
+            reserved = 300 if payload.get('input') == 'large' or payload.get('messages') == [{'role': 'user', 'content': 'large'}] else 250
+            return web.json_response({'input_tokens': 100, 'reserved_tokens': reserved, 'sequences': 1})
+
+        omni_app = web.Application()
+        omni_app.add_routes([web.get('/health', lambda r: web.Response()), web.get('/v1/models', omni_models)])
+        llm_app = web.Application()
+        llm_app.add_routes([
+            web.get('/health', lambda r: web.Response()),
+            web.get('/v1/models', llm_models),
+            web.post('/v1/chat/completions', llm_chat),
+            web.post('/tokenize', llm_tokenize),
+            web.post('/v1/responses', llm_responses),
+            web.get('/v1/responses/{response_id}', llm_responses),
+            web.post('/v1/responses/{response_id}/cancel', llm_responses),
+            web.post('/internal/admission/chat', llm_admission),
+            web.post('/internal/admission/responses', llm_admission),
+        ])
+
+        omni_url = await self.serve(omni_app)
+        llm_url = await self.serve(llm_app)
+        parent = Config(
+            engine_url=omni_url, model='omni', checkpoint='omni',
+            tokens=('client',), admin_token='admin', model_root='/models/omni', queue_timeout=0.05,
+        )
+        text = replace(
+            parent, engine_url=llm_url, model='text', checkpoint='text',
+            model_root='/models/text', model_alias='llm-default', public_prefix='/llm',
+            realtime_enabled=False, prompt_tokens_path='/tokenize',
+            batch_cap=2, token_budget=500, queue_timeout=0.05,
+            model_aliases=(('llm-zh-chat', 'llm-zh-chat'),),
+        )
+        self.url = await self.serve(create_app(parent, text))
+        self.http = ClientSession(base_url=self.url, headers={'Authorization': 'Bearer client'})
+        self.addAsyncCleanup(self.http.close)
+
+    async def test_models_health_routing_shared_budget_and_unknown_alias(self):
+        async with self.http.get('/llm/v1/models') as response:
+            self.assertEqual(response.status, 200)
+            models = (await response.json())['data']
+        self.assertEqual([(item['id'], item['root']) for item in models], [
+            ('llm-default', 'llm-default'),
+            ('llm-zh-chat', 'llm-zh-chat'),
+        ])
+
+        async with self.http.get('/llm/healthz') as response:
+            self.assertEqual(response.status, 200)
+            health = await response.json()
+        self.assertEqual(health['alias'], 'llm-default')
+        self.assertEqual(health['extra_aliases'], ['llm-zh-chat'])
+
+        # Missing LoRA module in upstream omits extra alias without failing base readiness
+        saved_models = list(self.exposed_models)
+        self.exposed_models = [{'id': 'text', 'root': '/models/text'}]
+        async with self.http.get('/llm/v1/models') as response:
+            self.assertEqual(response.status, 200)
+            self.assertEqual([item['id'] for item in (await response.json())['data']], ['llm-default'])
+        async with self.http.get('/llm/healthz') as response:
+            self.assertEqual(response.status, 200)
+            self.assertEqual((await response.json())['extra_aliases'], [])
+        self.exposed_models = saved_models
+
+        # Routing across all 4 endpoints for both llm-default and llm-zh-chat
+        for alias, expected in (('llm-default', 'text'), ('llm-zh-chat', 'llm-zh-chat')):
+            async with self.http.post('/llm/v1/chat/completions', json={
+                'model': alias, 'messages': [{'role': 'user', 'content': 'hi'}],
+            }) as response:
+                self.assertEqual(response.status, 200)
+                self.assertEqual((await response.json())['model'], expected)
+            self.assertEqual(self.chat_models[-1], expected)
+
+            async with self.http.post('/llm/v1/chat/prompt_tokens', json={
+                'model': alias, 'messages': [{'role': 'user', 'content': 'hi'}],
+            }) as response:
+                self.assertEqual((response.status, await response.json()), (200, {'count': 23}))
+            self.assertEqual(self.tokenize_models[-1], expected)
+
+            async with self.http.post('/llm/v1/responses', json={
+                'model': alias, 'input': 'hi',
+            }) as response:
+                self.assertEqual(response.status, 200)
+                self.assertEqual((await response.json())['model'], expected)
+            self.assertEqual(self.response_models[-1], expected)
+
+            async with self.http.post('/llm/v1/responses/prompt_tokens', json={
+                'model': alias, 'input': 'hi',
+            }) as response:
+                self.assertEqual((response.status, await response.json()), (200, {'count': 100}))
+            self.assertEqual(self.admission_calls[-1], ('/internal/admission/responses', expected))
+
+        # Unknown alias returns 400 model_not_found listing accepted aliases on all 4 endpoints
+        for path, body in (
+            ('/llm/v1/chat/completions', {'model': 'bad-alias', 'messages': [{'role': 'user', 'content': 'hi'}]}),
+            ('/llm/v1/chat/prompt_tokens', {'model': 'bad-alias', 'messages': [{'role': 'user', 'content': 'hi'}]}),
+            ('/llm/v1/responses', {'model': 'bad-alias', 'input': 'hi'}),
+            ('/llm/v1/responses/prompt_tokens', {'model': 'bad-alias', 'input': 'hi'}),
+        ):
+            async with self.http.post(path, json=body) as response:
+                self.assertEqual(response.status, 400)
+                err = (await response.json())['error']
+                self.assertEqual(err['code'], 'model_not_found')
+                self.assertIn('llm-default', err['message'])
+                self.assertIn('llm-zh-chat', err['message'])
+
+        # Shared admission slots and token budget across llm-default and llm-zh-chat
+        stream = await self.http.post('/llm/v1/chat/completions', json={
+            'model': 'llm-default', 'stream': True, 'messages': [{'role': 'user', 'content': 'large'}],
+        })
+        await stream.content.readline()
+        # 300/500 tokens reserved by llm-default; 250-token llm-zh-chat request exceeds remaining 200 budget
+        async with self.http.post('/llm/v1/responses', json={
+            'model': 'llm-zh-chat', 'input': 'hi',
+        }) as response:
+            self.assertEqual(response.status, 429)
+        stream.close()
+        await asyncio.wait_for(self.stream_ended.wait(), 2)
+
+        # Hold slot 1 via llm-default chat stream and slot 2 via llm-zh-chat background response
+        self.stream_ended.clear()
+        stream = await self.http.post('/llm/v1/chat/completions', json={
+            'model': 'llm-default', 'stream': True, 'messages': [{'role': 'user', 'content': 'hi'}],
+        })
+        await stream.content.readline()
+        async with self.http.post('/llm/v1/responses', json={
+            'model': 'llm-zh-chat', 'input': 'hi', 'background': True,
+        }) as response:
+            self.assertEqual(response.status, 200)
+            resp_id = (await response.json())['id']
+        async with self.http.get('/llm/api/mode') as response:
+            state = await response.json()
+            self.assertEqual((state['active']['chat'], state['reserved_tokens']), (2, 500))
+        async with self.http.post('/llm/v1/chat/completions', json={
+            'model': 'llm-zh-chat', 'messages': [{'role': 'user', 'content': 'hi'}],
+        }) as response:
+            self.assertEqual(response.status, 429)
+
+        stream.close()
+        await asyncio.wait_for(self.stream_ended.wait(), 2)
+        async with self.http.post('/llm/v1/responses/' + resp_id + '/cancel') as response:
+            self.assertEqual(response.status, 200)
+        async with asyncio.timeout(2):
+            while True:
+                async with self.http.get('/llm/api/mode') as response:
+                    if (await response.json())['reserved_tokens'] == 0:
+                        break
+                await asyncio.sleep(0.01)

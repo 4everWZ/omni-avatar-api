@@ -50,6 +50,31 @@ def optional_positive(name, default):
     return positive(name, default) if os.environ.get(name, "").strip() else default
 
 
+def parse_model_aliases(raw: str, primary_alias: str) -> tuple[tuple[str, str], ...]:
+    """Parse comma-separated alias=upstream model mappings and reject invalid entries."""
+    if not raw or not raw.strip():
+        return ()
+    aliases = []
+    seen = set()
+    for item in raw.split(","):
+        entry = item.strip()
+        if not entry:
+            raise ValueError("LLM_EXTRA_MODEL_ALIASES entries must be non-empty alias=upstream pairs")
+        parts = entry.split("=")
+        if len(parts) != 2:
+            raise ValueError(f"Malformed model alias entry {entry!r}; expected alias=upstream")
+        alias, upstream = parts[0].strip(), parts[1].strip()
+        if not alias or not upstream:
+            raise ValueError(f"Model alias entry {entry!r} must have non-empty alias and upstream model")
+        if alias == primary_alias:
+            raise ValueError(f"Extra model alias {alias!r} cannot collide with primary alias")
+        if alias in seen:
+            raise ValueError(f"Duplicate model alias {alias!r}")
+        seen.add(alias)
+        aliases.append((alias, upstream))
+    return tuple(aliases)
+
+
 @dataclass(frozen=True)
 class Config:
     engine_url: str
@@ -80,6 +105,22 @@ class Config:
     asr_worker_url: str = ""
     asr_internal_token: str = field(default="", repr=False)
     asr_timeout: float = 180.0
+    model_aliases: tuple[tuple[str, str], ...] = ()
+
+    def resolve_upstream_model(self, requested: str | None) -> str | None:
+        """Resolve a client model alias to its upstream model identifier."""
+        if not isinstance(requested, str) or not requested:
+            return None
+        if requested == self.model_alias:
+            return self.model
+        for alias, upstream in self.model_aliases:
+            if requested == alias:
+                return upstream
+        return None
+
+    def accepted_aliases(self) -> tuple[str, ...]:
+        """Return all configured public model aliases starting with the primary alias."""
+        return (self.model_alias, *(alias for alias, _ in self.model_aliases))
 
     @classmethod
     def from_env(cls):
@@ -150,4 +191,5 @@ class Config:
                        request_timeout=override("LLM_REQUEST_TIMEOUT", self.request_timeout),
                        batch_cap=override("LLM_MAX_NUM_SEQS", 4, int),
                        token_budget=override("LLM_TOKEN_BUDGET", 262144, int),
-                       default_thinking_token_budget=optional_non_negative_int("LLM_DEFAULT_THINKING_TOKEN_BUDGET"))
+                       default_thinking_token_budget=optional_non_negative_int("LLM_DEFAULT_THINKING_TOKEN_BUDGET"),
+                       model_aliases=parse_model_aliases(os.environ.get("LLM_EXTRA_MODEL_ALIASES", ""), "llm-default"))
